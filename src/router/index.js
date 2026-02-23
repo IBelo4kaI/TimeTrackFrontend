@@ -83,19 +83,6 @@ router.beforeEach((to, from) => {
   } else {
     document.title = 'Учет рабочего времени' // Заголовок по умолчанию
   }
-
-  if (to.name == routesNavigation.calendar.name) {
-    console.warn('Реализовать')
-  }
-  if (to.name == routesNavigation.report.name) {
-    console.warn('Реализовать')
-  }
-  if (to.name == routesNavigation.settings.name) {
-    console.warn('Реализовать')
-  }
-  if (to.name == routesNavigation.vacation.name) {
-    console.warn('Реализовать')
-  }
 })
 
 export default router
