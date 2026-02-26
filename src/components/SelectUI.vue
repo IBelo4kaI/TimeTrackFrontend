@@ -1,5 +1,9 @@
 <template>
-  <div class="custom-select" ref="selectRef">
+  <div
+    class="custom-select"
+    ref="selectRef"
+    :style="computedWidth ? { width: computedWidth + 'px' } : {}"
+  >
     <div
       class="select-trigger"
       :class="{
@@ -38,7 +42,18 @@
         />
       </svg>
     </div>
-
+    <!-- Скрытый измеритель ширины -->
+    <div class="select-sizer" ref="sizerRef" aria-hidden="true">
+      <div class="select-trigger">
+        <span
+          class="select-value"
+          v-for="option in options"
+          :key="getOptionValue(option)"
+        >
+          {{ getOptionLabel(option) }}
+        </span>
+      </div>
+    </div>
     <transition name="dropdown">
       <div v-if="isOpen" class="select-dropdown">
         <div class="select-options">
@@ -78,7 +93,32 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted, watch, useTemplateRef } from 'vue'
+import {
+  ref,
+  computed,
+  onUnmounted,
+  watch,
+  useTemplateRef,
+  onMounted,
+  nextTick,
+} from 'vue'
+
+const sizerRef = useTemplateRef('sizerRef')
+const computedWidth = ref(null)
+
+const measureWidth = () => {
+  if (!sizerRef.value) return
+  const spans = sizerRef.value.querySelectorAll('.select-value')
+  let max = 0
+  spans.forEach((el) => {
+    const w = el.scrollWidth
+    if (w > max) max = w
+  })
+  // +иконка (20px) + gap (8px) + padding (2 * 0.86rem ≈ 27px)
+  const calculated = max + 20 + 8 + 28
+  // Ограничиваем шириной viewport минус небольшой отступ
+  computedWidth.value = Math.min(calculated, window.innerWidth - 32)
+}
 
 const props = defineProps({
   options: {
@@ -217,6 +257,12 @@ watch(isOpen, (newValue) => {
   }
 })
 
+onMounted(() => nextTick(measureWidth))
+watch(
+  () => props.options,
+  () => nextTick(measureWidth),
+  { deep: true }
+)
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
@@ -225,7 +271,9 @@ onUnmounted(() => {
 <style scoped>
 .custom-select {
   position: relative;
-  width: 100%;
+  min-width: 120px;
+  max-width: 100%; /* не выходить за родителя */
+  display: inline-block;
 }
 
 .select-trigger {
@@ -371,5 +419,17 @@ onUnmounted(() => {
 .dropdown-leave-to {
   opacity: 0;
   transform: translateY(-5px);
+}
+
+/* Исправлено: sizer вынесен за пределы viewport через fixed, не влияет на layout */
+.select-sizer {
+  position: fixed;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  top: -9999px;
+  left: -9999px;
 }
 </style>

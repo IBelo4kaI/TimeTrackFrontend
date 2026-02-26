@@ -16,7 +16,7 @@ permissionsApi.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status == 401) {
-      window.location.href = 'https://sso.st29.ru'
+      window.location.href = 'https://sso.st29.ru/?url=timetrack.st29.ru'
       return
     } else if (error.response?.status == 403) {
       // window.location.href = '/'
@@ -31,7 +31,7 @@ timeTrackApi.interceptors.response.use(
   (error) => {
     const notstore = useNotificationStore()
     if (error.response?.status == 401) {
-      window.location.href = 'https://sso.st29.ru'
+      window.location.href = 'https://sso.st29.ru/?url=timetrack.st29.ru'
       return
     } else if (error.response?.status == 403) {
       notstore.addNotification('Нет доступа к действию', 'error')

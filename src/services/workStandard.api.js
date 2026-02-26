@@ -30,3 +30,13 @@ export const updateStandard = async (id, updateData) => {
     throw error
   }
 }
+
+export const deleteStandard = async (id) => {
+  try {
+    const response = await timeTrackApi.delete(`/work-standards/${id}`)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при удалении стандарта:', error)
+    throw error
+  }
+}

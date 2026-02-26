@@ -46,11 +46,10 @@ button {
 }
 
 .muted-accent {
-  color: var(--text);
+  color: var(--accent);
 }
 .muted-accent:hover {
   background: var(--muted-accent);
-  color: var(--accent);
 }
 
 .success {
@@ -65,6 +64,13 @@ button {
 }
 .destructive:hover {
   background: var(--muted-destructive);
+}
+
+.warn {
+  color: var(--warn);
+}
+.warn:hover {
+  background: var(--muted-warn);
 }
 
 .disable {

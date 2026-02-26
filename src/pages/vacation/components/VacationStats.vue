@@ -6,6 +6,7 @@
       :value="vacationStore.vacationStats.used"
       label="Использовано"
       valueVariant="warn"
+      :isLoading="vacationStore.isLoading"
     />
     <CardStatistics
       icon="fa-regular fa-check-circle"
@@ -13,6 +14,7 @@
       :value="vacationStore.vacationStats.free"
       label="Осталось"
       valueVariant="success"
+      :isLoading="vacationStore.isLoading"
     />
     <CardStatistics
       icon="fa-regular fa-clock"
@@ -20,6 +22,7 @@
       :value="vacationStore.vacationStats.pending"
       label="Ожидает"
       valueVariant="primary"
+      :isLoading="vacationStore.isLoading"
     />
   </div>
 </template>

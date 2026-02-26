@@ -4,7 +4,12 @@
       <i :class="[icon]"></i>
     </div>
     <div class="stat-label">{{ label }}</div>
-    <div class="stat-value" :class="valueVariant">{{ value }}</div>
+    <div class="stat-value" :class="valueVariant">
+      <i v-if="isLoading" class="fa-regular fa-loader fa-spin"></i>
+      <template v-else>
+        {{ value }}
+      </template>
+    </div>
   </div>
 </template>
 
@@ -41,6 +46,11 @@ const props = defineProps({
     default: 'primary',
     validator: (value) =>
       ['primary', 'success', 'warn', 'destructive'].includes(value),
+  },
+
+  isLoading: {
+    type: Boolean,
+    default: false,
   },
 })
 </script>

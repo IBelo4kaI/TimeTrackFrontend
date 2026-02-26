@@ -105,7 +105,7 @@ export const useAddVacationModalStore = defineStore(
               endDate: new Date(data.endDate),
             })
 
-            await vacationStore.fetchUserVacations()
+            await vacationStore.fetchVacations()
 
             notificationStore.addNotification(
               'Заявка на отпуск создана!',

@@ -1,0 +1,78 @@
+/* tooltip.css - Стили для директивы v-tooltip */
+
+:root {
+  --tooltip-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.dark-theme {
+  --tooltip-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.v-tooltip {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 300px;
+
+  /* Скрыт по умолчанию */
+  display: none;
+  opacity: 0;
+
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+
+  /* Начальное смещение — переопределяется по позиции ниже */
+  transform: translateY(4px);
+}
+
+/* Активен (display: block), но ещё не visible */
+.v-tooltip--active {
+  display: block;
+}
+
+/* Видимый — плавно появляется */
+.v-tooltip--visible {
+  opacity: 1;
+  transform: translate(0, 0) !important;
+}
+
+/* Начальные transform по направлению появления */
+.v-tooltip[data-placement='top'] {
+  transform: translateY(6px);
+}
+
+.v-tooltip[data-placement='bottom'] {
+  transform: translateY(-6px);
+}
+
+.v-tooltip[data-placement='left'] {
+  transform: translateX(6px);
+}
+
+.v-tooltip[data-placement='right'] {
+  transform: translateX(-6px);
+}
+
+/* Контент */
+.v-tooltip-content {
+  background: var(--foreground);
+  color: var(--text);
+  padding: var(--tooltip-padding, 0.625rem 0.875rem);
+  border-radius: var(--border-radius);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  border: 0.07rem solid var(--border-color);
+  box-shadow: var(--tooltip-shadow);
+  word-wrap: break-word;
+  white-space: pre-line;
+}
+
+/* ─── Accessibility ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .v-tooltip {
+    transition: opacity 0.1s ease;
+    transform: none !important;
+  }
+}

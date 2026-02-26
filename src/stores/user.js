@@ -8,7 +8,6 @@ export const useUserStore = defineStore('user', () => {
   const user = ref(null)
   const permissions = ref(null)
   const usersAll = ref([])
-  const isExistUserAll = ref()
   const isLoading = shallowRef(false)
   const isLogin = shallowRef(false)
 
@@ -16,6 +15,7 @@ export const useUserStore = defineStore('user', () => {
     isLoading.value = true
     await userFetch()
     await permissionsFetch()
+    await userAllFetch()
     isLoading.value = false
   }
 
@@ -44,12 +44,9 @@ export const useUserStore = defineStore('user', () => {
   const userAllFetch = async (changeLoading = false) => {
     if (changeLoading) isLoading.value = true
 
-    if (hasPermission('users', 'read_all')) {
-      const usersData = await getAllUsers()
-      if (usersData) {
-        usersAll.value = usersData
-        isExistUserAll.value = true
-      }
+    const usersData = await getAllUsers()
+    if (usersData) {
+      usersAll.value = usersData
     }
 
     if (changeLoading) isLoading.value = false
@@ -100,7 +97,6 @@ export const useUserStore = defineStore('user', () => {
     usersAll,
     isLoading,
     isLogin,
-    isExistUserAll,
     initialFetch,
     permissionsFetch,
     userFetch,

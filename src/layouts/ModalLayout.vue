@@ -18,20 +18,20 @@
 const { title, desc } = defineProps({
   title: String,
   desc: String,
-});
-const emit = defineEmits(["close"]);
+})
+const emit = defineEmits(['close'])
 
 const close = () => {
-  emit("close");
-};
+  emit('close')
+}
 
 const closeKeyboard = (e) => {
-  if (e.key == "Escape") close();
+  if (e.key == 'Escape') close()
 
-  document.removeEventListener("keydown", closeKeyboard);
-};
+  document.removeEventListener('keydown', closeKeyboard)
+}
 
-document.addEventListener("keydown", closeKeyboard);
+document.addEventListener('keydown', closeKeyboard)
 </script>
 
 <style scoped>
@@ -53,7 +53,7 @@ document.addEventListener("keydown", closeKeyboard);
   right: 0;
   bottom: 0;
   top: 0;
-  z-index: 10;
+  z-index: 100;
 }
 .close {
   cursor: pointer;
@@ -65,7 +65,7 @@ document.addEventListener("keydown", closeKeyboard);
   padding: 1.71rem;
   background: var(--foreground);
   border-radius: var(--border-radius);
-  z-index: 100;
+  z-index: 101;
   max-width: 28.57rem;
   min-width: 28.57rem;
 }

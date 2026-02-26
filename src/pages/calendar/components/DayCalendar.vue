@@ -9,7 +9,6 @@
     @mousedown="handleMouseDown"
     @mouseenter="handleMouseEnter"
     @dblclick="open(day)"
-    :title="dayTypesStore.getTypeNameById(day.calendarEventTypeId)"
   >
     <div class="day-header">
       <span class="day-number">
@@ -18,7 +17,10 @@
       <template v-if="day.holidays.length > 0">
         <div
           class="day-description"
-          :title="day.holidays.length > 0 ? day.holidays.join('\n') : null"
+          v-tooltip="{
+            content: day.holidays.length > 0 ? day.holidays.join('\n') : null,
+            offset: -4,
+          }"
         >
           {{ day.holidays[0] }}
         </div>
@@ -26,7 +28,12 @@
       <template v-if="birthday.length > 0">
         <span
           class="day-number day-birthday"
-          :title="birthday.map((b) => 'День рождения ' + b.fullName + '\n')"
+          v-tooltip="{
+            content: birthday
+              .map((b) => 'День рождения ' + b.fullName)
+              .join('\n'),
+            offset: 4,
+          }"
         >
           {{ birthday[0].initials }}
         </span>
@@ -179,7 +186,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.8rem;
-  line-height: 0.8rem;
+  line-height: 2.4rem;
 }
 
 .day-description .fa-circle {

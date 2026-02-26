@@ -3,10 +3,7 @@
     <MonthControl v-model="store.currentDate" />
     <div
       class="controls-users"
-      v-if="
-        userStore.hasPermission('calendar.all', 'read') &&
-        userStore.isExistUserAll
-      "
+      v-if="userStore.hasPermission('calendar.all', 'read')"
     >
       <SelectUI
         v-model="store.selectedUserId"

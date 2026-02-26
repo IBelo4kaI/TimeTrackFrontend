@@ -19,7 +19,7 @@ export const routesNavigation = {
     meta: {
       title: 'Табель',
       icon: 'fa-light fa-clock',
-      entity: 'report',
+      entity: 'calendar',
       action: 'read',
     },
   },

@@ -28,21 +28,28 @@
         <ButtonUI
           type="success"
           @click="onApproved"
-          v-if="item.status == 'pending'"
-        >
-          Утвердить
-        </ButtonUI>
+          v-if="item.status != 'approved'"
+          icon="fa-regular fa-octagon-check"
+          v-tooltip="'Утвердить'"
+        />
         <ButtonUI
-          type="destructive"
-          @click="onStatus('rejected')"
+          v-if="item.status != 'pending'"
+          @click="onStatus('pending')"
+          type="warn"
+          icon="fa-regular fa-clock"
+          v-tooltip="'На рассмотрении'"
+        />
+        <ButtonUI
           v-if="item.status != 'rejected'"
-        >
-          Отклонить
-        </ButtonUI>
+          @click="onStatus('rejected')"
+          type="destructive"
+          icon="fa-regular fa-octagon-minus"
+          v-tooltip="'Отклонить'"
+        />
       </template>
+
       <template v-else>
         <ButtonUI
-          type="destructive"
           v-if="item.status != 'approved'"
           @click="
             confirmModalStore.open(
@@ -50,9 +57,54 @@
               'Вы действительно хотите удалить?'
             )
           "
+          type="destructive"
+          icon="fa-regular fa-trash-can-xmark"
+          v-tooltip="'Удалить отпуск'"
+        />
+      </template>
+
+      <ButtonUI
+        @click="vacationDocs.getDocument(item.id)"
+        icon="fa-regular fa-file-word"
+        type="success"
+        v-tooltip="'Получить шаблон заявления'"
+      ></ButtonUI>
+
+      <template v-if="item.docFileName">
+        <ButtonUI
+          @click="onDownloadFile(item.docFileName)"
+          type="muted-accent"
+          icon="fa-regular fa-file-export"
+          v-tooltip="'Получить прикрепленный файл'"
+        />
+        <ButtonUI
+          v-if="userStore.hasPermission('vacation', 'file_delete')"
+          @click="onDeleteFile(item.docFileName, item.id)"
+          icon="fa-regular fa-file-circle-xmark"
+          type="destructive"
+          v-tooltip="'Удалить прикрепленный файл'"
+        />
+      </template>
+
+      <template v-else>
+        <div
+          class="file-upload"
+          v-if="userStore.hasPermission('vacation', 'edit')"
         >
-          Удалить
-        </ButtonUI>
+          <ButtonUI
+            icon="fa-regular fa-file-import"
+            type="success"
+            @click="$refs.fileInput.click()"
+            v-tooltip="'Прикрепить файл'"
+          />
+          <input
+            ref="fileInput"
+            type="file"
+            name="file"
+            style="display: none"
+            @change="onFileSelected"
+          />
+        </div>
       </template>
     </div>
     <!-- <div class="vacation-detailed"></div> -->
@@ -71,6 +123,7 @@ import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
 import { useVacationStore } from '@/stores/vacation'
+import { useVacationDocs } from '@/stores/vacationDocs'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
 import { formatStats } from '@/utils/vacation.utils'
@@ -80,7 +133,7 @@ const userStore = useUserStore()
 const confirmModalStore = useConfirmModal()
 const notificationStore = useNotificationStore()
 const vacationStore = useVacationStore()
-
+const vacationDocs = useVacationDocs()
 const { item, isAdmin } = defineProps(['item', 'isAdmin'])
 
 const user = computed(() => {
@@ -105,6 +158,82 @@ const onStatus = async (status) => {
   const resp = await updateVacationStatus(item.id, status)
   notificationStore.addNotification(resp.message, 'success')
   await vacationStore.fetchVacations()
+}
+
+const onFileSelected = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // Проверка размера файла (максимум 10MB)
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  if (file.size > maxSize) {
+    notificationStore.addNotification(
+      'Файл слишком большой. Максимальный размер: 10MB',
+      'error'
+    )
+    event.target.value = ''
+    return
+  }
+
+  // Проверка типа файла (разрешенные расширения)
+  const allowedExtensions = ['.pdf']
+  const fileName = file.name.toLowerCase()
+  const hasValidExtension = allowedExtensions.some((ext) =>
+    fileName.endsWith(ext)
+  )
+
+  if (!hasValidExtension) {
+    notificationStore.addNotification(
+      'Недопустимый тип файла. Разрешены: PDF',
+      'error'
+    )
+    event.target.value = ''
+    return
+  }
+
+  const result = await vacationDocs.uploadFile(item.id, file)
+  if (result.success) {
+    notificationStore.addNotification(result.data.message, 'success')
+    await vacationStore.fetchVacations()
+  } else {
+    notificationStore.addNotification(
+      result.error || 'Ошибка при загрузке файла',
+      'error'
+    )
+  }
+
+  // Сброс input для возможности повторной загрузки того же файла
+  event.target.value = ''
+}
+
+const onDownloadFile = async (fileName) => {
+  const result = await vacationDocs.downloadFile(fileName)
+  if (result.success) {
+    notificationStore.addNotification(
+      result.message || 'Файл успешно скачан',
+      'success'
+    )
+  } else {
+    notificationStore.addNotification(
+      result.error || 'Ошибка при скачивании файла',
+      'error'
+    )
+  }
+}
+
+const onDeleteFile = async (fileName, vacationId) => {
+  confirmModalStore.open(async () => {
+    const result = await vacationDocs.deleteFile(fileName, vacationId)
+    if (result.success) {
+      notificationStore.addNotification(result.data.message, 'success')
+      await vacationStore.fetchVacations()
+    } else {
+      notificationStore.addNotification(
+        result.error || 'Ошибка при удалении файла',
+        'error'
+      )
+    }
+  }, 'Вы действительно хотите удалить файл?')
 }
 
 const statusC = computed(() =>
@@ -160,6 +289,13 @@ const statusC = computed(() =>
   grid-area: desc;
   color: var(--muted-text);
 }
+.vacation-item-file {
+  grid-area: file;
+  display: flex;
+  gap: calc(var(--padding-secondary) / 2);
+  align-items: center;
+}
+
 .vacation-item-createAt {
   grid-area: createAt;
 }

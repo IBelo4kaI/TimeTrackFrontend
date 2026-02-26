@@ -1,42 +1,36 @@
 <template>
   <div class="container">
-    <Loader v-if="vacationStore.isLoading" />
-    <template v-else>
-      <VacationStats />
-      <div class="vacation-list-header">
-        <div class="vacation-list-title">Заявки на отпуск</div>
-        <div class="vacation-list-filter">
-          <template v-if="userStore.hasPermission('vacation.all', 'read')">
-            <Tabs
-              :tabs="targets"
-              v-model="vacationStore.target"
-              type="accent"
-            />
-          </template>
-          <Tabs :tabs="filters" v-model="vacationStore.filter" type="accent" />
-        </div>
-        <div class="vacation-list-year">
-          <SelectUI :options="years" v-model="vacationStore.selectedYear" />
-        </div>
-        <div class="vacation-list-new">
-          <ButtonUI
-            @click="addVacationModalStore.open(vacationStore.target == 'all')"
-          >
-            Создать заявку
-          </ButtonUI>
-        </div>
+    <VacationStats v-if="vacationStore.target !== 'all'" />
+    <div class="vacation-list-header">
+      <div class="vacation-list-title">Заявки на отпуск</div>
+      <div class="vacation-list-filter">
+        <template v-if="userStore.hasPermission('vacation.all', 'read')">
+          <Tabs :tabs="targets" v-model="vacationStore.target" type="accent" />
+        </template>
+        <Tabs :tabs="filters" v-model="vacationStore.filter" type="accent" />
       </div>
-      <VacationList
-        :items="vacationStore.filterVacations"
-        :is-admin="vacationStore.target == 'all'"
-      />
-    </template>
+      <div class="vacation-list-year">
+        <SelectUI :options="years" v-model="vacationStore.selectedYear" />
+      </div>
+      <div class="vacation-list-new">
+        <ButtonUI
+          @click="addVacationModalStore.open(vacationStore.target == 'all')"
+        >
+          Создать заявку
+        </ButtonUI>
+      </div>
+    </div>
+    <VacationList
+      :items="vacationStore.filterVacations"
+      :is-admin="vacationStore.target == 'all'"
+      :is-loading="vacationStore.isLoading"
+    />
+    <VacationOther />
   </div>
 </template>
 
 <script setup>
 import ButtonUI from '@/components/ButtonUI.vue'
-import Loader from '@/components/Loader.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
 import { useAddVacationModalStore } from '@/stores/addVacationModal'
@@ -45,6 +39,7 @@ import { useUserStore } from '@/stores/user'
 import { useVacationStore } from '@/stores/vacation'
 import { onMounted } from 'vue'
 import VacationList from './components/VacationList.vue'
+import VacationOther from './components/VacationOther/VacationOther.vue'
 import VacationStats from './components/VacationStats.vue'
 
 const titleStore = useHeaderTitleStore()
