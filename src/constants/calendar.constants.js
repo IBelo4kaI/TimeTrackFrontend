@@ -54,5 +54,3 @@ export const TYPE_LABELS = {
   holiday: 'Праздник',
   preholiday: 'Предпраздничный день',
 }
-export const API_TIME_TRACK_URL = 'http://192.168.88.147:8181/v1'
-export const USER_ID = 'b444f8ae-843f-4720-a14e-a0eb8f1beb74'
