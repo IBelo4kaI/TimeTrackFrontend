@@ -28,7 +28,7 @@
         :info-content="desc"
       />
       <div class="header-theme">
-        <ButtonUI @click="themeStore.toggleTheme">Сменить тему</ButtonUI>
+        <ToggleTheme />
       </div>
       <div class="header-notify"></div>
       <Profile :icon="userInitials" :title="userFullName" />
@@ -38,10 +38,10 @@
 </template>
 
 <script setup>
-import ButtonUI from '@/components/ButtonUI.vue'
 import Info from '@/components/Info.vue'
 import NavItem from '@/components/NavItem.vue'
 import Profile from '@/components/Profile.vue'
+import ToggleTheme from '@/components/ToggleTheme.vue'
 import { routesNavigation } from '@/router'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useThemeStore } from '@/stores/themes'
