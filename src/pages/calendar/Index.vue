@@ -3,21 +3,20 @@
     <ControlsCalendar :store="calendarStore" />
     <LegendCalendar />
     <div class="container-row">
-      <DayListCalendar />
+      <DayListCalendar style="flex: 1" />
       <StatisticsCalendar />
     </div>
   </div>
 </template>
 
 <script setup>
+import StatisticsCalendar from '@/components/Calendar/StatisticsCalendar.vue'
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
+import { useCalendarStore } from '@/stores/calendar'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
+import { computed } from 'vue'
 import LegendCalendar from '../../components/Calendar/LegendCalendar.vue'
 import DayListCalendar from './components/DayListCalendar.vue'
-import { useCalendarStore } from '@/stores/calendar'
-import { computed } from 'vue'
-import CardStatistic from '../report/components/CardStatistic.vue'
-import StatisticsCalendar from '@/components/Calendar/StatisticsCalendar.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Календарь', 'Учёт рабочих дней')
