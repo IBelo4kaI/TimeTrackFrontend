@@ -29,7 +29,9 @@ export const useAddVacationModalStore = defineStore(
               ...userStore.usersAll.map((u) => {
                 return {
                   value: u.id,
-                  label: u.name,
+                  label: [u.name, u.surname]
+                    .filter((part) => part != null && part !== '')
+                    .join(' '),
                 }
               }),
             ],

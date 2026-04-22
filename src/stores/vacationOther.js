@@ -1,76 +1,14 @@
 import { getAllUserVacationsByYear } from '@/services/vacation.api'
+import {
+  getInternalEmployeeDepartments,
+  getInternalEmployees,
+} from '@/services/reference.api'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
 export const useVacationOther = defineStore('vacation-other', () => {
-  const employees = [
-    {
-      department: 'IT-отдел',
-      employees: [
-        {
-          user_id: '122d844d-b3be-42d9-8b5b-8a0058edb2d8',
-          full_name: 'Степанов Степан Александрович',
-          company: 'ООО "Строй технологии"',
-          position: 'Инженер-программист',
-          department: 'IT-отдел',
-          director: 'Степановский Виктор Викторович',
-          director_position: 'Директор',
-        },
-        {
-          user_id: '9768155a-b96c-42cb-8e74-a22d523b4a17',
-          full_name: 'Белов Михаил Иванович',
-          company: 'ООО "Строй технологии"',
-          position: 'Инженер-программист',
-          department: 'IT-отдел',
-          director: 'Степановский Виктор Викторович',
-          director_position: 'Директор',
-        },
-      ],
-    },
-    {
-      department: 'Отдел проектирования',
-      employees: [
-        {
-          user_id: '4f044b23-fa36-4266-942e-0c8ef30d3977',
-          full_name: 'Касевич Наталья Сергеевна',
-          company: 'ООО "Строй технологии"',
-          position: 'Инженер-проектировщик',
-          department: 'Отдел проектирования',
-          director: 'Степановский Виктор Викторович',
-          director_position: 'Директор',
-        },
-        {
-          user_id: '8c45a975-d200-4270-81e1-f29ba4ac7471',
-          full_name: 'Патраков Кирилл Иванович',
-          company: 'ООО "Строй технологии"',
-          position: 'Техник-проектировщик',
-          department: 'Отдел проектирования',
-          director: 'Степановский Виктор Викторович',
-          director_position: 'Директор',
-        },
-        {
-          user_id: '1d0a72bc-211e-4d47-9c5f-d6b3dd766533',
-          full_name: 'Омельченко Аделина Юрьевна',
-          company: 'ООО "Строй технологии"',
-          position: 'Техник-проектировщик',
-          department: 'Отдел проектирования',
-          director: 'Степановский Виктор Викторович',
-          director_position: 'Директор',
-        },
-        {
-          user_id: 'cd39078b-22fe-4af9-aa54-6a53a9ec8f02',
-          full_name: 'Мишукова Кристина',
-          company: 'ООО "Строй технологии"',
-          position: 'Техник-проектировщик',
-          department: 'Отдел проектирования',
-          director: 'Степановский Виктор Викторович',
-          director_position: 'Директор',
-        },
-      ],
-    },
-  ]
-
-  const departments = ['IT-отдел', 'Отдел проектирования']
+  const employees = ref([])
+  const departments = ref([])
 
   const filters = ref({
     department: 'all',
@@ -85,45 +23,47 @@ export const useVacationOther = defineStore('vacation-other', () => {
 
   const vacations = ref([])
 
-  // Плоский список для поиска и других операций
   const allEmployeesFlat = computed(() =>
-    employees.flatMap((dept) => dept.employees)
+    employees.value.flatMap((dept) =>
+      Array.isArray(dept?.employees) ? dept.employees : []
+    )
   )
 
-  // Отфильтрованный плоский список
   const filteredEmployeesFlat = computed(() => {
     const searchTerm = filters.value.search
       ? filters.value.search.toLowerCase()
       : ''
 
     return allEmployeesFlat.value.filter((emp) => {
-      // Фильтр по отделу
       if (
         filters.value.department !== 'all' &&
         emp.department !== filters.value.department
       )
         return false
 
-      // Фильтр по поиску
-      if (searchTerm && !emp.full_name.toLowerCase().includes(searchTerm))
+      if (
+        searchTerm &&
+        !(emp?.full_name || '').toLowerCase().includes(searchTerm)
+      )
         return false
 
       return true
     })
   })
 
-  // Сгруппированный результат (если нужна именно группировка)
   const filteredEmployeesGrouped = computed(() => {
     const groupedByDept = {}
 
     filteredEmployeesFlat.value.forEach((emp) => {
-      if (!groupedByDept[emp.department]) {
-        groupedByDept[emp.department] = {
-          department: emp.department,
+      const departmentName = emp?.department || 'Без отдела'
+
+      if (!groupedByDept[departmentName]) {
+        groupedByDept[departmentName] = {
+          department: departmentName,
           employees: [],
         }
       }
-      groupedByDept[emp.department].employees.push(emp)
+      groupedByDept[departmentName].employees.push(emp)
     })
 
     return Object.values(groupedByDept)
@@ -138,10 +78,64 @@ export const useVacationOther = defineStore('vacation-other', () => {
     })
   )
 
+  const normalizeEmployees = (response) => {
+    if (!Array.isArray(response)) return []
+
+    if (response.every((item) => Array.isArray(item?.employees))) {
+      return response
+    }
+
+    const groupedByDept = {}
+    response.forEach((employee) => {
+      const departmentName = employee.department || 'Без отдела'
+      if (!groupedByDept[departmentName]) {
+        groupedByDept[departmentName] = {
+          department: departmentName,
+          employees: [],
+        }
+      }
+      groupedByDept[departmentName].employees.push(employee)
+    })
+
+    return Object.values(groupedByDept)
+  }
+
+  const normalizeDepartments = (response) => {
+    if (!Array.isArray(response)) return []
+
+    return response
+      .map((item) => (typeof item === 'string' ? item : item?.department))
+      .filter((name) => name != null && name !== '')
+  }
+
   async function initialFetch() {
     isLoading.value = true
-    vacations.value = await getAllUserVacationsByYear(filters.value.year)
-    isLoading.value = false
+    try {
+      const [vacationsResult, employeesResult, departmentsResult] =
+        await Promise.allSettled([
+          getAllUserVacationsByYear(filters.value.year),
+          getInternalEmployees(),
+          getInternalEmployeeDepartments(),
+        ])
+
+      vacations.value =
+        vacationsResult.status === 'fulfilled' &&
+        Array.isArray(vacationsResult.value)
+          ? vacationsResult.value
+          : []
+
+      employees.value =
+        employeesResult.status === 'fulfilled'
+          ? normalizeEmployees(employeesResult.value)
+          : []
+
+      departments.value =
+        departmentsResult.status === 'fulfilled'
+          ? normalizeDepartments(departmentsResult.value)
+          : []
+    } finally {
+      isLoading.value = false
+    }
   }
 
   function updateFilters(payload) {

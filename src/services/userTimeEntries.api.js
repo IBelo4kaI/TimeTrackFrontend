@@ -41,7 +41,7 @@ export const deleteUserTimeEntry = async (dayData) => {
 export const getStatistics = async (userId, month, year, gender) => {
   try {
     const response = await timeTrackApi.get(
-      `/usertimeentries/statistics/${userId}/${year}/${month}/${gender}`
+      `usertimeentries/statistics/${userId}/${year}/${month}/${gender}`
     )
 
     return response.data

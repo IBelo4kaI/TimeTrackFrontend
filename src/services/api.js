@@ -3,12 +3,17 @@ import axios from 'axios'
 
 // Создаем экземпляр Axios с базовым URL
 export const timeTrackApi = axios.create({
-  baseURL: 'http://localhost:8080/v1',
+  baseURL: '/apitime',
   withCredentials: true,
 })
 
 export const permissionsApi = axios.create({
-  baseURL: 'http://localhost:8382/api/as',
+  baseURL: '/api/as',
+  withCredentials: true,
+})
+
+export const referenceApi = axios.create({
+  baseURL: '/apiref',
   withCredentials: true,
 })
 

@@ -1,7 +1,6 @@
 import { getStatistics } from '@/services/userTimeEntries.api'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import { useCalendarStore } from './calendar'
 import { useUserStore } from './user'
 
 export const useReportStore = defineStore('report', () => {
@@ -12,17 +11,48 @@ export const useReportStore = defineStore('report', () => {
   const isLoading = shallowRef(false)
   const userStore = useUserStore()
 
+  const parseGenderId = (user) => {
+    const rawGender = user?.gender?.id ?? user?.genderId ?? user?.gender
+
+    if (typeof rawGender === 'number') return rawGender
+    if (typeof rawGender === 'string') {
+      const normalizedGender = rawGender.trim().toLowerCase()
+      if (['2', 'female', 'f', 'жен', 'женский'].includes(normalizedGender)) {
+        return 2
+      }
+      if (['1', 'male', 'm', 'муж', 'мужской'].includes(normalizedGender)) {
+        return 1
+      }
+    }
+
+    return null
+  }
+
   const init = async () => {
     setUser(userStore.user)
   }
 
   const initialFetch = async () => {
+    if (!selectedUserId.value) return
+
+    if (
+      !selectedUser.value ||
+      selectedUser.value?.id !== selectedUserId.value
+    ) {
+      selectedUser.value = userStore.usersAll.find(
+        (u) => u.id === selectedUserId.value
+      )
+    }
+
+    const genderId = parseGenderId(selectedUser.value)
+    if (!genderId) return
+
     isLoading.value = true
     data.value = await getStatistics(
       selectedUserId.value,
       currentDate.value.getMonth() + 1,
       currentDate.value.getFullYear(),
-      selectedUser.value.gender.id
+      genderId
     )
     isLoading.value = false
   }

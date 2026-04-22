@@ -55,12 +55,12 @@ const viewModeTabs = [
   { id: 'year', label: 'Год' },
 ]
 
-const departmentOptions = [
+const departmentOptions = computed(() => [
   { label: 'Все', value: 'all' },
   ...store.departments.map((d) => {
     return { label: d, value: d }
   }),
-]
+])
 
 const statusOptions = [
   { label: 'Все статусы', value: 'all' },
