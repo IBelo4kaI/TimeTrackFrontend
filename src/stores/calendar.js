@@ -4,6 +4,7 @@ import {
   createUserTimeEntry,
   deleteUserTimeEntry,
   updateUserTimeEntry,
+  getStatistics,
 } from '@/services/userTimeEntries.api'
 import {
   getFirstDateOfMonth,
@@ -21,6 +22,7 @@ import { useUserStore } from './user'
 export const useCalendarStore = defineStore('calendar', () => {
   // State
   const data = ref([])
+  const statsData = ref(null)
   const selectedUserId = shallowRef(null)
   const selectedUser = shallowRef(null)
   const prevMonthDays = shallowRef([])
@@ -29,12 +31,43 @@ export const useCalendarStore = defineStore('calendar', () => {
   const isLoading = shallowRef(false)
 
   const userStore = useUserStore()
+
+  const parseGenderId = (user) => {
+    const rawGender = user?.gender?.id ?? user?.genderId ?? user?.gender
+    if (typeof rawGender === 'number') return rawGender
+    if (typeof rawGender === 'string') {
+      const normalizedGender = rawGender.trim().toLowerCase()
+      if (['2', 'female', 'f', 'жен', 'женский'].includes(normalizedGender)) return 2
+      if (['1', 'male', 'm', 'муж', 'мужской'].includes(normalizedGender)) return 1
+    }
+    return null
+  }
+
   // Init
   const init = async () => {
     selectedUser.value = userStore.user
     selectedUserId.value = userStore.user.id
     console.log(selectedUser, selectedUserId)
     await initialFetch()
+  }
+
+  const fetchStatistics = async () => {
+    if (!selectedUserId.value) return
+
+    const user =
+      selectedUser.value?.id === selectedUserId.value
+        ? selectedUser.value
+        : userStore.usersAll.find((u) => u.id === selectedUserId.value)
+
+    const genderId = parseGenderId(user)
+    if (!genderId) return
+
+    statsData.value = await getStatistics(
+      selectedUserId.value,
+      currentMonth.value,
+      currentYear.value,
+      genderId
+    )
   }
 
   const initialFetch = async () => {
@@ -49,6 +82,8 @@ export const useCalendarStore = defineStore('calendar', () => {
 
     prevMonthDays.value = generatePrevMonthDays(firstDateOfMonth.value)
     nextMonthDays.value = generateNextMonthDays(lastDateOfMonth.value)
+
+    await fetchStatistics()
 
     isLoading.value = false
   }
@@ -111,6 +146,34 @@ export const useCalendarStore = defineStore('calendar', () => {
     { immediate: false }
   )
 
+  const workingHours = computed(() =>
+    statsData.value
+      ? statsData.value.hours
+      : { totalHours: 0, standardHours: 0 }
+  )
+
+  const workingDays = computed(() =>
+    statsData.value
+      ? statsData.value.workDays
+      : { totalWorkDays: 0, standardWorkDays: 0 }
+  )
+
+  const otherDays = computed(() =>
+    statsData.value
+      ? {
+          vacationDays: statsData.value.vacationDays,
+          medicalDays: statsData.value.medicalDays,
+          timeoffDays: statsData.value.timeoffDays,
+          decreeDays: statsData.value.decreeDays,
+        }
+      : {
+          vacationDays: { count: 0 },
+          medicalDays: { count: 0 },
+          timeoffDays: { count: 0 },
+          decreeDays: { count: 0 },
+        }
+  )
+
   return {
     // State
     currentDate,
@@ -118,6 +181,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     prevMonthDays,
     nextMonthDays,
     data,
+    statsData,
     selectedUserId,
     selectedUser,
 
@@ -128,6 +192,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     firstDateOfMonth,
     lastDateOfMonth,
     calendarDays,
+    workingHours,
+    workingDays,
+    otherDays,
 
     // Actions
     updateDay,
