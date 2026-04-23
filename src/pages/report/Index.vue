@@ -49,54 +49,24 @@
       </div>
     </template>
 
-    <AppTable
+    <ReportTable
       v-else
-      :headers="allUsersHeaders"
+      v-model="selectedDepartment"
       :rows="filteredRows"
-      :loading="reportStore.isLoadingAll"
-      row-key="id"
-    >
-      <template #toolbar>
-        <span class="table-title">Статистика по сотрудникам</span>
-        <SelectUI
-          v-model="selectedDepartment"
-          :options="departmentOptions"
-          placeholder="Все отделы"
-        />
-      </template>
-
-      <template #cell-totalHours="{ value, row }">
-        <span :class="hoursVariant(row)">{{ value }}</span>
-      </template>
-
-      <template #cell-totalWorkDays="{ value }">
-        <span class="success">{{ value }}</span>
-      </template>
-
-      <template #cell-medicalDays="{ value }">
-        <span :class="value > 0 ? 'destructive' : ''">{{ value }}</span>
-      </template>
-
-      <template #cell-timeoffDays="{ value }">
-        <span :class="value > 0 ? 'accent' : ''">{{ value }}</span>
-      </template>
-
-      <template #cell-vacationDays="{ value }">
-        <span :class="value > 0 ? 'warn' : ''">{{ value }}</span>
-      </template>
-    </AppTable>
+      :is-loading="reportStore.isLoadingAll"
+      :departments="reportStore.departments"
+    />
   </div>
 </template>
 
 <script setup>
-import AppTable from '@/components/AppTable.vue'
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
-import SelectUI from '@/components/SelectUI.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useReportStore } from '@/stores/report'
 import { useUserStore } from '@/stores/user'
 import { computed, onMounted, ref, watch } from 'vue'
 import CardStatistic from './components/CardStatistic.vue'
+import ReportTable from './components/ReportTable.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Табель', 'Детальный учёт времени')
@@ -110,36 +80,12 @@ const canViewAll = computed(() => userStore.hasPermission('report.all', 'read'))
 
 const selectedDepartment = ref('all')
 
-const departmentOptions = computed(() => [
-  { label: 'Все отделы', value: 'all' },
-  ...reportStore.departments.map((d) => ({ label: d, value: d })),
-])
-
 const filteredRows = computed(() => {
   if (selectedDepartment.value === 'all') return reportStore.allUsersStatistics
   return reportStore.allUsersStatistics.filter(
     (r) => r.department === selectedDepartment.value
   )
 })
-
-const allUsersHeaders = [
-  { valueKey: 'name', title: 'Сотрудник' },
-  { valueKey: 'department', title: 'Отдел' },
-  { valueKey: 'standardHours', title: 'Норма ч', align: 'center' },
-  { valueKey: 'totalHours', title: 'Отработано ч', align: 'center' },
-  { valueKey: 'standardWorkDays', title: 'Норма д', align: 'center' },
-  { valueKey: 'totalWorkDays', title: 'Отработано д', align: 'center' },
-  { valueKey: 'medicalDays', title: 'Больничные', align: 'center' },
-  { valueKey: 'timeoffDays', title: 'Отгулы', align: 'center' },
-  { valueKey: 'vacationDays', title: 'Отпуск', align: 'center' },
-  { valueKey: 'decreeDays', title: 'Декрет', align: 'center' },
-]
-
-const hoursVariant = (row) => {
-  if (row.totalHours >= row.standardHours) return 'success'
-  if (row.totalHours > 0) return 'warn'
-  return ''
-}
 
 // --- Personal statistics (for users without report.all) ---
 
@@ -232,31 +178,5 @@ watch(
 
 .report-statistic > * {
   flex: 1;
-}
-
-.table-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.success {
-  color: var(--success);
-  font-weight: 600;
-}
-
-.warn {
-  color: var(--warn);
-  font-weight: 600;
-}
-
-.destructive {
-  color: var(--destructive);
-  font-weight: 600;
-}
-
-.accent {
-  color: var(--accent);
-  font-weight: 600;
 }
 </style>
