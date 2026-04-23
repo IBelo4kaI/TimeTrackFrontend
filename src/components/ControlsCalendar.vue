@@ -3,7 +3,9 @@
     <MonthControl v-model="store.currentDate" />
     <div
       class="controls-users"
-      v-if="userStore.hasPermission('calendar.all', 'read')"
+      v-if="
+        isShowSelectingUser && userStore.hasPermission('calendar.all', 'read')
+      "
     >
       <SelectUI
         v-model="store.selectedUserId"
@@ -33,6 +35,7 @@ import { onMounted } from 'vue'
 const { page, store } = defineProps({
   page: { default: 'calendar' },
   store: { required: true },
+  isShowSelectingUser: { type: Boolean, default: true },
 })
 
 const modalStore = useAddReportModalStore()
