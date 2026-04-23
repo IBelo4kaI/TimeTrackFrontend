@@ -162,11 +162,11 @@ export const useReportStore = defineStore('report', () => {
 
   const allUsersStatistics = computed(() =>
     allUsersData.value.map(({ user, data }) => {
-      const fullName = `${user.surname} ${user.name}`
+      const fullName = `${user.surname} ${user.name} ${user.patronymic}`
       return {
         id: user.id,
         name: fullName,
-        department: departmentMap.value.get(fullName) ?? '',
+        department: departmentMap.value.get(fullName.trim()) ?? '',
         standardHours: data?.hours?.standardHours ?? 0,
         totalHours: data?.hours?.totalHours ?? 0,
         standardWorkDays: data?.workDays?.standardWorkDays ?? 0,
