@@ -93,6 +93,7 @@ onMounted(() => {
     const color = dayTypesStore.getColorById(day.userTimeTypeId)
     dayElement.value.style.setProperty('--background-number', color)
     dayElement.value.style.setProperty('--text-number', getContrastColor(color))
+    dayElement.value.style.setProperty('--border-color', color)
   }
   if (day.calendarEventTypeId) {
     const color = dayTypesStore.getColorById(day.calendarEventTypeId)
