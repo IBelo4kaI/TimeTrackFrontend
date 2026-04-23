@@ -89,13 +89,21 @@ const handleMouseEnter = (event) => {
 }
 
 onMounted(() => {
-  if (day.userTimeTypeId) {
+  if (day.calendarEventTypeId && day.userTimeTypeId) {
+    const uColor = dayTypesStore.getColorById(day.userTimeTypeId)
+    const cColor = dayTypesStore.getColorById(day.calendarEventTypeId)
+
+    dayElement.value.style.setProperty('--border-color', cColor)
+    dayElement.value.style.setProperty('--background-number', uColor)
+    dayElement.value.style.setProperty(
+      '--text-number',
+      getContrastColor(uColor)
+    )
+  } else if (day.userTimeTypeId) {
     const color = dayTypesStore.getColorById(day.userTimeTypeId)
     dayElement.value.style.setProperty('--background-number', color)
     dayElement.value.style.setProperty('--text-number', getContrastColor(color))
-    dayElement.value.style.setProperty('--border-color', color)
-  }
-  if (day.calendarEventTypeId) {
+  } else if (day.calendarEventTypeId) {
     const color = dayTypesStore.getColorById(day.calendarEventTypeId)
     dayElement.value.style.setProperty('--background-number', color)
     dayElement.value.style.setProperty('--text-number', getContrastColor(color))
