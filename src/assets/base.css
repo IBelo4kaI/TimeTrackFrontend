@@ -23,6 +23,8 @@
   --header-height: 4.5rem;
   --padding-primary: 1.45rem;
   --padding-secondary: 1rem;
+  --gap-primary: 0.71rem;
+  --gap-secondary: 0.5rem;
 }
 
 .dark-theme {

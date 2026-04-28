@@ -2,6 +2,7 @@
   <div class="container">
     <VacationSettings />
     <StandardSettings />
+    <CalendarEventsList />
   </div>
 </template>
 
@@ -10,6 +11,7 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import VacationSettings from './components/VacationSettings.vue'
 import { useStandardSetting } from '@/stores/standardSetting'
 import StandardSettings from './components/StandardSettings.vue'
+import CalendarEventsList from './components/CalendarEvents/CalendarEventsList.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Настройки', 'Конфигурация системы')

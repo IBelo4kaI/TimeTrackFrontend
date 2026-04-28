@@ -158,7 +158,6 @@ const daysVariant = (row) => {
   background: var(--foreground);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
-  overflow: hidden;
 }
 
 .table-toolbar {
@@ -167,6 +166,7 @@ const daysVariant = (row) => {
   display: flex;
   align-items: center;
   gap: var(--gap-primary);
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
 .table-title {
@@ -179,6 +179,7 @@ const daysVariant = (row) => {
 .table-scroll {
   width: 100%;
   overflow-x: auto;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
 
 .table {
