@@ -34,6 +34,17 @@ export const routesNavigation = {
       action: 'read',
     },
   },
+  sickLeave: {
+    path: '/sick-leave',
+    name: 'sick-leave',
+    component: () => import('@/pages/sick_leave/Index.vue'),
+    meta: {
+      title: 'Больничные',
+      icon: 'fa-light fa-notes-medical',
+      entity: 'sick_leaves',
+      action: 'read',
+    },
+  },
   settings: {
     path: '/settings',
     name: 'settings',
@@ -64,14 +75,16 @@ const router = createRouter({
 
 router.addRoute(routesNavigation.calendar)
 router.addRoute(routesNavigation.report)
-router.addRoute(routesNavigation.settings)
 router.addRoute(routesNavigation.vacation)
+router.addRoute(routesNavigation.sickLeave)
+router.addRoute(routesNavigation.settings)
 
 // Не найденная страница
 router.addRoute({
   path: '/:pathMatch(.*)*',
-  component: () => import('@/views/AboutView.vue'),
+  // component: () => import('@/views/AboutView.vue'),
   meta: { title: '404' },
+  redirect: { name: 'home' },
 })
 
 // Глобальный хук для изменения title
