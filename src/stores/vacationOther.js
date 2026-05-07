@@ -263,32 +263,26 @@ export const useVacationOther = defineStore('vacation-other', () => {
     try {
       const [vacationsResult, employeesResult, departmentsResult] =
         await Promise.allSettled([
-          // getAllUserVacationsByYear(filters.value.year),
-          // getInternalEmployees(),
-          // getInternalEmployeeDepartments(),
+          getAllUserVacationsByYear(filters.value.year),
+          getInternalEmployees(),
+          getInternalEmployeeDepartments(),
         ])
 
-      // vacations.value =
-      //   vacationsResult.status === 'fulfilled' &&
-      //   Array.isArray(vacationsResult.value)
-      //     ? vacationsResult.value
-      //     : MOCK_VACATIONS
+      vacations.value =
+        vacationsResult.status === 'fulfilled' &&
+        Array.isArray(vacationsResult.value)
+          ? vacationsResult.value
+          : MOCK_VACATIONS
 
-      vacations.value = MOCK_VACATIONS
+      employees.value =
+        employeesResult.status === 'fulfilled'
+          ? normalizeEmployees(employeesResult.value)
+          : normalizeEmployees(MOCK_EMPLOYEES)
 
-      // employees.value =
-      //   employeesResult.status === 'fulfilled'
-      //     ? normalizeEmployees(employeesResult.value)
-      //     : normalizeEmployees(MOCK_EMPLOYEES)
-
-      employees.value = normalizeEmployees(MOCK_EMPLOYEES)
-
-      // departments.value =
-      //   departmentsResult.status === 'fulfilled'
-      //     ? normalizeDepartments(departmentsResult.value)
-      //     : MOCK_DEPARTMENTS
-
-      departments.value = MOCK_DEPARTMENTS
+      departments.value =
+        departmentsResult.status === 'fulfilled'
+          ? normalizeDepartments(departmentsResult.value)
+          : MOCK_DEPARTMENTS
     } finally {
       isLoading.value = false
     }
