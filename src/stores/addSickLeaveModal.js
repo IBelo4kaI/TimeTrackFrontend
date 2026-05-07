@@ -17,34 +17,30 @@ export const useAddSickLeaveModalStore = defineStore('add-sick-leave-modal', () 
     const fields = []
 
     if (isAdmin) {
-      fields.push(
-        {
-          name: 'userId',
-          type: 'select',
-          label: 'Сотрудник',
-          value: userId,
-          options: userStore.usersAll.map((u) => ({
-            value: u.id,
-            label: [u.name, u.surname].filter(Boolean).join(' '),
-          })),
-        },
-        {
-          name: 'status',
-          type: 'select',
-          label: 'Статус',
-          value: 'unofficial',
-          options: [
-            { value: 'unofficial', label: 'Неофициальный' },
-            { value: 'official', label: 'Официальный' },
-          ],
-        }
-      )
+      fields.push({
+        name: 'userId',
+        type: 'select',
+        label: 'Сотрудник',
+        value: userId,
+        options: userStore.usersAll.map((u) => ({
+          value: u.id,
+          label: [u.name, u.surname].filter(Boolean).join(' '),
+        })),
+      })
     } else {
-      fields.push(
-        { name: 'userId', type: 'hidden', value: userId },
-        { name: 'status', type: 'hidden', value: 'unofficial' }
-      )
+      fields.push({ name: 'userId', type: 'hidden', value: userId })
     }
+
+    fields.push({
+      name: 'status',
+      type: 'select',
+      label: 'Статус',
+      value: 'unofficial',
+      options: [
+        { value: 'unofficial', label: 'Неофициальный' },
+        { value: 'official', label: 'Официальный' },
+      ],
+    })
 
     fields.push(
       {

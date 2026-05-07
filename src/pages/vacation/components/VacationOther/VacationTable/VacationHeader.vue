@@ -2,6 +2,9 @@
   <div class="vacation-table__header">
     <div class="vacation-table__header-title">Сотрудник</div>
 
+    <!-- Dates column (both views) -->
+    <div class="vacation-table__header-dates">Даты</div>
+
     <!-- Year view header -->
     <div v-if="isYearView" class="vacation-table__header-months">
       <div
@@ -106,6 +109,17 @@ function monthWidthPercent(monthDate) {
 }
 .vacation-table__header-month:last-child {
   border-right: none;
+}
+
+.vacation-table__header-dates {
+  width: 7rem;
+  min-width: 7rem;
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-right: 0.07rem solid var(--border-color);
 }
 
 /* Month view header */

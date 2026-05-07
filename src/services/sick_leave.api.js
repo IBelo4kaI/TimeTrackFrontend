@@ -33,18 +33,3 @@ export const uploadSickLeaveFile = async (sickLeaveId, file) => {
   })
   return response.data
 }
-
-export const downloadSickLeaveFile = async (fileName) => {
-  const response = await timeTrackApi.get('/sick-leaves/file', {
-    params: { fileName },
-    responseType: 'blob',
-  })
-  return response.data
-}
-
-export const deleteSickLeaveFile = async (fileName, sickLeaveId) => {
-  const response = await timeTrackApi.delete('/sick-leaves/file', {
-    params: { fileName, sickLeaveId },
-  })
-  return response.data
-}

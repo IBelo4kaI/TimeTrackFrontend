@@ -57,19 +57,19 @@
           @click="confirmModalStore.open(() => onDeleted(row.id), 'Удалить больничный? Записи в табеле также будут удалены.')"
         />
 
-        <template v-if="row.docFileName">
+        <template v-if="filesMap[row.id]?.length">
           <ButtonUI
             type="muted-accent"
             icon="fa-regular fa-file-export"
             v-tooltip="'Скачать прикрепленный файл'"
-            @click="onDownloadFile(row.docFileName)"
+            @click="onDownloadFile(filesMap[row.id][0])"
           />
           <ButtonUI
-            v-if="userStore.hasPermission('sick_leaves', 'file_delete')"
+            v-if="userStore.hasPermission('files', 'delete')"
             type="destructive"
             icon="fa-regular fa-file-circle-xmark"
             v-tooltip="'Удалить прикрепленный файл'"
-            @click="onDeleteFile(row.docFileName, row.id)"
+            @click="onDeleteFile(filesMap[row.id][0], row.id)"
           />
         </template>
 
@@ -95,17 +95,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppTable from '@/components/AppTable.vue'
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
-import {
-  deleteSickLeave,
-  deleteSickLeaveFile,
-  downloadSickLeaveFile,
-  updateSickLeaveStatus,
-  uploadSickLeaveFile,
-} from '@/services/sick_leave.api'
+import { deleteSickLeave, updateSickLeaveStatus, uploadSickLeaveFile } from '@/services/sick_leave.api'
+import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useSickLeaveStore } from '@/stores/sick_leave'
@@ -125,7 +120,25 @@ const notificationStore = useNotificationStore()
 const sickLeaveStore = useSickLeaveStore()
 
 const fileInputs = ref({})
+const filesMap = ref({})
 const rows = computed(() => props.items ?? [])
+
+async function loadFiles() {
+  const items = props.items ?? []
+  const results = await Promise.all(
+    items.map(async (item) => {
+      try {
+        const files = await getEntityFiles('sick_leave', item.id)
+        return [item.id, files ?? []]
+      } catch {
+        return [item.id, []]
+      }
+    })
+  )
+  filesMap.value = Object.fromEntries(results)
+}
+
+watch(() => props.items, loadFiles, { immediate: true })
 
 const headers = computed(() => {
   const cols = []
@@ -185,7 +198,7 @@ async function onFileSelected(event, id) {
   }
 
   try {
-    const data = await uploadSickLeaveFile(id, file)
+    await uploadSickLeaveFile(id, file)
     notificationStore.addNotification('Файл прикреплён', 'success')
     await sickLeaveStore.fetchSickLeaves()
   } catch {
@@ -194,13 +207,13 @@ async function onFileSelected(event, id) {
   event.target.value = ''
 }
 
-async function onDownloadFile(fileName) {
+async function onDownloadFile(file) {
   try {
-    const blob = await downloadSickLeaveFile(fileName)
+    const blob = await openFile(file.id)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = fileName
+    a.download = file.originalName
     a.click()
     URL.revokeObjectURL(url)
     notificationStore.addNotification('Файл скачан', 'success')
@@ -209,10 +222,10 @@ async function onDownloadFile(fileName) {
   }
 }
 
-async function onDeleteFile(fileName, sickLeaveId) {
+async function onDeleteFile(file, sickLeaveId) {
   confirmModalStore.open(async () => {
     try {
-      await deleteSickLeaveFile(fileName, sickLeaveId)
+      await deleteFile(file.id)
       notificationStore.addNotification('Файл удалён', 'success')
       await sickLeaveStore.fetchSickLeaves()
     } catch {

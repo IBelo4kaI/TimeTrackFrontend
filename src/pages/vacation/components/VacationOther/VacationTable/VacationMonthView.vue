@@ -44,10 +44,18 @@ const props = defineProps({
   },
 })
 
+function getStartDate(v) {
+  return v.startDate ?? v.start_date
+}
+
+function getEndDate(v) {
+  return v.endDate ?? v.end_date
+}
+
 function getDayVacation(date) {
   return props.vacations.find((v) => {
     return (
-      date >= parseLocalDate(v.startDate) && date <= parseLocalDate(v.endDate)
+      date >= parseLocalDate(getStartDate(v)) && date <= parseLocalDate(getEndDate(v))
     )
   })
 }
@@ -55,20 +63,20 @@ function getDayVacation(date) {
 function isVacationStart(date) {
   const v = getDayVacation(date)
   if (!v) return false
-  return toDateStr(date) === v.startDate.slice(0, 10)
+  return toDateStr(date) === getStartDate(v).slice(0, 10)
 }
 
 function isVacationEnd(date) {
   const v = getDayVacation(date)
   if (!v) return false
-  return toDateStr(date) === v.endDate.slice(0, 10)
+  return toDateStr(date) === getEndDate(v).slice(0, 10)
 }
 
 function getVacationTooltip(vacation) {
   if (!vacation) return ''
 
-  const startDate = formatDateForTooltip(vacation.startDate)
-  const endDate = formatDateForTooltip(vacation.endDate)
+  const startDate = formatDateForTooltip(getStartDate(vacation))
+  const endDate = formatDateForTooltip(getEndDate(vacation))
   const status = getStatusInRussian(vacation.status)
 
   return `Начало: ${startDate}\nКонец: ${endDate}\nСтатус: ${status}`

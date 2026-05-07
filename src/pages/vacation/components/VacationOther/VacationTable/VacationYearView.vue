@@ -57,14 +57,22 @@ function monthOffsetPercent(monthDate) {
   return (offset / totalDays.value) * 100
 }
 
+function getStartDate(v) {
+  return v.startDate ?? v.start_date
+}
+
+function getEndDate(v) {
+  return v.endDate ?? v.end_date
+}
+
 function vacationBarStyle(vacation) {
   const start = clamp(
-    parseLocalDate(vacation.startDate),
+    parseLocalDate(getStartDate(vacation)),
     props.rangeStart,
     props.rangeEnd
   )
   const end = clamp(
-    parseLocalDate(vacation.endDate),
+    parseLocalDate(getEndDate(vacation)),
     props.rangeStart,
     props.rangeEnd
   )
@@ -77,8 +85,8 @@ function vacationBarStyle(vacation) {
 }
 
 function getVacationTooltip(vacation) {
-  const startDate = formatDateForTooltip(vacation.startDate)
-  const endDate = formatDateForTooltip(vacation.endDate)
+  const startDate = formatDateForTooltip(getStartDate(vacation))
+  const endDate = formatDateForTooltip(getEndDate(vacation))
   const status = getStatusInRussian(vacation.status)
 
   return `Начало: ${startDate}\nКонец: ${endDate}\nСтатус: ${status}`

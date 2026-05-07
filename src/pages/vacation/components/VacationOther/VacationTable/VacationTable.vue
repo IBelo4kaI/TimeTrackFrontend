@@ -18,6 +18,8 @@
           v-for="employee in group.employees"
           :key="employee.user_id"
           :employee="employee"
+          :vacations="getEmployeeVacations(employee.user_id)"
+          :show-dates-col="true"
         >
           <VacationYearView
             :months="months"
@@ -47,6 +49,8 @@
           v-for="employee in group.employees"
           :key="employee.user_id"
           :employee="employee"
+          :vacations="getEmployeeVacations(employee.user_id)"
+          :show-dates-col="true"
         >
           <VacationMonthView
             :days="days"
@@ -117,9 +121,10 @@ const groupedEmployees = computed(() => store.filteredEmployeesGrouped)
 
 function getEmployeeVacations(employeeId) {
   return (store.filteredVacations || []).filter((v) => {
-    if (v.userId !== employeeId) return false
-    const start = parseLocalDate(v.startDate)
-    const end = parseLocalDate(v.endDate)
+    const vacUserId = v.userId ?? v.user_id
+    if (vacUserId != employeeId) return false
+    const start = parseLocalDate(v.startDate ?? v.start_date)
+    const end = parseLocalDate(v.endDate ?? v.end_date)
     return start <= rangeEnd.value && end >= rangeStart.value
   })
 }

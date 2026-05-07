@@ -10,17 +10,34 @@
       </div>
     </div>
 
+    <div v-if="showDatesCol" class="employee-dates-col">
+      <span
+        v-for="(v, i) in vacations"
+        :key="i"
+        class="vacation-date-tag"
+        :class="`vacation-date-tag--${v.status}`"
+      >{{ formatVacationRangeCompact(v) }}</span>
+    </div>
+
     <slot />
   </div>
 </template>
 
 <script setup>
-import { getInitials } from './vacationUtils.js'
+import { getInitials, formatVacationRangeCompact } from './vacationUtils.js'
 
 defineProps({
   employee: {
     type: Object,
     required: true
+  },
+  vacations: {
+    type: Array,
+    default: () => []
+  },
+  showDatesCol: {
+    type: Boolean,
+    default: true
   }
 })
 </script>
@@ -78,5 +95,42 @@ defineProps({
 }
 .employee-meta {
   min-width: 0;
+}
+
+.employee-dates-col {
+  width: 7rem;
+  min-width: 7rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.4rem 0.5rem;
+  border-right: 0.07rem solid var(--border-color);
+  align-self: stretch;
+  justify-content: center;
+}
+
+.vacation-date-tag {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.vacation-date-tag--approved {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+}
+
+.vacation-date-tag--pending {
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  color: color-mix(in srgb, var(--warn) 80%, var(--foreground));
+}
+
+.vacation-date-tag--rejected {
+  background: color-mix(in srgb, var(--destructive) 15%, transparent);
+  color: var(--destructive);
 }
 </style>

@@ -56,6 +56,20 @@ export function getInitials(fullname) {
     .join('')
 }
 
+const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+
+// "1–15 апр" или "28 мар – 5 апр"
+export function formatVacationRangeCompact(vacation) {
+  const start = parseLocalDate(vacation.startDate ?? vacation.start_date)
+  const end = parseLocalDate(vacation.endDate ?? vacation.end_date)
+  const sd = start.getDate()
+  const sm = start.getMonth()
+  const ed = end.getDate()
+  const em = end.getMonth()
+  if (sm === em) return `${sd}–${ed} ${MONTHS_SHORT[sm]}`
+  return `${sd} ${MONTHS_SHORT[sm]} – ${ed} ${MONTHS_SHORT[em]}`
+}
+
 // Перевод статуса на русский
 export function getStatusInRussian(status) {
   const statusMap = {
