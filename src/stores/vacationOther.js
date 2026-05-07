@@ -159,8 +159,8 @@ export const useVacationOther = defineStore('vacation-other', () => {
   const filters = ref({
     department: 'all',
     status: 'all',
-    month: 2,
-    year: 2026,
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
     viewMode: 'month',
     search: '',
   })
