@@ -64,7 +64,7 @@ import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useReportStore } from '@/stores/report'
 import { useUserStore } from '@/stores/user'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import CardStatistic from './components/CardStatistic.vue'
 import ReportTable from './components/ReportTable.vue'
 
@@ -178,5 +178,11 @@ watch(
 
 .report-statistic > * {
   flex: 1;
+}
+
+@media print {
+  .report-controls {
+    display: none !important;
+  }
 }
 </style>

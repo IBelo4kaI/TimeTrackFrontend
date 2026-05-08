@@ -1,7 +1,13 @@
 <template>
+  <div class="print-title">Отчёт по сотрудникам</div>
   <div class="table-wrapper">
     <div class="table-toolbar">
       <span class="table-title">Статистика по сотрудникам</span>
+      <ButtonUI
+        icon="fa-regular fa-print"
+        type="muted"
+        @click="print"
+      ></ButtonUI>
       <SelectUI
         :model-value="modelValue"
         :options="departmentOptions"
@@ -11,7 +17,7 @@
     </div>
 
     <div class="table-scroll">
-      <table class="table">
+      <table class="table" ref="printArea">
         <thead>
           <tr>
             <th class="th align-left">Сотрудник</th>
@@ -109,7 +115,8 @@
 <script setup>
 import SelectUI from '@/components/SelectUI.vue'
 import Loader from '@/components/Loader.vue'
-import { computed } from 'vue'
+import { computed, useTemplateRef } from 'vue'
+import ButtonUI from '@/components/ButtonUI.vue'
 
 const props = defineProps({
   rows: { type: Array, default: () => [] },
@@ -118,7 +125,7 @@ const props = defineProps({
   modelValue: { type: String, default: 'all' },
 })
 
-defineEmits(['update:modelValue'])
+const emits = defineEmits(['update:modelValue', 'print'])
 
 const departmentOptions = computed(() => [
   { label: 'Все отделы', value: 'all' },
@@ -149,6 +156,12 @@ const daysVariant = (row) => {
   if (row.totalWorkDays >= row.standardWorkDays) return 'success'
   if (row.totalWorkDays > 0) return 'warn'
   return 'warn'
+}
+
+const printArea = useTemplateRef('printArea')
+
+function print() {
+  window.print()
 }
 </script>
 
@@ -266,5 +279,33 @@ const daysVariant = (row) => {
 .accent {
   color: var(--accent);
   font-weight: 600;
+}
+</style>
+<style>
+.print-title {
+  display: none;
+}
+@media print {
+  .print-title {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 1rem;
+    color: #000;
+    margin-bottom: 1rem;
+  }
+
+  .table-toolbar {
+    display: none !important;
+  }
+
+  .table-wrapper,
+  .table-wrapper * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    overflow: hidden;
+  }
+  .table {
+  }
 }
 </style>

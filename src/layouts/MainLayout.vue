@@ -124,4 +124,19 @@ const userInitials = computed(() => {
   grid-area: main;
   padding: var(--padding-primary);
 }
+
+@media print {
+  .sidebar,
+  .header {
+    display: none !important;
+  }
+
+  .container {
+    display: block;
+  }
+
+  .main {
+    padding: 0;
+  }
+}
 </style>
