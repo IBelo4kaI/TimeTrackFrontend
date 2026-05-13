@@ -72,6 +72,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-03',
     endDate: '2026-04-18',
     status: 'approved',
+    totalDays: 10,
   },
   {
     id: 2,
@@ -79,6 +80,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-07',
     endDate: '2026-04-20',
     status: 'pending',
+    totalDays: 10,
   },
   {
     id: 3,
@@ -86,6 +88,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-14',
     endDate: '2026-04-25',
     status: 'approved',
+    totalDays: 10,
   },
   {
     id: 4,
@@ -93,6 +96,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-01',
     endDate: '2026-04-10',
     status: 'approved',
+    totalDays: 10,
   },
   {
     id: 5,
@@ -100,6 +104,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-21',
     endDate: '2026-04-30',
     status: 'pending',
+    totalDays: 10,
   },
   {
     id: 6,
@@ -107,6 +112,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-05',
     endDate: '2026-04-15',
     status: 'rejected',
+    totalDays: 10,
   },
   {
     id: 7,
@@ -114,6 +120,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-10',
     endDate: '2026-04-24',
     status: 'approved',
+    totalDays: 10,
   },
   {
     id: 8,
@@ -121,6 +128,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-02',
     endDate: '2026-04-09',
     status: 'approved',
+    totalDays: 10,
   },
   {
     id: 9,
@@ -128,6 +136,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-04-16',
     endDate: '2026-04-28',
     status: 'pending',
+    totalDays: 10,
   },
   {
     id: 10,
@@ -135,6 +144,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-02-10',
     endDate: '2026-02-20',
     status: 'approved',
+    totalDays: 10,
   },
   {
     id: 11,
@@ -142,6 +152,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-06-01',
     endDate: '2026-06-14',
     status: 'pending',
+    totalDays: 10,
   },
   {
     id: 12,
@@ -149,6 +160,7 @@ const MOCK_VACATIONS = [
     startDate: '2026-07-07',
     endDate: '2026-07-21',
     status: 'approved',
+    totalDays: 10,
   },
 ]
 
@@ -261,28 +273,31 @@ export const useVacationOther = defineStore('vacation-other', () => {
   async function initialFetch() {
     isLoading.value = true
     try {
-      const [vacationsResult, employeesResult, departmentsResult] =
-        await Promise.allSettled([
-          getAllUserVacationsByYear(filters.value.year),
-          getInternalEmployees(),
-          getInternalEmployeeDepartments(),
-        ])
+      // const [vacationsResult, employeesResult, departmentsResult] =
+      //   await Promise.allSettled([
+      //     getAllUserVacationsByYear(filters.value.year),
+      //     getInternalEmployees(),
+      //     getInternalEmployeeDepartments(),
+      //   ])
 
-      vacations.value =
-        vacationsResult.status === 'fulfilled' &&
-        Array.isArray(vacationsResult.value)
-          ? vacationsResult.value
-          : MOCK_VACATIONS
+      // vacations.value =
+      //   vacationsResult.status === 'fulfilled' &&
+      //   Array.isArray(vacationsResult.value)
+      //     ? vacationsResult.value
+      //     : MOCK_VACATIONS
 
-      employees.value =
-        employeesResult.status === 'fulfilled'
-          ? normalizeEmployees(employeesResult.value)
-          : normalizeEmployees(MOCK_EMPLOYEES)
+      vacations.value = MOCK_VACATIONS
 
-      departments.value =
-        departmentsResult.status === 'fulfilled'
-          ? normalizeDepartments(departmentsResult.value)
-          : MOCK_DEPARTMENTS
+      // employees.value =
+      //   employeesResult.status === 'fulfilled'
+      //     ? normalizeEmployees(employeesResult.value)
+      //     : normalizeEmployees(MOCK_EMPLOYEES)
+      employees.value = normalizeEmployees(MOCK_EMPLOYEES)
+      // departments.value =
+      //   departmentsResult.status === 'fulfilled'
+      //     ? normalizeDepartments(departmentsResult.value)
+      //     : MOCK_DEPARTMENTS
+      departments.value = MOCK_DEPARTMENTS
     } finally {
       isLoading.value = false
     }

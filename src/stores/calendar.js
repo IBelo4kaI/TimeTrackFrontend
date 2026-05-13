@@ -73,6 +73,10 @@ export const useCalendarStore = defineStore('calendar', () => {
   const initialFetch = async () => {
     isLoading.value = true
 
+    if (selectedUserId.value) {
+      
+    }
+
     const result = await getCalendarDays(
       currentMonth.value,
       currentYear.value,

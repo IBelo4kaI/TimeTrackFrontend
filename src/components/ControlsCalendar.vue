@@ -7,13 +7,16 @@
         isShowSelectingUser && userStore.hasPermission('calendar.all', 'read')
       "
     >
-      <SelectUI
+      <Autocomplete
         v-model="store.selectedUserId"
         :options="userStore.usersAll"
         value-key="id"
         :label-key="['name', 'surname']"
+        label-separator=" "
         placeholder="Выберите пользователя"
-        @change="changeUser"
+        :is-show-button="false"
+        @select="changeUser"
+        @clear="clearUser"
       />
     </div>
     <div class="controls-action" v-if="page == 'calendar'">
@@ -27,10 +30,10 @@
 <script setup>
 import ButtonUI from '@/components/ButtonUI.vue'
 import MonthControl from '@/components/Calendar/MonthControl.vue'
-import SelectUI from '@/components/SelectUI.vue'
 import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useUserStore } from '@/stores/user'
 import { onMounted } from 'vue'
+import Autocomplete from './Autocomplete.vue'
 
 const { page, store } = defineProps({
   page: { default: 'calendar' },
@@ -42,9 +45,11 @@ const modalStore = useAddReportModalStore()
 
 const userStore = useUserStore()
 
-const changeUser = (value) => {
-  // const user = userStore.usersAll.find((u) => u.id == value)
-  // store.setUser(user)
+const changeUser = (user) => {}
+
+const clearUser = () => {
+  store.selectedUserId = null
+  store.selectedUser = null
 }
 
 onMounted(() => {

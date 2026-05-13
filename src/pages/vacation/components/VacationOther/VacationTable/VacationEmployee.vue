@@ -10,13 +10,21 @@
       </div>
     </div>
 
+    <div class="employee-count-vacation">
+      <span>{{ countAll() }}</span>
+      <span>|</span>
+      <span>{{ countApproved() }}</span>
+    </div>
+
     <div v-if="showDatesCol" class="employee-dates-col">
       <span
         v-for="(v, i) in vacations"
         :key="i"
         class="vacation-date-tag"
         :class="`vacation-date-tag--${v.status}`"
-      >{{ formatVacationRangeCompact(v) }}</span>
+      >
+        {{ formatVacationRangeCompact(v) }}
+      </span>
     </div>
 
     <slot />
@@ -26,20 +34,41 @@
 <script setup>
 import { getInitials, formatVacationRangeCompact } from './vacationUtils.js'
 
-defineProps({
+const props = defineProps({
   employee: {
     type: Object,
-    required: true
+    required: true,
   },
   vacations: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   showDatesCol: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 })
+
+const countAll = () => {
+  if (props.vacations && props.vacations.length > 0) {
+    return props.vacations
+      .filter((v) => v.status != 'rejected')
+      .map((v) => v.totalDays)
+      .reduce((a, v) => a + v, 0)
+  } else {
+    return '-'
+  }
+}
+const countApproved = () => {
+  if (props.vacations && props.vacations.length > 0) {
+    return props.vacations
+      .filter((v) => v.status == 'approved')
+      .map((v) => v.totalDays)
+      .reduce((a, v) => a + v, 0)
+  } else {
+    return '-'
+  }
+}
 </script>
 
 <style scoped>
@@ -97,9 +126,34 @@ defineProps({
   min-width: 0;
 }
 
-.employee-dates-col {
+.employee-count-vacation {
   width: 7rem;
   min-width: 7rem;
+  padding: 0.4rem 0.5rem;
+  flex-shrink: 0;
+  display: flex;
+  align-self: stretch;
+  border-right: 0.07rem solid var(--border-color);
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+.employee-count-vacation > span:nth-child(1) {
+  color: color-mix(in srgb, var(--warn) 80%, var(--foreground));
+}
+
+.employee-count-vacation > span:nth-child(2) {
+  color: var(--border-color);
+  font-weight: 600;
+}
+
+.employee-count-vacation > span:nth-child(3) {
+  color: var(--success);
+}
+
+.employee-dates-col {
+  width: 8rem;
+  min-width: 8rem;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

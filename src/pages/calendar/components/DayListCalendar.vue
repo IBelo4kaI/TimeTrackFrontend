@@ -1,5 +1,8 @@
 <template>
   <Loader v-if="calendarStore.isLoading" />
+  <div v-else-if="!calendarStore.selectedUserId" class="user-no-select">
+    Пользователь не выбран
+  </div>
   <div
     v-else
     class="calendar"
@@ -222,5 +225,12 @@ onMounted(async () => {
   height: 100%;
   overflow: auto;
   border-radius: var(--border-radius);
+}
+
+.user-no-select {
+  width: 100%;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
 }
 </style>

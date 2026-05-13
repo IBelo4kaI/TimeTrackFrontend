@@ -19,10 +19,11 @@ export class SelectingHelper {
 
   onDayMouseDown(day, event) {
     if (event.button !== 0) return
+    const isCtrl = event.ctrlKey || event.metaKey
     // Если зажат Shift, используем специальную логику
     if (event.shiftKey) {
       this.selectingStore.startSelection(day, true)
-    } else if (event.ctrlKey) {
+    } else if (isCtrl) {
       this.selectingStore.startSelection(day, false, true)
     } else {
       this.selectingStore.startDragSelection(day)

@@ -2,6 +2,9 @@
   <div class="vacation-table__header">
     <div class="vacation-table__header-title">Сотрудник</div>
 
+    <!-- Count vacation column (both views) -->
+    <div class="vacation-table__header-count-vacation">Исп. / Утв. (д)</div>
+
     <!-- Dates column (both views) -->
     <div class="vacation-table__header-dates">Даты</div>
 
@@ -111,9 +114,20 @@ function monthWidthPercent(monthDate) {
   border-right: none;
 }
 
-.vacation-table__header-dates {
+.vacation-table__header-count-vacation {
   width: 7rem;
   min-width: 7rem;
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-right: 0.07rem solid var(--border-color);
+}
+
+.vacation-table__header-dates {
+  width: 8rem;
+  min-width: 8rem;
   display: flex;
   align-items: center;
   padding: 0.75rem 0.5rem;
