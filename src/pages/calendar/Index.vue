@@ -37,10 +37,6 @@ onMounted(() => {
       calendarStore.selectedUserId = id
       calendarStore.selectedUser = user
     }
-  } else {
-    console.log("fsd");
-    
-    route.query.id = calendarStore.selectedUserId
   }
 })
 </script>
