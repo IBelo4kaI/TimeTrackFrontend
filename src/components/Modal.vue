@@ -22,6 +22,7 @@
             @change="updateField(field.name, $event)"
             :disabled="field.disabled || isLoading"
             :error="field.error != null"
+            style="width: 100%"
           />
           <span v-if="field.error" class="error-message">
             {{ field.error }}

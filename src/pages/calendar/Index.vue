@@ -14,25 +14,35 @@ import StatisticsCalendar from '@/components/Calendar/StatisticsCalendar.vue'
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useCalendarStore } from '@/stores/calendar'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
-import { computed } from 'vue'
 import LegendCalendar from '../../components/Calendar/LegendCalendar.vue'
 import DayListCalendar from './components/DayListCalendar.vue'
+import { onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { useRoute } from 'vue-router'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Календарь', 'Учёт рабочих дней')
-const calendarStore = useCalendarStore()
 
-const workingHoursRows = computed(() => [
-  {
-    label: 'Норма часов',
-    value: `${calendarStore.workingHours.standardHours} ч`,
-  },
-  {
-    label: 'Отработано',
-    value: `${calendarStore.workingHours.totalHours} ч`,
-    valueVariant: 'success',
-  },
-])
+const calendarStore = useCalendarStore()
+const userStore = useUserStore()
+const route = useRoute()
+
+onMounted(() => {
+  const id = route.query.id
+
+  if (id) {
+    const user = userStore.usersAll.find((u) => u.id == id)
+
+    if (user) {
+      calendarStore.selectedUserId = id
+      calendarStore.selectedUser = user
+    }
+  } else {
+    console.log("fsd");
+    
+    route.query.id = calendarStore.selectedUserId
+  }
+})
 </script>
 
 <style scoped>

@@ -37,8 +37,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     if (typeof rawGender === 'number') return rawGender
     if (typeof rawGender === 'string') {
       const normalizedGender = rawGender.trim().toLowerCase()
-      if (['2', 'female', 'f', 'жен', 'женский'].includes(normalizedGender)) return 2
-      if (['1', 'male', 'm', 'муж', 'мужской'].includes(normalizedGender)) return 1
+      if (['2', 'female', 'f', 'жен', 'женский'].includes(normalizedGender))
+        return 2
+      if (['1', 'male', 'm', 'муж', 'мужской'].includes(normalizedGender))
+        return 1
     }
     return null
   }
@@ -72,10 +74,6 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   const initialFetch = async () => {
     isLoading.value = true
-
-    if (selectedUserId.value) {
-      
-    }
 
     const result = await getCalendarDays(
       currentMonth.value,

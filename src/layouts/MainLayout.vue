@@ -30,7 +30,9 @@
       <div class="header-theme">
         <ToggleTheme />
       </div>
-      <div class="header-notify"></div>
+      <div class="header-notify">
+        <!-- <Notification></Notification> -->
+      </div>
       <Profile :icon="userInitials" :title="userFullName" />
     </div>
     <div class="main"><slot></slot></div>
@@ -40,6 +42,7 @@
 <script setup>
 import Info from '@/components/Info.vue'
 import NavItem from '@/components/NavItem.vue'
+import Notification from '@/components/Notification.vue'
 import Profile from '@/components/Profile.vue'
 import ToggleTheme from '@/components/ToggleTheme.vue'
 import { routesNavigation } from '@/router'
@@ -51,8 +54,6 @@ import { computed } from 'vue'
 
 const titleStore = useHeaderTitleStore()
 const { title, desc } = storeToRefs(titleStore)
-
-const themeStore = useThemeStore()
 
 const userStore = useUserStore()
 
