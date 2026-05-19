@@ -29,6 +29,8 @@ const route = useRoute()
 
 onMounted(() => {
   const id = route.query.id
+  const month = route.query.month
+  const year = route.query.year
 
   if (id) {
     const user = userStore.usersAll.find((u) => u.id == id)
@@ -37,6 +39,23 @@ onMounted(() => {
       calendarStore.selectedUserId = id
       calendarStore.selectedUser = user
     }
+  }
+
+  if (month) {
+    if (Number(month) > 0 && Number(month) < 13)
+      calendarStore.currentDate = new Date(
+        calendarStore.currentDate.getFullYear(),
+        Number(month) - 1,
+        1
+      )
+  }
+
+  if (year) {
+    calendarStore.currentDate = new Date(
+      Number(year),
+      calendarStore.currentDate.getMonth(),
+      1
+    )
   }
 })
 </script>

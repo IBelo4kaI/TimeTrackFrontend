@@ -217,11 +217,12 @@ const selectedOption = ref<T | null>(null)
 const searchQuery = ref('')
 
 const isFreeInputMode = computed(() => {
-  if (!props.labelKey && !props.valueKey) return true
-  if (props.labelKey && !props.valueKey) return true
-  if (props.labelKey && props.valueKey && props.labelKey === props.valueKey)
-    return true
-  return false
+  const result =
+    (!props.labelKey && !props.valueKey) ||
+    (!!props.labelKey && !props.valueKey) ||
+    (!!props.labelKey && !!props.valueKey && props.labelKey === props.valueKey)
+  console.log('[Autocomplete] computed isFreeInputMode:', result)
+  return result
 })
 
 const getOptionLabel = (opt: T): string => {
@@ -253,44 +254,65 @@ const highlight = (label: string): string => {
   return label.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>')
 }
 
-const inputId = computed(
-  () => props.id || `input-${Math.random().toString(36).slice(2, 9)}`
-)
+const inputId = computed(() => {
+  const result = props.id || `input-${Math.random().toString(36).slice(2, 9)}`
+  console.log('[Autocomplete] computed inputId:', result)
+  return result
+})
 
 const filteredOptions = computed<T[]>(() => {
-  if (!props.options || searchQuery.value.length < props.minChars) return []
+  if (!props.options || searchQuery.value.length < props.minChars) {
+    console.log(
+      '[Autocomplete] computed filteredOptions: [] (minChars not reached or no options)'
+    )
+    return []
+  }
   const q = searchQuery.value.toLowerCase().trim()
-  return q
+  const result = q
     ? props.options.filter((opt) =>
         getOptionLabel(opt).toLowerCase().includes(q)
       )
     : props.options
+  console.log(
+    '[Autocomplete] computed filteredOptions, query:',
+    q,
+    'count:',
+    result.length
+  )
+  return result
 })
 
-const showClear = computed(
-  () => selectedOption.value !== null || searchQuery.value.length > 0
-)
+const showClear = computed(() => {
+  const result = selectedOption.value !== null || searchQuery.value.length > 0
+  console.log('[Autocomplete] computed showClear:', result)
+  return result
+})
 
 const canShowButton = computed(() => {
-  if (!props.isShowButton) return false
-  if (isFreeInputMode.value) return false
-  return true
+  const result = !!props.isShowButton && !isFreeInputMode.value
+  console.log('[Autocomplete] computed canShowButton:', result)
+  return result
 })
 
-const showInsideButton = computed(
-  () => canShowButton.value && props.buttonPosition === 'inside'
-)
+const showInsideButton = computed(() => {
+  const result = canShowButton.value && props.buttonPosition === 'inside'
+  console.log('[Autocomplete] computed showInsideButton:', result)
+  return result
+})
 
-const showDropdownButton = computed(
-  () =>
+const showDropdownButton = computed(() => {
+  const result =
     canShowButton.value &&
     (props.buttonPosition === 'dropdown-top' ||
       props.buttonPosition === 'dropdown-bottom')
-)
+  console.log('[Autocomplete] computed showDropdownButton:', result)
+  return result
+})
 
 watch(
   modelValue,
   (val) => {
+    console.log('[Autocomplete] watch modelValue:', val)
     if (isFreeInputMode.value) {
       searchQuery.value = String(val || '')
       return
@@ -310,18 +332,28 @@ watch(
 )
 
 watch(searchQuery, (val) => {
+  console.log('[Autocomplete] watch searchQuery:', val)
   if (isFreeInputMode.value) modelValue.value = val
 })
 
 const openDropdown = () => {
+  console.log(
+    '[Autocomplete] openDropdown, disabled:',
+    props.disabled,
+    'readonly:',
+    props.readonly
+  )
   if (!props.disabled && !props.readonly) isOpen.value = true
 }
+
 const closeDropdown = () => {
+  console.log('[Autocomplete] closeDropdown')
   isOpen.value = false
   activeIndex.value = -1
 }
 
 const selectOption = (opt: T) => {
+  console.log('[Autocomplete] selectOption:', opt)
   selectedOption.value = opt
   searchQuery.value = getOptionLabel(opt)
   modelValue.value = getOptionValue(opt)
@@ -330,15 +362,20 @@ const selectOption = (opt: T) => {
 }
 
 const clearSelection = () => {
+  console.log('[Autocomplete] clearSelection')
   selectedOption.value = null
   modelValue.value = ''
   searchQuery.value = ''
-  openDropdown()
   inputRef.value?.focus()
+  openDropdown()
   emit('clear')
 }
 
 const scrollActiveIntoView = () => {
+  console.log(
+    '[Autocomplete] scrollActiveIntoView, activeIndex:',
+    activeIndex.value
+  )
   const item = listRef.value?.children[activeIndex.value] as
     | HTMLElement
     | undefined
@@ -346,6 +383,12 @@ const scrollActiveIntoView = () => {
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
+  console.log(
+    '[Autocomplete] handleKeydown, key:',
+    e.key,
+    'isOpen:',
+    isOpen.value
+  )
   if (!isOpen.value) {
     if (e.key === 'ArrowDown' || e.key === 'Enter') openDropdown()
     return
@@ -373,6 +416,10 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 const handleInput = (event: Event) => {
+  console.log(
+    '[Autocomplete] handleInput:',
+    (event.target as HTMLInputElement).value
+  )
   selectedOption.value = null
   searchQuery.value = (event.target as HTMLInputElement).value
   openDropdown()
@@ -381,25 +428,41 @@ const handleInput = (event: Event) => {
 }
 
 const handleCreate = () => {
+  console.log('[Autocomplete] handleCreate, query:', searchQuery.value)
   emit('buttonHandler', searchQuery.value)
   closeDropdown()
 }
+
 const handleFocus = (event: FocusEvent) => {
+  console.log('[Autocomplete] handleFocus')
   openDropdown()
   emit('focus', event)
 }
+
 const handleBlur = (event: FocusEvent) => {
+  console.log('[Autocomplete] handleBlur')
   setTimeout(closeDropdown, 150)
   emit('blur', event)
 }
 
 const onClickOutside = (e: MouseEvent) => {
-  if (wrapperRef.value && !wrapperRef.value.contains(e.target as Node))
-    closeDropdown()
+  let target = e.target as Node | null
+  while (target) {
+    if (target === wrapperRef.value) return
+    target = target.parentNode
+  }
+  closeDropdown()
 }
 
-onMounted(() => document.addEventListener('mousedown', onClickOutside))
-onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
+onMounted(() => {
+  console.log('[Autocomplete] onMounted')
+  document.addEventListener('mousedown', onClickOutside)
+})
+
+onBeforeUnmount(() => {
+  console.log('[Autocomplete] onBeforeUnmount')
+  document.removeEventListener('mousedown', onClickOutside)
+})
 
 defineExpose({ focus: () => inputRef.value?.focus() })
 </script>
