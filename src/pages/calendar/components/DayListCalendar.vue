@@ -207,10 +207,6 @@ onUnmounted(() => {
   selectingStore.clearSelection()
   document.removeEventListener('keydown', clearKeyboard)
 })
-
-onMounted(async () => {
-  await calendarStore.init()
-})
 </script>
 
 <style scoped>

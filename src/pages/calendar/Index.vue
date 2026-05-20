@@ -32,33 +32,21 @@ onMounted(async () => {
   const month = route.query.month
   const year = route.query.year
 
-  if (id) {
+  if (id && month && year) {
     const user = userStore.usersAll.find((u) => u.id == id)
 
     if (user) {
       calendarStore.selectedUserId = id
       calendarStore.selectedUser = user
     }
-  }
 
-  if (month) {
     if (Number(month) > 0 && Number(month) < 13)
-      calendarStore.currentDate = new Date(
-        calendarStore.currentDate.getFullYear(),
-        Number(month) - 1,
-        1
-      )
-  }
+      calendarStore.currentDate = new Date(Number(year), Number(month) - 1, 1)
 
-  if (year) {
-    calendarStore.currentDate = new Date(
-      Number(year),
-      calendarStore.currentDate.getMonth(),
-      1
-    )
+    await calendarStore.initialFetch()
+  } else {
+    await calendarStore.init()
   }
-
-  await calendarStore.initialFetch()
 })
 </script>
 
