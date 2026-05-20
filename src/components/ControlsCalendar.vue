@@ -1,6 +1,6 @@
 <template>
   <div class="controls">
-    <MonthControl v-model="store.currentDate" />
+    <MonthControl v-model="store.currentDate" @change="changeUser" />
     <div
       class="controls-users"
       v-if="
@@ -45,11 +45,14 @@ const modalStore = useAddReportModalStore()
 
 const userStore = useUserStore()
 
-const changeUser = (user) => {}
+const changeUser = async (user) => {
+  await store.initialFetch()
+}
 
-const clearUser = () => {
+const clearUser = async () => {
   store.selectedUserId = null
   store.selectedUser = null
+  await store.initialFetch()
 }
 
 onMounted(() => {

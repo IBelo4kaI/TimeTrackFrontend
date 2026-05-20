@@ -49,7 +49,6 @@ export const useCalendarStore = defineStore('calendar', () => {
   const init = async () => {
     selectedUser.value = userStore.user
     selectedUserId.value = userStore.user.id
-    console.log(selectedUser, selectedUserId)
     await initialFetch()
   }
 
@@ -74,6 +73,14 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   const initialFetch = async () => {
     isLoading.value = true
+
+    if (!selectedUserId.value) {
+      data.value = []
+      prevMonthDays.value = []
+      nextMonthDays.value = []
+      isLoading.value = false
+      return
+    }
 
     const result = await getCalendarDays(
       currentMonth.value,
@@ -131,22 +138,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       // updateDayInReports(res)
     }
   }
-
-  watch(
-    selectedUserId,
-    async () => {
-      if (!isLoading.value) await initialFetch()
-    },
-    { immediate: false }
-  )
-
-  watch(
-    currentDate,
-    async () => {
-      if (!isLoading.value) await initialFetch()
-    },
-    { immediate: false }
-  )
 
   const workingHours = computed(() =>
     statsData.value

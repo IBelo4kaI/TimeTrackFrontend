@@ -27,7 +27,7 @@ const calendarStore = useCalendarStore()
 const userStore = useUserStore()
 const route = useRoute()
 
-onMounted(() => {
+onMounted(async () => {
   const id = route.query.id
   const month = route.query.month
   const year = route.query.year
@@ -57,6 +57,8 @@ onMounted(() => {
       1
     )
   }
+
+  await calendarStore.initialFetch()
 })
 </script>
 
