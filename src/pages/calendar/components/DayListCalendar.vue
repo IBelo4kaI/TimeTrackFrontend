@@ -83,6 +83,10 @@ const handleContextAction = async (action) => {
       // Удаление - собираем только существующие userTimeId
       const userTimeIds = daysToProcess
         .filter((day) => day.userTimeId && day.userTimeId !== '')
+        .filter(
+          (day) =>
+            day.userTimeTypeId != dayTypesStore.getDayTypeIdByName('vacation')
+        )
         .map((day) => parseDateStartDay(day.date))
 
       if (userTimeIds.length > 0) {
@@ -90,6 +94,27 @@ const handleContextAction = async (action) => {
           userId: calendarStore.selectedUserId,
           entryDate: userTimeIds,
         })
+      }
+      const vacDays = daysToProcess
+        .filter((day) => day.userTimeId && day.userTimeId !== '')
+        .filter(
+          (day) =>
+            day.userTimeTypeId == dayTypesStore.getDayTypeIdByName('vacation')
+        )
+
+      if (vacDays.length > 0) {
+        const updates = createUpdatesObjects(
+          vacDays,
+          {
+            userTimeTypeId: dayTypesStore.getDayTypeIdByName('vacation'),
+            hours: 0,
+          },
+          calendarStore.selectedUserId
+        )
+
+        console.log(updates, vacDays)
+
+        await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
       }
     } else {
       // Обновление - определяем тип дня и часы
