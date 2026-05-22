@@ -66,8 +66,9 @@ document.addEventListener('keydown', closeKeyboard)
   background: var(--foreground);
   border-radius: var(--border-radius);
   z-index: 101;
+  width: 100%;
   max-width: 28.57rem;
-  min-width: 28.57rem;
+  min-width: 22rem;
 }
 
 .modal-header {

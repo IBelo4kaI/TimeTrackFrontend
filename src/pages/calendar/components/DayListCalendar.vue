@@ -43,10 +43,9 @@ import { useDayTypesStore } from '@/stores/dayTypes'
 import { useSelectingStore } from '@/stores/selecting'
 import { parseDate, parseDateStartDay } from '@/utils/date.utils'
 import { storeToRefs } from 'pinia'
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onUnmounted } from 'vue'
 import DayCalendar from './DayCalendar.vue'
 import DayCalendarIsntCurrentMonth from './DayCalendarIsntCurrentMonth.vue'
-import { useUserStore } from '@/stores/user'
 
 const contextMenuStore = useContextMenuStore()
 const selectingStore = useSelectingStore()
@@ -244,7 +243,7 @@ onUnmounted(() => {
   /*border: 0.07rem solid var(--border-color);*/
   gap: calc(var(--padding-secondary) / 2);
   height: 100%;
-  overflow: auto;
+  /* overflow: auto; */
   border-radius: var(--border-radius);
 }
 

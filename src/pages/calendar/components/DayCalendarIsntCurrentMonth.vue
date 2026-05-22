@@ -42,4 +42,11 @@
     background-position: 40px 0; /* Смещение создает эффект движения */
   }
 }
+
+@media (max-width: 768px) {
+  .day {
+    min-height: 2rem;
+    min-width: 2rem;
+  }
+}
 </style>

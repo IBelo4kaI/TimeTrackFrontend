@@ -10,6 +10,7 @@ export const routesNavigation = {
       icon: 'fa-light fa-calendar',
       entity: 'calendar',
       action: 'read',
+      onMobile: true,
     },
   },
   report: {

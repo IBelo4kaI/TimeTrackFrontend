@@ -24,4 +24,10 @@ const props = defineProps({
   font-weight: 500;
   border-radius: var(--border-radius);
 }
+
+@media (max-width: 768px) {
+  .calendar-header {
+    font-weight: 600;
+  }
+}
 </style>

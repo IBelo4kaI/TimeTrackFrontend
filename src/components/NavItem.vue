@@ -38,14 +38,19 @@ onMounted(() => {
   color: var(--muted-text);
   transition: all 0.3s ease;
 }
+
 .link:not(.active):hover {
   background: var(--background);
   color: var(--text);
 }
+
 .icon {
+  font-size: 1.5rem;
 }
+
 .title {
 }
+
 .active {
   color: var(--on-accent);
   background: var(--accent);
@@ -54,5 +59,14 @@ onMounted(() => {
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
     var(--tw-shadow);
+}
+
+@media (max-width: 768px) {
+  .link {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.4rem;
+  }
 }
 </style>

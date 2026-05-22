@@ -33,7 +33,7 @@
       <div class="header-notify">
         <!-- <Notification></Notification> -->
       </div>
-      <Profile :icon="userInitials" :title="userFullName" />
+      <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
     </div>
     <div class="main"><slot></slot></div>
   </div>
@@ -42,33 +42,17 @@
 <script setup>
 import Info from '@/components/Info.vue'
 import NavItem from '@/components/NavItem.vue'
-import Notification from '@/components/Notification.vue'
 import Profile from '@/components/Profile.vue'
 import ToggleTheme from '@/components/ToggleTheme.vue'
 import { routesNavigation } from '@/router'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
-import { useThemeStore } from '@/stores/themes'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
 
 const titleStore = useHeaderTitleStore()
 const { title, desc } = storeToRefs(titleStore)
 
 const userStore = useUserStore()
-
-const userFullName = computed(() => {
-  console.log(userStore.user)
-  const user = userStore.user
-  return [user.name, user.surname].join(' ')
-})
-
-const userInitials = computed(() => {
-  console.log(userStore.user)
-  const user = userStore.user
-
-  return [user.name.charAt(0), user.surname.charAt(0)].join('')
-})
 </script>
 
 <style scoped>

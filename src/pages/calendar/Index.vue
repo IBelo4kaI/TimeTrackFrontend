@@ -1,11 +1,18 @@
 <template>
   <div class="container">
-    <ControlsCalendar :store="calendarStore" />
-    <LegendCalendar />
-    <div class="container-row">
-      <DayListCalendar style="flex: 1" />
+    <template v-if="!isMobile">
+      <ControlsCalendar :store="calendarStore" />
+      <LegendCalendar />
+      <div class="container-row">
+        <DayListCalendar style="flex: 1" />
+        <StatisticsCalendar />
+      </div>
+    </template>
+    <template v-else>
       <StatisticsCalendar />
-    </div>
+      <ControlsCalendar :store="calendarStore" page="calendar-mobile" />
+      <DayListCalendarMobile />
+    </template>
   </div>
 </template>
 
@@ -16,12 +23,17 @@ import { useCalendarStore } from '@/stores/calendar'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import LegendCalendar from '../../components/Calendar/LegendCalendar.vue'
 import DayListCalendar from './components/DayListCalendar.vue'
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useRoute } from 'vue-router'
+import DayListCalendarMobile from './components/DayListCalendarMobile.vue'
+import { useSelectingStore } from '@/stores/selecting'
+
+const isMobile = computed(() => window.innerWidth <= 768)
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Календарь', 'Учёт рабочих дней')
+
 
 const calendarStore = useCalendarStore()
 const userStore = useUserStore()

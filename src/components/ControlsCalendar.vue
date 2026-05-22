@@ -19,8 +19,12 @@
         @clear="clearUser"
       />
     </div>
-    <div class="controls-action" v-if="page == 'calendar'">
-      <ButtonUI icon="fa-light fa-plus" @click="modalStore.open()">
+    <div class="controls-action">
+      <ButtonUI
+        v-if="page == 'calendar'"
+        icon="fa-light fa-plus"
+        @click="modalStore.open()"
+      >
         Добавить запись
       </ButtonUI>
     </div>
@@ -34,6 +38,7 @@ import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useUserStore } from '@/stores/user'
 import { onMounted } from 'vue'
 import Autocomplete from './Autocomplete.vue'
+import { useSelectingStore } from '@/stores/selecting'
 
 const { page, store } = defineProps({
   page: { default: 'calendar' },
@@ -44,8 +49,9 @@ const { page, store } = defineProps({
 const modalStore = useAddReportModalStore()
 
 const userStore = useUserStore()
+const selectingStore = useSelectingStore()
 
-const changeUser = async (user) => {
+const changeUser = async () => {
   await store.initialFetch()
 }
 
@@ -67,5 +73,15 @@ onMounted(() => {
   /* padding: var(--padding-secondary);
   border-radius: var(--border-radius);
   background: var(--foreground); */
+}
+
+@media (max-width: 768px) {
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  }
+  .controls-action {
+    display: none;
+  }
 }
 </style>

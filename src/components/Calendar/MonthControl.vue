@@ -68,4 +68,13 @@ const changeHandler = () => {
   gap: 0.71rem;
   align-items: center;
 }
+
+@media (max-width: 768px) {
+  .controls-calendar {
+  }
+  .calendar-current {
+    flex: 1;
+    text-align: center;
+  }
+}
 </style>

@@ -83,15 +83,30 @@ html {
     font-size: 12px;
   }
 }
+
 @media (max-width: 1280px) {
   html {
     font-size: 10px;
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 768px) {
   html {
-    font-size: 8px;
+    font-size: 12px;
+  }
+
+  #__vue-devtools-container__ {
+    display: none !important;
+  }
+}
+
+@media (max-width: 348px) {
+  html {
+    font-size: 10px;
+  }
+
+  #__vue-devtools-container__ {
+    display: none !important;
   }
 }
 

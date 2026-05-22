@@ -91,6 +91,16 @@ export const useUserStore = defineStore('user', () => {
     else return []
   })
 
+  const userFullName = computed(() => {
+    if (user.value) return [user.value.name, user.value.surname].join(' ')
+  })
+
+  const userInitials = computed(() => {
+    if (user.value) {
+      return [user.value.name.charAt(0), user.value.surname.charAt(0)].join('')
+    }
+  })
+
   return {
     user,
     permissions,
@@ -104,5 +114,7 @@ export const useUserStore = defineStore('user', () => {
     hasPermission,
     birthdaysByMonthAndDate,
     birthdays,
+    userFullName,
+    userInitials,
   }
 })
