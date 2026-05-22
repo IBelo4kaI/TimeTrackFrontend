@@ -13,8 +13,12 @@
         {{ selectingStore.isSelecting ? 'Отменить' : 'Выбрать' }}
       </ButtonUI>
       <template v-if="selectingStore.isSelecting">
-        <span class="calendar-action-item">
-          <i class="fa-regular fa-trash"></i>
+        <span
+          class="calendar-action-item"
+          v-for="value in menuItems"
+          @click="handleContextAction(value.action)"
+        >
+          <i :class="value.icon"></i>
         </span>
       </template>
     </div>
@@ -33,23 +37,136 @@
 </template>
 
 <script setup>
+import HeaderCalendar from '@/components/Calendar/HeaderCalendar.vue'
 import Loader from '@/components/Loader.vue'
 import { SelectingHelper } from '@/helpers/selecting.helpers'
+import { createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
 import { useCalendarStore } from '@/stores/calendar'
+import { useDayTypesStore } from '@/stores/dayTypes'
 import { useSelectingStore } from '@/stores/selecting'
-import { parseDate } from '@/utils/date.utils'
+import { parseDate, parseDateStartDay } from '@/utils/date.utils'
 import { storeToRefs } from 'pinia'
 import { onUnmounted } from 'vue'
 import DayCalendarIsntCurrentMonth from './DayCalendarIsntCurrentMonth.vue'
-import DayCalendarMobile from './DayCalendarMobile.vue'
-import HeaderCalendar from '@/components/Calendar/HeaderCalendar.vue'
+
 import ButtonUI from '@/components/ButtonUI.vue'
+import DayCalendarMobile from './DayCalendarMobile.vue'
 
 const selectingStore = useSelectingStore()
 
 const calendarStore = useCalendarStore()
 const { calendarDays, prevMonthDays, nextMonthDays } =
   storeToRefs(calendarStore)
+
+const dayTypesStore = useDayTypesStore()
+
+// Определяем пункты меню
+const menuItems = [
+  // { action: 'medical', label: 'Больничный', icon: 'fa-regular fa-house-medical' },
+  // { action: 'decree', label: 'Декрет', icon: 'decree' },
+  { action: 'time-off', label: 'Отгул', icon: 'fa-regular fa-user-clock' },
+  {
+    action: 'standardWork',
+    label: 'Рабочий день (8ч)',
+    icon: 'fa-regular fa-briefcase',
+  },
+  // { action: 'separator2', type: 'separator' },
+  {
+    action: 'clear',
+    label: 'Очистить',
+    icon: 'fa-regular fa-trash',
+    danger: true,
+  },
+]
+
+// Обработчик действий меню
+const handleContextAction = async (action) => {
+  const selectedItems = selectingStore.selectedItems
+  console.log(selectedItems.values)
+
+  try {
+    // Определяем дни для обработки
+    const daysToProcess = Array.from(selectedItems)
+
+    if (action === 'clear') {
+      // Удаление - собираем только существующие userTimeId
+      const userTimeIds = daysToProcess
+        .filter((day) => day.userTimeId && day.userTimeId !== '')
+        .filter(
+          (day) =>
+            day.userTimeTypeId != dayTypesStore.getDayTypeIdByName('vacation')
+        )
+        .map((day) => parseDateStartDay(day.date))
+
+      if (userTimeIds.length > 0) {
+        await calendarStore.deleteDay({
+          userId: calendarStore.selectedUserId,
+          entryDate: userTimeIds,
+        })
+      }
+      const vacDays = daysToProcess
+        .filter((day) => day.userTimeId && day.userTimeId !== '')
+        .filter(
+          (day) =>
+            day.userTimeTypeId == dayTypesStore.getDayTypeIdByName('vacation')
+        )
+
+      if (vacDays.length > 0) {
+        const updates = createUpdatesObjects(
+          vacDays,
+          {
+            userTimeTypeId: dayTypesStore.getDayTypeIdByName('vacation'),
+            hours: 0,
+          },
+          calendarStore.selectedUserId
+        )
+
+        console.log(updates, vacDays)
+
+        await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
+      }
+    } else {
+      // Обновление - определяем тип дня и часы
+      const actionConfig = {
+        medical: {
+          userTimeTypeId: dayTypesStore.getDayTypeIdByName('medical'),
+          hours: null,
+        }, // Замени на реальный ID
+        decree: {
+          userTimeTypeId: dayTypesStore.getDayTypeIdByName('decree'),
+          hours: null,
+        }, // Замени на реальный ID
+        'time-off': {
+          userTimeTypeId: dayTypesStore.getDayTypeIdByName('time-off'),
+          hours: null,
+        }, // Замени на реальный ID
+        standardWork: {
+          userTimeTypeId: dayTypesStore.getDayTypeIdByName('work'),
+          hours: 8,
+        }, // Замени на реальный ID
+      }
+
+      const config = actionConfig[action]
+
+      if (!config) return
+
+      // Создаем объект для сбора данных
+      const updates = createUpdatesObjects(
+        daysToProcess,
+        config,
+        calendarStore.selectedUserId
+      )
+      console.log(updates, daysToProcess)
+
+      await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
+    }
+
+    selectingStore.clearSelection()
+  } catch (error) {
+    console.error('Ошибка при выполнении действия:', error)
+    throw error
+  }
+}
 
 const selectingHelper = new SelectingHelper(selectingStore)
 
