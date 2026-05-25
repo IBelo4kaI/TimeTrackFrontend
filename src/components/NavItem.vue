@@ -45,7 +45,7 @@ onMounted(() => {
 }
 
 .icon {
-  font-size: 1.5rem;
+  font-size: 1rem;
 }
 
 .title {
@@ -67,6 +67,10 @@ onMounted(() => {
     align-items: center;
     gap: 0.1rem;
     padding: 0.4rem;
+  }
+
+  .icon {
+    font-size: 1.6rem;
   }
 }
 </style>

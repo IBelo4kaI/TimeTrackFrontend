@@ -40,7 +40,7 @@
         v-if="showClear"
         class="input-suffix input-clear"
         :class="{ 'input-clear--offset': showInsideButton }"
-        @mousedown.prevent="clearSelection"
+        @mousedown.prevent.stop="clearSelection"
         title="Очистить"
       >
         <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
@@ -57,7 +57,7 @@
         class="input-create-btn"
         :style="{ right: showClear ? '2.2rem' : '0.4rem' }"
         type="button"
-        @mousedown.prevent="handleCreate"
+        @mousedown.prevent.stop="handleCreate"
       >
         {{ buttonText }}
       </button>
@@ -78,7 +78,7 @@
         <li
           v-if="showDropdownButton && buttonPosition === 'dropdown-top'"
           class="autocomplete-item autocomplete-item--create"
-          @mousedown.prevent="handleCreate"
+          @mousedown.prevent.stop="handleCreate"
         >
           {{ buttonText }}
         </li>
@@ -116,7 +116,7 @@
         <li
           v-if="showDropdownButton && buttonPosition === 'dropdown-bottom'"
           class="autocomplete-item autocomplete-item--create"
-          @mousedown.prevent="handleCreate"
+          @mousedown.prevent.stop="handleCreate"
         >
           {{ buttonText }}
         </li>
@@ -451,6 +451,7 @@ const onClickOutside = (e: MouseEvent) => {
     if (target === wrapperRef.value) return
     target = target.parentNode
   }
+  console.log('[Autocomplete] click outside, close dropdown')
   closeDropdown()
 }
 

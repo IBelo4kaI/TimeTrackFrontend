@@ -27,13 +27,10 @@ button {
   height: 3rem;
   transition: all 0.3s ease;
 }
+
 .accent {
   background: var(--accent);
   color: var(--on-accent);
-}
-.accent:hover {
-  background: var(--muted-accent);
-  color: var(--text);
 }
 
 .muted {
@@ -41,36 +38,48 @@ button {
   color: var(--text);
   border: 0.07rem solid var(--border-color);
 }
-.muted:hover {
-  background: var(--background);
-}
 
 .muted-accent {
   color: var(--accent);
-}
-.muted-accent:hover {
-  background: var(--muted-accent);
 }
 
 .success {
   color: var(--success);
 }
-.success:hover {
-  background: var(--muted-success);
-}
 
 .destructive {
   color: var(--destructive);
-}
-.destructive:hover {
-  background: var(--muted-destructive);
 }
 
 .warn {
   color: var(--warn);
 }
-.warn:hover {
-  background: var(--muted-warn);
+
+@media (min-width: 768px) {
+  .accent:hover {
+    background: var(--muted-accent);
+    color: var(--text);
+  }
+
+  .muted:hover {
+    background: var(--background);
+  }
+
+  .muted-accent:hover {
+    background: var(--muted-accent);
+  }
+
+  .success:hover {
+    background: var(--muted-success);
+  }
+
+  .destructive:hover {
+    background: var(--muted-destructive);
+  }
+
+  .warn:hover {
+    background: var(--muted-warn);
+  }
 }
 
 .disable {
