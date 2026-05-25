@@ -24,7 +24,7 @@
     </div>
 
     <div v-if="!isInitialized" class="standard-setting__loading">
-      <Loader />
+      <LoaderTitle />
     </div>
 
     <div v-else class="standard-setting__content">
@@ -119,8 +119,7 @@
                     @click="saveMonthStandards(month.value)"
                   >
                     <template v-if="isSaving(month.value)">
-                      <i class="fa-regular fa-loader fa-spin"></i>
-                      Сохранение...
+                      <LoaderTitle text="Сохранение" />
                     </template>
                     <template v-else>
                       {{
@@ -144,8 +143,7 @@
                     @click="deleteMonthStandards(month.value)"
                   >
                     <template v-if="isDeleting(month.value)">
-                      <i class="fa-regular fa-loader fa-spin"></i>
-                      Удаление...
+                      <LoaderTitle text="Удаление" />
                     </template>
                     <template v-else>
                       <i class="fa-regular fa-trash"></i>
@@ -167,18 +165,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import ButtonUI from '@/components/ButtonUI.vue'
+import InputUi from '@/components/InputUi.vue'
+import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import SelectUI from '@/components/SelectUI.vue'
 import {
-  getStandardsByYear,
   createStandard,
-  updateStandard,
   deleteStandard,
+  getStandardsByYear,
+  updateStandard,
 } from '@/services/workStandard.api'
 import { useUserStore } from '@/stores/user'
-import InputUi from '@/components/InputUi.vue'
-import Loader from '@/components/Loader.vue'
-import ButtonUI from '@/components/ButtonUI.vue'
-import SelectUI from '@/components/SelectUI.vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 // Константы
 const months = [

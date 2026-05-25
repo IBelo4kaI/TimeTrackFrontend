@@ -1,10 +1,5 @@
 <template>
-  <Loader v-if="calendarStore.isLoading" />
-  <div v-else-if="!calendarStore.selectedUserId" class="user-no-select">
-    Пользователь не выбран
-  </div>
   <div
-    v-else
     class="calendar"
     :class="{ 'calendar-selecting': selectingStore.isSelecting }"
   >
@@ -25,20 +20,34 @@
 
     <div class="calendar-grid">
       <HeaderCalendar :mini="true" />
-      <DayCalendarIsntCurrentMonth v-for="_ in prevMonthDays" />
+
+      <DayCalendarIsntCurrentMonth
+        v-if="!calendarStore.isLoading"
+        v-for="_ in prevMonthDays"
+        @click="selectingStore.clearSelection"
+      />
       <DayCalendarMobile
+        v-if="!calendarStore.isLoading"
         v-for="day in calendarDays"
         :day="day"
         :is-selected="selectingStore.isItemSelected(day)"
       />
-      <DayCalendarIsntCurrentMonth v-for="_ in nextMonthDays" />
+      <DayCalendarIsntCurrentMonth
+        v-else
+        v-for="_ in 35"
+        @click="selectingStore.clearSelection"
+      />
+      <DayCalendarIsntCurrentMonth
+        v-if="!calendarStore.isLoading"
+        v-for="_ in nextMonthDays"
+        @click="selectingStore.clearSelection"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
 import HeaderCalendar from '@/components/Calendar/HeaderCalendar.vue'
-import Loader from '@/components/Loader.vue'
 import { SelectingHelper } from '@/helpers/selecting.helpers'
 import { createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
 import { useCalendarStore } from '@/stores/calendar'

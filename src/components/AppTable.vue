@@ -221,7 +221,7 @@
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
-import Loader from './Loader.vue'
+import Loader from './Loader/LoaderTitle.vue'
 
 export interface TableHeader {
    valueKey: string | string[]

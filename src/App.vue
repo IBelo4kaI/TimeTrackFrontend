@@ -19,7 +19,7 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
-import LoaderPage from './components/LoaderPage.vue'
+import LoaderPage from './components/Loader/LoaderPage.vue'
 import Modal from './components/Modal.vue'
 import NotificationContainer from './components/Notification/NotificationContainer.vue'
 import MainLayout from './layouts/MainLayout.vue'

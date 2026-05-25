@@ -1,5 +1,5 @@
 <template>
-  <div class="day" @contextmenu.prevent>
+  <div class="day" :class="{ 'day-animate': animate }" @contextmenu.prevent>
     <div
       class="sidebar-happy"
       style="
@@ -12,18 +12,24 @@
   </div>
 </template>
 
-<script setup></script>
+<script setup lang="ts">
+interface Props {
+  animate?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+  animate: false,
+})
+</script>
 
 <style scoped>
 .day {
   display: flex;
   flex-direction: column;
-  /*border-top: 0.07rem solid var(--border-color);
-  border-right: 0.07rem solid var(--border-color);*/
   border: 0.07rem solid var(--border-color);
   border-radius: var(--border-radius);
-  min-height: 7rem;
-  min-width: 7rem;
+  min-height: 8rem;
+  min-width: 8rem;
   user-select: none;
   background: repeating-linear-gradient(
     150deg,
@@ -34,12 +40,17 @@
   );
 }
 
+.day-animate {
+  background-size: 140%;
+  animation: moveStripes infinite 0.5s linear;
+}
+
 @keyframes moveStripes {
   from {
-    background-position: 0 0;
+    background-position: -40px 0;
   }
   to {
-    background-position: 40px 0; /* Смещение создает эффект движения */
+    background-position: 0 0; /* Смещение создает эффект движения */
   }
 }
 

@@ -4,7 +4,7 @@
       <ControlsCalendar :store="calendarStore" />
       <LegendCalendar />
       <div class="container-row">
-        <DayListCalendar style="flex: 1" />
+        <DayListCalendar />
         <StatisticsCalendar />
       </div>
     </template>
@@ -21,19 +21,17 @@ import StatisticsCalendar from '@/components/Calendar/StatisticsCalendar.vue'
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useCalendarStore } from '@/stores/calendar'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
+import { useUserStore } from '@/stores/user'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import LegendCalendar from '../../components/Calendar/LegendCalendar.vue'
 import DayListCalendar from './components/DayListCalendar.vue'
-import { computed, onMounted } from 'vue'
-import { useUserStore } from '@/stores/user'
-import { useRoute } from 'vue-router'
 import DayListCalendarMobile from './components/DayListCalendarMobile.vue'
-import { useSelectingStore } from '@/stores/selecting'
 
 const isMobile = computed(() => window.innerWidth <= 768)
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Календарь', 'Учёт рабочих дней')
-
 
 const calendarStore = useCalendarStore()
 const userStore = useUserStore()
@@ -70,7 +68,8 @@ onMounted(async () => {
   height: 100%;
 }
 .container-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   gap: calc(var(--padding-secondary) / 2);
 }
 </style>

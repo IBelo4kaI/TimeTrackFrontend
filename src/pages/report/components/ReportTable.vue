@@ -17,7 +17,7 @@
     </div>
 
     <div class="table-scroll">
-      <table class="table" ref="printArea">
+      <table class="table">
         <thead>
           <tr>
             <th class="th align-left">Сотрудник</th>
@@ -35,7 +35,7 @@
         <tbody>
           <tr v-if="isLoading">
             <td colspan="9" class="state-cell">
-              <Loader />
+              <LoaderTitle />
             </td>
           </tr>
 
@@ -113,10 +113,10 @@
 </template>
 
 <script setup>
-import SelectUI from '@/components/SelectUI.vue'
-import Loader from '@/components/Loader.vue'
-import { computed, useTemplateRef } from 'vue'
 import ButtonUI from '@/components/ButtonUI.vue'
+import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import SelectUI from '@/components/SelectUI.vue'
+import { computed } from 'vue'
 
 const props = defineProps({
   rows: { type: Array, default: () => [] },
@@ -157,8 +157,6 @@ const daysVariant = (row) => {
   if (row.totalWorkDays > 0) return 'warn'
   return 'warn'
 }
-
-const printArea = useTemplateRef('printArea')
 
 function print() {
   window.print()

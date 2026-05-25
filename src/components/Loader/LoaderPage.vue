@@ -1,11 +1,11 @@
 <template>
   <div class="loader-page">
-    <Loader :is-loading="true" />
+    <Loader label="Загрузка данных" />
   </div>
 </template>
 
 <script setup>
-import Loader from './Loader.vue'
+import Loader from './LoaderClock.vue'
 </script>
 
 <style scoped>
