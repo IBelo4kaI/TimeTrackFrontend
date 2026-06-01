@@ -1,18 +1,16 @@
 <template>
   <LoaderPage v-if="userStore.isLoading" />
   <template v-else-if="userStore.isLogin">
-    <template v-if="!isMobile">
-      <MainLayout>
-        <RouterView></RouterView>
-      </MainLayout>
-      <NotificationContainer />
-    </template>
-    <template v-else>
+    <MainLayout>
+      <RouterView></RouterView>
+    </MainLayout>
+    <NotificationContainer />
+    <!-- <template v-else>
       <MobileLayout>
         <RouterView></RouterView>
       </MobileLayout>
       <NotificationContainer />
-    </template>
+    </template> -->
     <Modal />
   </template>
 </template>
@@ -23,7 +21,6 @@ import LoaderPage from './components/Loader/LoaderPage.vue'
 import Modal from './components/Modal.vue'
 import NotificationContainer from './components/Notification/NotificationContainer.vue'
 import MainLayout from './layouts/MainLayout.vue'
-import MobileLayout from './layouts/MobileLayout.vue'
 import { useDayTypesStore } from './stores/dayTypes'
 import { useThemeStore } from './stores/themes'
 import { useUserStore } from './stores/user'

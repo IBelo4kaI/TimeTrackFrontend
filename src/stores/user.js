@@ -71,6 +71,12 @@ export const useUserStore = defineStore('user', () => {
     )
   }
 
+  const birthdaysByMonth = (month) => {
+    return birthdays.value.filter(
+      (u) => parseDate(u.birthday).getMonth() + 1 == month
+    )
+  }
+
   const birthdaysByMonthAndDate = (month, date) => {
     return birthdays.value.filter(
       (u) =>
@@ -112,6 +118,7 @@ export const useUserStore = defineStore('user', () => {
     userFetch,
     userAllFetch,
     hasPermission,
+    birthdaysByMonth,
     birthdaysByMonthAndDate,
     birthdays,
     userFullName,

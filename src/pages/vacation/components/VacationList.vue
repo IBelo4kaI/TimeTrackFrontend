@@ -43,7 +43,7 @@
           v-if="isAdmin && userStore.hasPermission('vacation.all', 'edit')"
         >
           <ButtonUI
-            v-if="row.status != 'approved'"
+            v-if="row.status != 'approved' && row.status != 'rejected'"
             type="success"
             icon="fa-regular fa-octagon-check"
             v-tooltip="'Утвердить'"

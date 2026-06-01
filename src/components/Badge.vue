@@ -34,15 +34,19 @@ watch(
 .badge {
   padding: 0.25rem 0.35rem;
   border-radius: var(--border-radius);
+  text-wrap-mode: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 .badge > i {
   margin-right: 0.3rem;
 }
-.default {
-}
+
 .muted {
   background: var(--muted-foreground);
 }
+
 .calendar-holiday {
   display: inline-block;
   color: var(--calendar-holiday);
@@ -55,6 +59,7 @@ watch(
   border: 0.07rem solid var(--calendar-holiday);
   border-radius: 1rem;
 }
+
 .warn {
   font-size: 0.9rem;
   padding: 0.2rem 0.75rem;
@@ -64,6 +69,7 @@ watch(
   border-radius: 1rem;
   font-weight: 600;
 }
+
 .success {
   font-size: 0.9rem;
   padding: 0.2rem 0.75rem;
@@ -73,6 +79,7 @@ watch(
   border-radius: 1rem;
   font-weight: 600;
 }
+
 .destruct {
   font-size: 0.9rem;
   padding: 0.2rem 0.75rem;
@@ -82,18 +89,21 @@ watch(
   border-radius: 1rem;
   font-weight: 600;
 }
+
 .workers-work {
   font-size: 0.85rem;
   padding: 0.2rem 0.75rem;
   background: var(--muted-success);
   color: var(--success);
 }
+
 .workers-vacation {
   font-size: 0.85rem;
   padding: 0.2rem 0.75rem;
   background: var(--muted-warn);
   color: var(--warn);
 }
+
 .workers-medical {
   font-size: 0.85rem;
   padding: 0.2rem 0.75rem;

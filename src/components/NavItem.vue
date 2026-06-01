@@ -63,10 +63,11 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .link {
-    flex-direction: column;
+    /* flex-direction: column; */
     align-items: center;
-    gap: 0.1rem;
-    padding: 0.4rem;
+    /* gap: 0.1rem; */
+    padding: 0.6rem;
+    font-size: 1.2rem;
   }
 
   .icon {

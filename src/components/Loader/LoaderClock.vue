@@ -19,7 +19,7 @@
         stroke="currentColor"
         stroke-width="3"
         stroke-linecap="round"
-        opacity="0"
+        style="opacity: 0"
       />
       <line
         ref="mHandRef"
@@ -30,7 +30,7 @@
         stroke="currentColor"
         stroke-width="2"
         stroke-linecap="round"
-        opacity="0"
+        style="opacity: 0"
       />
       <circle
         ref="dotRef"
@@ -38,23 +38,22 @@
         cy="40"
         r="2.5"
         fill="currentColor"
-        opacity="0"
+        style="opacity: 0"
       />
     </svg>
-    <span
+    <LoaderTitle
       v-if="label"
       ref="lblRef"
-      class="clock-loader__label"
       style="opacity: 0"
-    >
-      {{ label }}
-    </span>
+      :text="label"
+    ></LoaderTitle>
   </div>
 </template>
 
 <script setup lang="ts">
 import gsap from 'gsap'
 import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import LoaderTitle from './LoaderTitle.vue'
 
 interface Props {
   label?: string
@@ -134,11 +133,5 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.3rem;
   color: var(--text);
-}
-
-.clock-loader__label {
-  font-size: 1rem;
-  color: var(--muted-text);
-  letter-spacing: 0.04em;
 }
 </style>

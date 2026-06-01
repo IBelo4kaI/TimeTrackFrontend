@@ -173,7 +173,7 @@ watch(
 .report-statistic {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--padding-primary);
+  gap: calc(var(--padding-secondary) / 2);
   width: 100%;
 }
 

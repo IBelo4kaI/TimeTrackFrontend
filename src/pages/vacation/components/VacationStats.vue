@@ -7,6 +7,12 @@
       label="Использовано"
       valueVariant="warn"
       :isLoading="vacationStore.isLoading"
+      :progress="
+        percent(
+          vacationStore.vacationStats.used,
+          vacationStore.vacationStats.free + vacationStore.vacationStats.used
+        )
+      "
     />
     <CardStatistics
       icon="fa-regular fa-check-circle"
@@ -15,6 +21,12 @@
       label="Осталось"
       valueVariant="success"
       :isLoading="vacationStore.isLoading"
+      :progress="
+        percent(
+          vacationStore.vacationStats.free,
+          vacationStore.vacationStats.free + vacationStore.vacationStats.used
+        )
+      "
     />
     <CardStatistics
       icon="fa-regular fa-clock"
@@ -23,15 +35,25 @@
       label="Ожидает"
       valueVariant="primary"
       :isLoading="vacationStore.isLoading"
+      :progress="
+        percent(
+          vacationStore.vacationStats.pending,
+          vacationStore.vacationStats.free + vacationStore.vacationStats.used
+        )
+      "
     />
+    <NextVacationCard />
   </div>
 </template>
 
 <script setup>
 import { useVacationStore } from '@/stores/vacation'
 import CardStatistics from './CardStatistics.vue'
+import NextVacationCard from './NextVacationCard.vue'
 
 const vacationStore = useVacationStore()
+
+const percent = (num, all) => Math.abs((num / all) * 100)
 </script>
 
 <style scoped></style>
