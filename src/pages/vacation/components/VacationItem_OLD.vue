@@ -1,124 +1,102 @@
 <template>
-  <tr class="vacation-item" @click="isExtraVisible = !isExtraVisible">
-    <td>
-      <div class="vacation-item__status">
-        <Badge :type="statusC.type">{{ statusC.text }}</Badge>
-      </div>
-    </td>
-    <td style="width: 100%">
-      <div class="vacation-item__column">
-        <div class="vacation-item__user" v-if="isAdmin">
-          {{ user.surname }} {{ user.name }} {{ user.patronymic }}
-        </div>
-        <div class="vacation-item__dates">
-          {{ getDateNamed(parseDate(item.startDate)) }} -
-          {{ getDateNamed(parseDate(item.endDate)) }}
-          {{ parseDate(item.endDate).getFullYear() }}
-        </div>
-        <div class="vacation-item__desc">
-          {{ item.description }}
-        </div>
-      </div>
-    </td>
-    <td>
-      <div class="vacation-item__createAt">
-        <span>Создано</span>
-        <span>
-          {{ parseDate(item.createdAt.Time).toLocaleDateString() }}
-        </span>
-      </div>
-    </td>
-  </tr>
-  <tr class="vacation-item__extra" v-if="isExtraVisible">
-    <td colspan="3">
-      <div class="extra__container">
-        <template
-          v-if="isAdmin && userStore.hasPermission('vacation.all', 'edit')"
-        >
-          <ButtonUI
-            type="success"
-            @click="onApproved"
-            v-if="item.status != 'approved' && item.status != 'rejected'"
-            icon="fa-regular fa-octagon-check"
-            v-tooltip="'Утвердить'"
-          >
-            Утвердить
-          </ButtonUI>
-          <ButtonUI
-            v-if="item.status != 'pending'"
-            @click="onStatus('pending')"
-            type="warn"
-            icon="fa-regular fa-clock"
-            v-tooltip="'На рассмотрении'"
-          >
-            На рассмотрении
-          </ButtonUI>
-          <ButtonUI
-            v-if="item.status != 'rejected'"
-            @click="onStatus('rejected')"
-            type="destructive"
-            icon="fa-regular fa-octagon-minus"
-            v-tooltip="'Отклонить'"
-          >
-            Отклонить
-          </ButtonUI>
-        </template>
-
-        <template v-else>
-          <ButtonUI
-            v-if="item.status != 'approved'"
-            @click="
-              confirmModalStore.open(
-                onDeleted,
-                'Вы действительно хотите удалить?'
-              )
-            "
-            type="destructive"
-            icon="fa-regular fa-trash-can-xmark"
-            v-tooltip="'Удалить отпуск'"
-          >
-            Удалить отпуск
-          </ButtonUI>
-        </template>
-
+  <div class="vacation-item" :class="{ 'vacation-item-with-user': isAdmin }">
+    <div class="vacation-item-user" v-if="isAdmin && user">
+      {{ user.surname }} {{ user.name }}
+    </div>
+    <div class="vacation-item-status">
+      <Badge :type="statusC.type">{{ statusC.text }}</Badge>
+    </div>
+    <!-- <div class="vacation-item-total">{{ formatStats(item.totalDays) }}</div> -->
+    <div class="vacation-item-dates">
+      {{ getDateNamed(parseDate(item.startDate)) }} -
+      {{ getDateNamed(parseDate(item.endDate)) }}
+      {{ parseDate(item.endDate).getFullYear() }}
+    </div>
+    <div class="vacation-item-desc">
+      {{ item.description }}
+    </div>
+    <div class="vacation-item-createAt">
+      Создано
+      <br />
+      {{ parseDate(item.createdAt.Time).toLocaleDateString() }}
+    </div>
+    <div class="vacation-item-actions">
+      <!-- <ButtonUI type="muted-accent">Подробнее</ButtonUI> -->
+      <template
+        v-if="isAdmin && userStore.hasPermission('vacation.all', 'edit')"
+      >
         <ButtonUI
-          @click="vacationDocs.getDocument(item.id)"
-          icon="fa-regular fa-file-word"
           type="success"
-          v-tooltip="'Получить шаблон заявления'"
+          @click="onApproved"
+          v-if="item.status != 'approved'"
+          icon="fa-regular fa-octagon-check"
+          v-tooltip="'Утвердить'"
+        />
+        <ButtonUI
+          v-if="item.status != 'pending'"
+          @click="onStatus('pending')"
+          type="warn"
+          icon="fa-regular fa-clock"
+          v-tooltip="'На рассмотрении'"
+        />
+        <ButtonUI
+          v-if="item.status != 'rejected'"
+          @click="onStatus('rejected')"
+          type="destructive"
+          icon="fa-regular fa-octagon-minus"
+          v-tooltip="'Отклонить'"
+        />
+      </template>
+
+      <template v-else>
+        <ButtonUI
+          v-if="item.status != 'approved'"
+          @click="
+            confirmModalStore.open(
+              onDeleted,
+              'Вы действительно хотите удалить?'
+            )
+          "
+          type="destructive"
+          icon="fa-regular fa-trash-can-xmark"
+          v-tooltip="'Удалить отпуск'"
+        />
+      </template>
+
+      <ButtonUI
+        @click="vacationDocs.getDocument(item.id)"
+        icon="fa-regular fa-file-word"
+        type="success"
+        v-tooltip="'Получить шаблон заявления'"
+      ></ButtonUI>
+
+      <template v-if="item.docFileName">
+        <ButtonUI
+          @click="onDownloadFile(item.docFileName)"
+          type="muted-accent"
+          icon="fa-regular fa-file-export"
+          v-tooltip="'Получить прикрепленный файл'"
+        />
+        <ButtonUI
+          v-if="userStore.hasPermission('vacation', 'file_delete')"
+          @click="onDeleteFile(item.docFileName, item.id)"
+          icon="fa-regular fa-file-circle-xmark"
+          type="destructive"
+          v-tooltip="'Удалить прикрепленный файл'"
+        />
+      </template>
+
+      <template v-else>
+        <div
+          class="file-upload"
+          v-if="userStore.hasPermission('vacation', 'edit')"
         >
-          Получить шаблон заявления
-        </ButtonUI>
-
-        <template v-if="item.docFileName">
-          <ButtonUI
-            @click="onDownloadFile(item.docFileName)"
-            type="muted-accent"
-            icon="fa-regular fa-file-export"
-            v-tooltip="'Получить прикрепленный файл'"
-          >
-            Получить прикрепленный файл
-          </ButtonUI>
-          <ButtonUI
-            v-if="userStore.hasPermission('vacation', 'file_delete')"
-            @click="onDeleteFile(item.docFileName, item.id)"
-            icon="fa-regular fa-file-circle-xmark"
-            type="destructive"
-            v-tooltip="'Удалить прикрепленный файл'"
-          >
-            Удалить прикрепленный файл
-          </ButtonUI>
-        </template>
-
-        <template v-else-if="userStore.hasPermission('vacation', 'edit')">
           <ButtonUI
             icon="fa-regular fa-file-import"
             type="success"
             @click="$refs.fileInput.click()"
             v-tooltip="'Прикрепить файл'"
-          >
-            Прикрепить файл
-          </ButtonUI>
+          />
           <input
             ref="fileInput"
             type="file"
@@ -126,10 +104,11 @@
             style="display: none"
             @change="onFileSelected"
           />
-        </template>
-      </div>
-    </td>
-  </tr>
+        </div>
+      </template>
+    </div>
+    <!-- <div class="vacation-detailed"></div> -->
+  </div>
 </template>
 
 <script setup>
@@ -147,7 +126,8 @@ import { useVacationStore } from '@/stores/vacation'
 import { useVacationDocs } from '@/stores/vacationDocs'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
-import { computed, shallowRef } from 'vue'
+import { formatStats } from '@/utils/vacation.utils'
+import { computed } from 'vue'
 
 const userStore = useUserStore()
 const confirmModalStore = useConfirmModal()
@@ -155,7 +135,6 @@ const notificationStore = useNotificationStore()
 const vacationStore = useVacationStore()
 const vacationDocs = useVacationDocs()
 const { item, isAdmin } = defineProps(['item', 'isAdmin'])
-const isExtraVisible = shallowRef(false)
 
 const user = computed(() => {
   if (isAdmin && userStore.usersAll)
@@ -268,57 +247,61 @@ const statusC = computed(() =>
 
 <style scoped>
 .vacation-item {
-  cursor: pointer;
-  transition: all 0.3s ease;
+  display: grid;
+  grid-template-areas:
+    'status dates createAt actions'
+    'status desc createAt actions';
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.71rem;
+  /* padding: var(--padding-secondary); */
+  background: var(--foreground);
+  border-radius: var(--border-radius);
+  /* border: 0.07rem solid var(--border-color); */
 }
-
-.vacation-item__status {
+.vacation-item-with-user {
+  grid-template-areas:
+    'user user actions createAt'
+    'status total actions createAt'
+    'dates dates actions createAt'
+    'desc desc actions createAt';
 }
-
-.vacation-item__dates {
+.vacation-item-user {
+  grid-area: user;
   font-weight: 600;
   font-size: 1.2rem;
 }
-
-.vacation-item__desc {
+.vacation-item-status {
+  grid-area: status;
+}
+.vacation-item-total {
+  grid-area: total;
   color: var(--muted-text);
-}
-
-.vacation-item__createAt {
-  display: flex;
-  flex-direction: column;
-}
-
-.vacation-item__createAt span:nth-child(1) {
-  font-weight: 400;
-  color: var(--muted-text);
-}
-
-.vacation-item__createAt span:nth-child(2) {
   font-weight: 600;
 }
-
-.vacation-item td {
-  padding: var(--padding-secondary) 0;
+.vacation-item-dates {
+  grid-area: dates;
+  font-weight: 600;
+  font-size: 1.2rem;
 }
-
-.vacation-item td:not(:last-child) {
-  padding-right: var(--gap-primary);
+.vacation-item-desc {
+  grid-area: desc;
+  color: var(--muted-text);
 }
-
-.vacation-item:not(:has(+ .vacation-item__extra)) td {
-  border-bottom: 0.07rem solid var(--border-color);
-}
-
-.vacation-item__extra td {
-  border-bottom: 0.07rem solid var(--border-color);
-  transition: all 0.3s ease;
-}
-
-.extra__container {
+.vacation-item-file {
+  grid-area: file;
   display: flex;
-  gap: var(--gap-primary);
+  gap: calc(var(--padding-secondary) / 2);
+  align-items: center;
+}
+
+.vacation-item-createAt {
+  grid-area: createAt;
+}
+.vacation-item-actions {
+  grid-area: actions;
+  display: flex;
   flex-wrap: wrap;
-  padding: 0 0 var(--padding-secondary) 2rem;
+  gap: 0.71rem;
 }
 </style>

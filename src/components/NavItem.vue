@@ -67,11 +67,11 @@ onMounted(() => {
     align-items: center;
     /* gap: 0.1rem; */
     padding: 0.6rem;
-    font-size: 1.2rem;
+    /* font-size: 1.2rem; */
   }
 
   .icon {
-    font-size: 1.6rem;
+    font-size: 1.2rem;
   }
 }
 </style>

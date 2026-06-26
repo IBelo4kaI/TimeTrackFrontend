@@ -110,12 +110,12 @@ html {
   }
 }
 
-body {
-  color: var(--text);
-  background: var(--background);
-  font-family: 'Manrope', serif;
-  font-size: 1rem;
-}
+  body {
+    color: var(--text);
+    background: var(--background);
+    font-family: 'Manrope', serif;
+    font-size: 1rem;
+  }
 
 @media print {
   #__vue-devtools-container__ {

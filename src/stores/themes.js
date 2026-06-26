@@ -9,6 +9,8 @@ export const useThemeStore = defineStore('theme', () => {
     SYSTEM: 'system',
   }
 
+  const isMobile = ref(document.documentElement.clientWidth <= 768)
+
   // Текущая тема
   const currentTheme = ref(THEMES.SYSTEM)
 
@@ -117,6 +119,7 @@ export const useThemeStore = defineStore('theme', () => {
 
     // Состояние
     currentTheme,
+    isMobile,
 
     // Методы
     setTheme,

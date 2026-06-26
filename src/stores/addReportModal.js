@@ -192,14 +192,32 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
         const selectedItems = selectingStore.selectedItems
 
         try {
-          // Определяем дни для обработки
+          // // Определяем дни для обработки
           const daysToProcess =
             selectedItems.size > 1
               ? Array.from(selectedItems)
               : [daysData.value]
 
+          // const userTimeIds = daysToProcess
+          //   .filter((day) => day.userTimeId && day.userTimeId !== '')
+          //   .map((day) => parseDateStartDay(day.date))
+
+          // if (userTimeIds.length > 0) {
+          //   await calendarStore.deleteDay({
+          //     userId: calendarStore.selectedUserId,
+          //     entryDate: userTimeIds,
+          //   })
+          // }
+
+          // _______________
+
           const userTimeIds = daysToProcess
             .filter((day) => day.userTimeId && day.userTimeId !== '')
+            .filter(
+              (day) =>
+                day.userTimeTypeId !=
+                dayTypesStore.getDayTypeIdByName('vacation')
+            )
             .map((day) => parseDateStartDay(day.date))
 
           if (userTimeIds.length > 0) {
@@ -208,6 +226,30 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
               entryDate: userTimeIds,
             })
           }
+          const vacDays = daysToProcess
+            .filter((day) => day.userTimeId && day.userTimeId !== '')
+            .filter(
+              (day) =>
+                day.userTimeTypeId ==
+                dayTypesStore.getDayTypeIdByName('vacation')
+            )
+
+          if (vacDays.length > 0) {
+            const updates = createUpdatesObjects(
+              vacDays,
+              {
+                userTimeTypeId: dayTypesStore.getDayTypeIdByName('vacation'),
+                hours: 0,
+              },
+              calendarStore.selectedUserId
+            )
+
+            console.log(updates, vacDays)
+
+            await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
+          }
+
+          // _______________
 
           selectingStore.clearSelection()
         } catch (error) {

@@ -34,10 +34,8 @@ userStore.initialFetch()
 const dayTypesStore = useDayTypesStore()
 dayTypesStore.load()
 
-const isMobile = ref(document.documentElement.clientWidth <= 768)
-
 const onResize = () => {
-  isMobile.value = document.documentElement.clientWidth <= 768
+  themeStore.isMobile = document.documentElement.clientWidth <= 768
 }
 
 onMounted(() => window.addEventListener('resize', onResize))

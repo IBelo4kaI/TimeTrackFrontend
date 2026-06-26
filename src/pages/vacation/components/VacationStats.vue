@@ -56,4 +56,16 @@ const vacationStore = useVacationStore()
 const percent = (num, all) => Math.abs((num / all) * 100)
 </script>
 
-<style scoped></style>
+<style scoped>
+.vacation-stats {
+  display: flex;
+  gap: calc(var(--padding-secondary) / 2);
+  justify-content: space-between;
+}
+
+@media (max-width: 768px) {
+  .vacation-stats {
+    flex-direction: column;
+  }
+}
+</style>

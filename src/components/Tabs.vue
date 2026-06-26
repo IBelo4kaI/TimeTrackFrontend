@@ -27,9 +27,13 @@ const props = defineProps({
     type: String,
     default: 'default',
     validator: (value) =>
-      ['default', 'component', 'accent-no-background', 'accent'].includes(
-        value
-      ),
+      [
+        'default',
+        'component',
+        'accent-no-background',
+        'accent',
+        'line',
+      ].includes(value),
   },
 
   tabs: {
@@ -226,6 +230,35 @@ watch(
 }
 
 .accent .tabs-active:hover {
+  opacity: 0.95;
+}
+
+.line {
+  gap: 0;
+  background: var(--foreground);
+  border-radius: 0;
+}
+
+.line .tabs-item {
+  cursor: pointer;
+  padding: calc(var(--padding-secondary) / 2);
+  color: var(--muted-text);
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.line .tabs-item:hover:not(.tabs-active) {
+  background: var(--muted-accent);
+}
+
+.line .tabs-active {
+  color: var(--text);
+  border-bottom: 0.07rem solid var(--accent);
+}
+
+.line .tabs-active:hover {
   opacity: 0.95;
 }
 </style>

@@ -1,290 +1,144 @@
 <template>
-  <AppTable
-    :headers="headers"
-    :rows="rows"
-    row-key="id"
-    :loading="isLoading"
-    empty-text="Заявки не найдены"
-  >
-    <template #cell-status="{ row }">
-      <Badge :type="getStatus(row.status).type">
-        {{ getStatus(row.status).text }}
-      </Badge>
-    </template>
-
-    <template #cell-date_start="{ row }">
-      <span class="dates">
-        {{ getDateNamed(parseDate(row.startDate)) }}
-        {{ parseDate(row.endDate).getFullYear() }}
-      </span>
-    </template>
-
-    <template #cell-date_end="{ row }">
-      <span class="dates">
-        {{ getDateNamed(parseDate(row.endDate)) }}
-        {{ parseDate(row.endDate).getFullYear() }}
-      </span>
-    </template>
-
-    <template #cell-user="{ row }">
-      <span v-if="getUser(row.userId)">
-        {{ getUser(row.userId).surname }} {{ getUser(row.userId).name }}
-      </span>
-      <span v-else>—</span>
-    </template>
-
-    <template #cell-createdAt="{ row }">
-      {{ parseDate(row.createdAt.Time).toLocaleDateString() }}
-    </template>
-
-    <template #actions="{ row }">
-      <div class="actions">
+  <div class="vacation-list">
+    <div class="vacation-list__controls">
+      <template v-if="userStore.hasPermission('vacation.all', 'read')">
+        <Tabs :tabs="targets" v-model="vacationStore.target" type="line" />
+      </template>
+      <Tabs
+        :tabs="filters"
+        v-model="vacationStore.filter"
+        type="line"
+        v-if="!isMobile"
+      />
+      <SelectUI
+        v-if="isMobile"
+        :variant="isMobile ? '' : 'line'"
+        align="center"
+        value-key="id"
+        label-key="label"
+        :options="filters"
+        v-model="vacationStore.filter"
+      />
+      <SelectUI
+        :variant="isMobile ? '' : 'line'"
+        align="center"
+        :options="years"
+        v-model="vacationStore.selectedYear"
+      />
+    </div>
+    <table class="vacation-list__items">
+      <tbody>
         <template
-          v-if="isAdmin && userStore.hasPermission('vacation.all', 'edit')"
+          v-if="
+            !vacationStore.isLoading && vacationStore.filterVacations.length > 0
+          "
+          v-for="item in vacationStore.filterVacations"
         >
-          <ButtonUI
-            v-if="row.status != 'approved' && row.status != 'rejected'"
-            type="success"
-            icon="fa-regular fa-octagon-check"
-            v-tooltip="'Утвердить'"
-            @click="onApproved(row.id)"
-          />
-          <ButtonUI
-            v-if="row.status != 'pending'"
-            type="warn"
-            icon="fa-regular fa-clock"
-            v-tooltip="'На рассмотрении'"
-            @click="onStatus(row.id, 'pending')"
-          />
-          <ButtonUI
-            v-if="row.status != 'rejected'"
-            type="destructive"
-            icon="fa-regular fa-octagon-minus"
-            v-tooltip="'Отклонить'"
-            @click="onStatus(row.id, 'rejected')"
+          <VacationItem
+            :item="item"
+            :is-admin="vacationStore.target == 'all'"
           />
         </template>
-
+        <template v-else-if="!vacationStore.isLoading">
+          <tr>
+            <td class="vacation-item__empty">
+              <span>Заявки не найдены</span>
+            </td>
+          </tr>
+        </template>
         <template v-else>
-          <ButtonUI
-            v-if="row.status != 'approved'"
-            type="destructive"
-            icon="fa-regular fa-trash-can-xmark"
-            v-tooltip="'Удалить отпуск'"
-            @click="
-              confirmModalStore.open(
-                () => onDeleted(row.id),
-                'Вы действительно хотите удалить?'
-              )
-            "
-          />
+          <tr>
+            <td class="vacation-item__empty">
+              <LoaderTitle />
+            </td>
+          </tr>
         </template>
-
-        <ButtonUI
-          icon="fa-regular fa-file-word"
-          type="success"
-          v-tooltip="'Получить шаблон заявления'"
-          @click="vacationDocs.getDocument(row.id)"
-        />
-
-        <template v-if="row.docFileName">
-          <ButtonUI
-            type="muted-accent"
-            icon="fa-regular fa-file-export"
-            v-tooltip="'Получить прикрепленный файл'"
-            @click="onDownloadFile(row.docFileName)"
-          />
-          <ButtonUI
-            v-if="userStore.hasPermission('vacation', 'file_delete')"
-            icon="fa-regular fa-file-circle-xmark"
-            type="destructive"
-            v-tooltip="'Удалить прикрепленный файл'"
-            @click="onDeleteFile(row.docFileName, row.id)"
-          />
-        </template>
-
-        <template v-else>
-          <div
-            class="file-upload"
-            v-if="userStore.hasPermission('vacation', 'edit')"
-          >
-            <ButtonUI
-              icon="fa-regular fa-file-import"
-              type="success"
-              v-tooltip="'Прикрепить файл'"
-              @click="triggerFileInput(row.id)"
-            />
-            <input
-              :ref="
-                (el) => {
-                  if (el) fileInputs[row.id] = el
-                }
-              "
-              type="file"
-              name="file"
-              style="display: none"
-              @change="onFileSelected($event, row.id)"
-            />
-          </div>
-        </template>
-      </div>
-    </template>
-  </AppTable>
+      </tbody>
+    </table>
+  </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import AppTable from '@/components/AppTable.vue'
-import Badge from '@/components/Badge.vue'
-import ButtonUI from '@/components/ButtonUI.vue'
-import {
-  approvedVacationStatus,
-  deleteVacation,
-  updateVacationStatus,
-} from '@/services/vacation.api'
-import { useConfirmModal } from '@/stores/confirmModal'
-import { useNotificationStore } from '@/stores/notification'
-import { useUserStore } from '@/stores/user'
 import { useVacationStore } from '@/stores/vacation'
-import { useVacationDocs } from '@/stores/vacationDocs'
-import { getDateNamed } from '@/utils/calendar.utils'
-import { parseDate } from '@/utils/date.utils'
-import { formatStats } from '@/utils/vacation.utils'
+import VacationItem from './VacationItem.vue'
+import Tabs from '@/components/Tabs.vue'
+import SelectUI from '@/components/SelectUI.vue'
+import { useUserStore } from '@/stores/user.js'
+import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import { useThemeStore } from '@/stores/themes.js'
+import { storeToRefs } from 'pinia'
 
-const props = defineProps({
-  items: { type: Array },
-  isAdmin: { type: Boolean, default: false },
-  isLoading: { type: Boolean, default: false },
-})
-
-const userStore = useUserStore()
-const confirmModalStore = useConfirmModal()
-const notificationStore = useNotificationStore()
 const vacationStore = useVacationStore()
-const vacationDocs = useVacationDocs()
+const userStore = useUserStore()
+const { isMobile } = storeToRefs(useThemeStore())
 
-const fileInputs = ref({})
+const targets = [
+  { id: 'my', label: 'Мои заявки' },
+  { id: 'all', label: 'Все заявки' },
+]
 
-const rows = computed(() => props.items ?? [])
+const filters = [
+  { id: 'all', label: 'Все' },
+  { id: 'approved', label: 'Утвержденные' },
+  { id: 'pending', label: 'На рассмотрении' },
+  { id: 'rejected', label: 'Отклоненные' },
+]
 
-const headers = computed(() => {
-  const cols = []
-  if (props.isAdmin) {
-    cols.push({ valueKey: 'user', title: 'Сотрудник' })
-  }
-  cols.push(
-    { valueKey: 'status', title: 'Статус' },
-    { valueKey: 'date_start', title: 'Дата начала' },
-    { valueKey: 'date_end', title: 'Дата конца' },
-    { valueKey: 'totalDays', title: 'Дней', format: formatStats },
-    { valueKey: 'description', title: 'Комментарий' },
-    { valueKey: 'createdAt', title: 'Создано' }
-  )
-  return cols
-})
-
-function getUser(userId) {
-  return userStore.usersAll?.find((u) => u.id == userId) ?? null
-}
-
-function getStatus(status) {
-  if (status === 'approved') return { text: 'Утверждена', type: 'success' }
-  if (status === 'pending') return { text: 'На рассмотрении', type: 'warn' }
-  return { text: 'Отклонена', type: 'destruct' }
-}
-
-function triggerFileInput(id) {
-  fileInputs.value[id]?.click()
-}
-
-async function onApproved(id) {
-  const resp = await approvedVacationStatus(id)
-  notificationStore.addNotification(resp.message, 'success')
-  await vacationStore.fetchVacations()
-}
-
-async function onDeleted(id) {
-  const resp = await deleteVacation(id)
-  notificationStore.addNotification(resp.message, 'success')
-  await vacationStore.fetchVacations()
-}
-
-async function onStatus(id, status) {
-  const resp = await updateVacationStatus(id, status)
-  notificationStore.addNotification(resp.message, 'success')
-  await vacationStore.fetchVacations()
-}
-
-async function onFileSelected(event, id) {
-  const file = event.target.files[0]
-  if (!file) return
-
-  if (file.size > 10 * 1024 * 1024) {
-    notificationStore.addNotification(
-      'Файл слишком большой. Максимальный размер: 10MB',
-      'error'
-    )
-    event.target.value = ''
-    return
-  }
-
-  if (!file.name.toLowerCase().endsWith('.pdf')) {
-    notificationStore.addNotification(
-      'Недопустимый тип файла. Разрешены: PDF',
-      'error'
-    )
-    event.target.value = ''
-    return
-  }
-
-  const result = await vacationDocs.uploadFile(id, file)
-  if (result.success) {
-    notificationStore.addNotification(result.data.message, 'success')
-    await vacationStore.fetchVacations()
-  } else {
-    notificationStore.addNotification(
-      result.error || 'Ошибка при загрузке файла',
-      'error'
-    )
-  }
-  event.target.value = ''
-}
-
-async function onDownloadFile(fileName) {
-  const result = await vacationDocs.downloadFile(fileName)
-  if (result.success) {
-    notificationStore.addNotification(
-      result.message || 'Файл успешно скачан',
-      'success'
-    )
-  } else {
-    notificationStore.addNotification(
-      result.error || 'Ошибка при скачивании файла',
-      'error'
-    )
-  }
-}
-
-async function onDeleteFile(fileName, vacationId) {
-  confirmModalStore.open(async () => {
-    const result = await vacationDocs.deleteFile(fileName, vacationId)
-    if (result.success) {
-      notificationStore.addNotification(result.data.message, 'success')
-      await vacationStore.fetchVacations()
-    } else {
-      notificationStore.addNotification(
-        result.error || 'Ошибка при удалении файла',
-        'error'
-      )
-    }
-  }, 'Вы действительно хотите удалить файл?')
-}
+const years = [
+  vacationStore.selectedYear - 1,
+  vacationStore.selectedYear,
+  vacationStore.selectedYear + 1,
+]
 </script>
 
 <style scoped>
-.actions {
+.vacation-list {
+  flex: 1;
+
   display: flex;
-  /* flex-wrap: wrap; */
-  gap: 0.35rem;
+  flex-direction: column;
+
+  background: var(--foreground);
+  border-radius: var(--border-radius);
+  border: 0.07rem solid var(--border-color);
+
+  padding: var(--padding-secondary);
+
+  height: 100%;
+}
+
+.vacation-list__controls {
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 0.07rem solid var(--border-color);
+}
+
+.vacation-list__items {
+  border-collapse: collapse;
+}
+
+.vacation-item__empty {
+  padding: var(--padding-secondary);
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--muted-text);
+}
+
+@media (max-width: 768px) {
+  .vacation-list {
+  }
+
+  .vacation-list__controls {
+    flex-wrap: wrap;
+    padding-bottom: var(--gap-primary);
+    gap: var(--gap-primary);
+  }
+
+  .vacation-list__items {
+  }
+
+  .vacation-item__empty {
+  }
 }
 </style>

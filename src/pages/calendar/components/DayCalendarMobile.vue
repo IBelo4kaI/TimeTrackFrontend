@@ -13,6 +13,9 @@
     <span class="day-number">
       {{ dayDate.getDate() }}
     </span>
+    <span class="day-hours" v-if="day.hours > 0">
+      {{ day.hours }}
+    </span>
   </div>
 </template>
 
@@ -66,11 +69,11 @@ onMounted(() => {
     const uColor = dayTypesStore.getColorById(day.userTimeTypeId)
     const cColor = dayTypesStore.getColorById(day.calendarEventTypeId)
 
-    dayElement.value.style.setProperty('--border-color', cColor)
-    dayElement.value.style.setProperty('--background-number', uColor)
+    dayElement.value.style.setProperty('--border-color', uColor)
+    dayElement.value.style.setProperty('--background-number', cColor)
     dayElement.value.style.setProperty(
       '--text-number',
-      getContrastColor(uColor)
+      getContrastColor(cColor)
     )
   } else if (day.userTimeTypeId) {
     const color = dayTypesStore.getColorById(day.userTimeTypeId)
@@ -89,6 +92,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
   min-height: 2rem;
   min-width: 2rem;
   padding: 0.5rem;

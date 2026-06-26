@@ -10,6 +10,7 @@
         'select-trigger--open': isOpen,
         'select-trigger--disabled': disabled,
         'select-trigger--error': error,
+        [`select-trigger--${variant}`]: true,
       }"
       @click="toggleDropdown"
       tabindex="0"
@@ -22,6 +23,7 @@
       <span
         class="select-value"
         :class="{ 'select-placeholder': !selectedOption }"
+        :style="{ textAlign: align }"
       >
         {{ displayValue }}
       </span>
@@ -125,6 +127,15 @@ const props = defineProps({
     type: Array,
     required: true,
     default: () => [],
+  },
+  variant: {
+    type: String,
+    default: 'default',
+    validator: (value) => ['default', 'line', ''].includes(value),
+  },
+  align: {
+    type: String,
+    default: 'left',
   },
   placeholder: {
     type: String,
@@ -271,7 +282,7 @@ onUnmounted(() => {
 <style scoped>
 .custom-select {
   position: relative;
-  min-width: 120px;
+  /* min-width: 120px; */
   max-width: 100%; /* не выходить за родителя */
   display: inline-block;
 }
@@ -431,5 +442,31 @@ onUnmounted(() => {
   flex-direction: column;
   top: -9999px;
   left: -9999px;
+}
+
+/* variant: line */
+.select-trigger--line {
+  background-color: transparent;
+  border: none;
+  /* border-bottom: 0.07rem solid var(--border-color); */
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.select-trigger--line:hover:not(.select-trigger--disabled) {
+  border-bottom: 0.07rem solid var(--accent);
+}
+
+.select-trigger--line:focus {
+  border-bottom: 0.07rem solid var(--accent);
+}
+
+.select-trigger--line.select-trigger--open {
+  border-bottom: 0.07rem solid var(--accent);
+}
+
+.select-trigger--line.select-trigger--error {
+  border-bottom: 0.07rem solid var(--destructive);
 }
 </style>

@@ -1,30 +1,10 @@
 <template>
   <div class="container">
     <VacationStats v-if="vacationStore.target !== 'all'" />
-    <div class="vacation-list-header">
-      <div class="vacation-list-title">Заявки на отпуск</div>
-      <div class="vacation-list-filter">
-        <template v-if="userStore.hasPermission('vacation.all', 'read')">
-          <Tabs :tabs="targets" v-model="vacationStore.target" type="accent" />
-        </template>
-        <Tabs :tabs="filters" v-model="vacationStore.filter" type="accent" />
-      </div>
-      <div class="vacation-list-year">
-        <SelectUI :options="years" v-model="vacationStore.selectedYear" />
-      </div>
-      <div class="vacation-list-new">
-        <ButtonUI
-          @click="addVacationModalStore.open(vacationStore.target == 'all')"
-        >
-          Создать заявку
-        </ButtonUI>
-      </div>
+    <div class="container-row">
+      <VacationList />
+      <VacationCreate />
     </div>
-    <VacationList
-      :items="vacationStore.filterVacations"
-      :is-admin="vacationStore.target == 'all'"
-      :is-loading="vacationStore.isLoading"
-    />
     <VacationOther />
   </div>
 </template>
@@ -41,6 +21,7 @@ import { onMounted } from 'vue'
 import VacationList from './components/VacationList.vue'
 import VacationOther from './components/VacationOther/VacationOther.vue'
 import VacationStats from './components/VacationStats.vue'
+import VacationCreate from './components/VacationCreate.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Отпуска', 'Управление отпусками')
@@ -81,44 +62,19 @@ onMounted(async () => {
   gap: calc(var(--padding-secondary) / 2);
   height: 100%;
 }
-.vacation-action {
-  display: flex;
-  gap: 0.71rem;
-  justify-content: space-between;
-}
-.vacation-stats {
+
+.container-row {
   display: flex;
   gap: calc(var(--padding-secondary) / 2);
-  justify-content: space-between;
-}
-.vacation-list-header {
-  display: flex;
-  justify-content: space-between;
-  gap: calc(var(--padding-secondary) / 2);
-  align-items: center;
-  height: 3rem;
-}
-.vacation-list-title {
-  display: flex;
-  align-items: center;
-  height: 3rem;
-  padding: 0 0.75rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  background: var(--foreground);
-  border-radius: var(--border-radius);
-  border: 0.07rem solid var(--border-color);
-}
-.vacation-list-filter {
-  flex: 1;
-  display: flex;
-  gap: calc(var(--padding-secondary) / 2);
-}
-.vacation-list-year {
+  align-items: flex-start;
 }
 
-.vacation-list-items {
-  display: flex;
-  gap: calc(var(--padding-secondary) / 2);
+@media (max-width: 768px) {
+  .container {
+  }
+
+  .container-row {
+    flex-wrap: wrap;
+  }
 }
 </style>

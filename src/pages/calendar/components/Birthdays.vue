@@ -1,6 +1,5 @@
 <template>
   <div class="birthdays">
-    <div class="birthdays__title">Дни рождения</div>
     <div
       class="birthday__item"
       v-if="birthdays.length > 0"

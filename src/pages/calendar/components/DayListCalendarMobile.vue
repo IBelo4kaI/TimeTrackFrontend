@@ -245,7 +245,6 @@ onUnmounted(() => {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: 1fr;
   gap: calc(var(--padding-secondary) / 2);
   height: 100%;
 }
