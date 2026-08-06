@@ -55,9 +55,7 @@
       <div class="header-theme">
         <ToggleTheme />
       </div>
-      <div class="header-notify">
-        <!-- <Notification></Notification> -->
-      </div>
+      <div class="header-notify"></div>
       <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
     </div>
 

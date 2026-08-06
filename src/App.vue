@@ -5,12 +5,6 @@
       <RouterView></RouterView>
     </MainLayout>
     <NotificationContainer />
-    <!-- <template v-else>
-      <MobileLayout>
-        <RouterView></RouterView>
-      </MobileLayout>
-      <NotificationContainer />
-    </template> -->
     <Modal />
   </template>
 </template>
