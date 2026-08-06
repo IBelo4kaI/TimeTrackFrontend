@@ -10,18 +10,15 @@
 </template>
 
 <script setup>
-import ButtonUI from '@/components/ButtonUI.vue'
-import SelectUI from '@/components/SelectUI.vue'
-import Tabs from '@/components/Tabs.vue'
 import { useAddVacationModalStore } from '@/stores/addVacationModal'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
 import { useVacationStore } from '@/stores/vacation'
 import { onMounted } from 'vue'
+import VacationCreate from './components/VacationCreate.vue'
 import VacationList from './components/VacationList.vue'
 import VacationOther from './components/VacationOther/VacationOther.vue'
 import VacationStats from './components/VacationStats.vue'
-import VacationCreate from './components/VacationCreate.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Отпуска', 'Управление отпусками')

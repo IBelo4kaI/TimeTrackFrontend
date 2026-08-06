@@ -135,13 +135,13 @@
 <script setup>
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
+import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import {
   approvedVacationStatus,
   deleteVacation,
   updateVacationStatus,
   uploadVacationFile,
 } from '@/services/vacation.api'
-import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'

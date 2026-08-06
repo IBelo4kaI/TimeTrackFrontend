@@ -59,14 +59,14 @@
 </template>
 
 <script setup>
-import { useVacationStore } from '@/stores/vacation'
-import VacationItem from './VacationItem.vue'
-import Tabs from '@/components/Tabs.vue'
-import SelectUI from '@/components/SelectUI.vue'
-import { useUserStore } from '@/stores/user.js'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import SelectUI from '@/components/SelectUI.vue'
+import Tabs from '@/components/Tabs.vue'
 import { useThemeStore } from '@/stores/themes.js'
+import { useUserStore } from '@/stores/user.js'
+import { useVacationStore } from '@/stores/vacation'
 import { storeToRefs } from 'pinia'
+import VacationItem from './VacationItem.vue'
 
 const vacationStore = useVacationStore()
 const userStore = useUserStore()
