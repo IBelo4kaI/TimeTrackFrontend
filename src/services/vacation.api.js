@@ -21,31 +21,6 @@ export const uploadVacationFile = async (vacationId, file) => {
   }
 }
 
-export const downloadVacationFile = async (fileName) => {
-  try {
-    const response = await timeTrackApi.get(`/vacation/file`, {
-      params: { fileName },
-      responseType: 'blob',
-    })
-    return response.data
-  } catch (error) {
-    console.error('Ошибка при получении файла отпуска:', error)
-    throw error
-  }
-}
-
-export const deleteVacationFile = async (fileName, vacationId) => {
-  try {
-    const response = await timeTrackApi.delete(`/vacation/file`, {
-      params: { fileName, vacationId },
-    })
-    return response.data
-  } catch (error) {
-    console.error('Ошибка при удалении файла отпуска:', error)
-    throw error
-  }
-}
-
 export const getVacationStats = async (year, userId) => {
   try {
     const response = await timeTrackApi.get(`/vacation/stats/${userId}/${year}`)

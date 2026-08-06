@@ -90,9 +90,9 @@
           Получить шаблон заявления
         </ButtonUI>
 
-        <template v-if="item.docFileName">
+        <template v-if="files.length">
           <ButtonUI
-            @click="onDownloadFile(item.docFileName)"
+            @click="onDownloadFile(files[0])"
             type="muted-accent"
             icon="fa-regular fa-file-export"
             v-tooltip="'Получить прикрепленный файл'"
@@ -100,8 +100,8 @@
             Получить прикрепленный файл
           </ButtonUI>
           <ButtonUI
-            v-if="userStore.hasPermission('vacation', 'file_delete')"
-            @click="onDeleteFile(item.docFileName, item.id)"
+            v-if="userStore.hasPermission('files', 'delete')"
+            @click="onDeleteFile(files[0])"
             icon="fa-regular fa-file-circle-xmark"
             type="destructive"
             v-tooltip="'Удалить прикрепленный файл'"
@@ -139,7 +139,9 @@ import {
   approvedVacationStatus,
   deleteVacation,
   updateVacationStatus,
+  uploadVacationFile,
 } from '@/services/vacation.api'
+import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
@@ -147,7 +149,7 @@ import { useVacationStore } from '@/stores/vacation'
 import { useVacationDocs } from '@/stores/vacationDocs'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
-import { computed, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 
 const userStore = useUserStore()
 const confirmModalStore = useConfirmModal()
@@ -156,6 +158,19 @@ const vacationStore = useVacationStore()
 const vacationDocs = useVacationDocs()
 const { item, isAdmin } = defineProps(['item', 'isAdmin'])
 const isExtraVisible = shallowRef(false)
+
+// Прикрепленные файлы отпуска (через общий файловый API)
+const files = ref([])
+
+const loadFiles = async () => {
+  try {
+    files.value = (await getEntityFiles('vacation', item.id)) ?? []
+  } catch {
+    files.value = []
+  }
+}
+
+watch(() => item.id, loadFiles, { immediate: true })
 
 const user = computed(() => {
   if (isAdmin && userStore.usersAll)
@@ -212,47 +227,41 @@ const onFileSelected = async (event) => {
     return
   }
 
-  const result = await vacationDocs.uploadFile(item.id, file)
-  if (result.success) {
-    notificationStore.addNotification(result.data.message, 'success')
-    await vacationStore.fetchVacations()
-  } else {
-    notificationStore.addNotification(
-      result.error || 'Ошибка при загрузке файла',
-      'error'
-    )
+  try {
+    await uploadVacationFile(item.id, file)
+    notificationStore.addNotification('Файл прикреплён', 'success')
+    await loadFiles()
+  } catch {
+    notificationStore.addNotification('Ошибка при загрузке файла', 'error')
   }
 
   // Сброс input для возможности повторной загрузки того же файла
   event.target.value = ''
 }
 
-const onDownloadFile = async (fileName) => {
-  const result = await vacationDocs.downloadFile(fileName)
-  if (result.success) {
-    notificationStore.addNotification(
-      result.message || 'Файл успешно скачан',
-      'success'
-    )
-  } else {
-    notificationStore.addNotification(
-      result.error || 'Ошибка при скачивании файла',
-      'error'
-    )
+const onDownloadFile = async (file) => {
+  try {
+    const blob = await openFile(file.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file.originalName
+    a.click()
+    URL.revokeObjectURL(url)
+    notificationStore.addNotification('Файл скачан', 'success')
+  } catch {
+    notificationStore.addNotification('Ошибка при скачивании файла', 'error')
   }
 }
 
-const onDeleteFile = async (fileName, vacationId) => {
+const onDeleteFile = async (file) => {
   confirmModalStore.open(async () => {
-    const result = await vacationDocs.deleteFile(fileName, vacationId)
-    if (result.success) {
-      notificationStore.addNotification(result.data.message, 'success')
-      await vacationStore.fetchVacations()
-    } else {
-      notificationStore.addNotification(
-        result.error || 'Ошибка при удалении файла',
-        'error'
-      )
+    try {
+      await deleteFile(file.id)
+      notificationStore.addNotification('Файл удалён', 'success')
+      await loadFiles()
+    } catch {
+      notificationStore.addNotification('Ошибка при удалении файла', 'error')
     }
   }, 'Вы действительно хотите удалить файл?')
 }

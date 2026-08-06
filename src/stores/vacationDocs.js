@@ -4,11 +4,6 @@ import { useVacationStore } from './vacation'
 import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
 import { buildDocumentHeader } from '@/utils/vacation-docs.utils'
-import {
-  uploadVacationFile,
-  downloadVacationFile,
-  deleteVacationFile,
-} from '@/services/vacation.api'
 
 export const useVacationDocs = defineStore('vacation-docs', () => {
   const TEMPLATE_PATH = '/vacation.docx'
@@ -42,58 +37,6 @@ export const useVacationDocs = defineStore('vacation-docs', () => {
 
     // 4. Загружаем шаблон, подставляем, скачиваем
     await fillAndDownload(data, `Заявление — ${employee.full_name}.docx`)
-  }
-
-  // ─── Функции для работы с файлами отпуска ───────────────────────────────
-
-  const uploadFile = async (vacationId, file) => {
-    try {
-      const response = await uploadVacationFile(vacationId, file)
-      // Обновляем информацию о файле в отпуске
-      const vacation = vacationStore.vacations.find((v) => v.id === vacationId)
-      if (vacation) {
-        vacation.doc_file_name = response.fileName
-      }
-      return { success: true, data: response }
-    } catch (error) {
-      console.error('Ошибка при загрузке файла:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Ошибка при загрузке файла',
-      }
-    }
-  }
-
-  const downloadFile = async (fileName) => {
-    try {
-      const blob = await downloadVacationFile(fileName)
-      downloadBlob(blob, fileName)
-      return { success: true, message: 'Файл успешно скачан' }
-    } catch (error) {
-      console.error('Ошибка при скачивании файла:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Ошибка при скачивании файла',
-      }
-    }
-  }
-
-  const deleteFile = async (fileName, vacationId) => {
-    try {
-      const response = await deleteVacationFile(fileName, vacationId)
-      // Очищаем информацию о файле в отпуске
-      const vacation = vacationStore.vacations.find((v) => v.id === vacationId)
-      if (vacation) {
-        vacation.doc_file_name = null
-      }
-      return { success: true, data: response }
-    } catch (error) {
-      console.error('Ошибка при удалении файла:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Ошибка при удалении файла',
-      }
-    }
   }
 
   // ─── Утилиты ─────────────────────────────────────────────────────────────
@@ -146,8 +89,5 @@ export const useVacationDocs = defineStore('vacation-docs', () => {
 
   return {
     getDocument,
-    uploadFile,
-    downloadFile,
-    deleteFile,
   }
 })

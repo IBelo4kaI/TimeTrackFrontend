@@ -91,13 +91,6 @@ import { useNotificationStore } from '@/stores/notification'
 import { createVacation } from '@/services/vacation.api'
 import { existsFreeVacation, startDateBeforeEnd } from '@/utils/modal.utils'
 
-// const props = defineProps({
-//   isAdmin: {
-//     type: Boolean,
-//     default: false,
-//   },
-// })
-
 const emit = defineEmits(['success'])
 
 const userStore = useUserStore()
