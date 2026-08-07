@@ -31,7 +31,7 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSickLeaveStore } from '@/stores/sick_leave'
 import { useUserStore } from '@/stores/user'
 import { onMounted } from 'vue'
-import SickLeaveList from './components/SickLeaveList.vue'
+import SickLeaveList from '@/components/SickLeave/SickLeaveList.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Больничные', 'Управление больничными листами')

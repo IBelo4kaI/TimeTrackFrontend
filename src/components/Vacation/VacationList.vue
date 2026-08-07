@@ -79,9 +79,33 @@ const targets = [
 
 const filters = [
   { id: 'all', label: 'Все' },
-  { id: 'approved', label: 'Утвержденные' },
-  { id: 'pending', label: 'На рассмотрении' },
-  { id: 'rejected', label: 'Отклоненные' },
+  {
+    id: 'approved',
+    label: 'Утвержденные',
+    colors: {
+      text: 'var(--success)',
+      activeText: 'var(--success)',
+      activeBackground: 'var(--muted-success)',
+    },
+  },
+  {
+    id: 'pending',
+    label: 'На рассмотрении',
+    colors: {
+      text: 'var(--warn)',
+      activeText: 'var(--warn)',
+      activeBackground: 'var(--muted-warn)',
+    },
+  },
+  {
+    id: 'rejected',
+    label: 'Отклоненные',
+    colors: {
+      text: 'var(--destructive)',
+      activeText: 'var(--destructive)',
+      activeBackground: 'var(--muted-destructive)',
+    },
+  },
 ]
 
 const years = [
@@ -110,6 +134,7 @@ const years = [
 .vacation-list__controls {
   display: flex;
   align-items: flex-end;
+  gap: 2rem;
   border-bottom: 0.07rem solid var(--border-color);
 }
 

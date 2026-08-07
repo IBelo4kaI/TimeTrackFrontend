@@ -81,7 +81,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       isLoading.value = false
       return
     }
-    console.log(currentMonth.value, currentYear.value)
 
     const result = await getCalendarDays(
       currentMonth.value,
@@ -89,13 +88,11 @@ export const useCalendarStore = defineStore('calendar', () => {
       selectedUserId.value
     )
     data.value = result.days
-
+    console.log(data.value, prevMonthDays.value, nextMonthDays.value)
     prevMonthDays.value = generatePrevMonthDays(firstDateOfMonth.value)
     nextMonthDays.value = generateNextMonthDays(lastDateOfMonth.value)
 
     await fetchStatistics()
-
-    console.log(data.value, prevMonthDays.value, nextMonthDays.value)
 
     isLoading.value = false
   }

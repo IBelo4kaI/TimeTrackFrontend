@@ -66,8 +66,8 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useReportStore } from '@/stores/report'
 import { useUserStore } from '@/stores/user'
 import { computed, onMounted, ref, watch } from 'vue'
-import CardStatistic from './components/CardStatistic.vue'
-import ReportTable from './components/ReportTable.vue'
+import CardStatistic from '@/components/Report/CardStatistic.vue'
+import ReportTable from '@/components/Report/ReportTable.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Табель', 'Детальный учёт времени')

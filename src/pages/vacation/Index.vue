@@ -14,10 +14,10 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSubmenuStore } from '@/stores/submenu'
 import { useVacationStore } from '@/stores/vacation'
 import { onMounted, onUnmounted } from 'vue'
-import VacationCreate from './components/VacationCreate.vue'
-import VacationList from './components/VacationList.vue'
-import VacationOther from './components/VacationOther/VacationOther.vue'
-import VacationStats from './components/VacationStats.vue'
+import VacationCreate from '@/components/Vacation/VacationCreate.vue'
+import VacationList from '@/components/Vacation/VacationList.vue'
+import VacationOther from '@/components/Vacation/VacationOther/VacationOther.vue'
+import VacationStats from '@/components/Vacation/VacationStats.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Отпуска', 'Управление отпусками')

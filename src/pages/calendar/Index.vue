@@ -41,10 +41,10 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import LegendCalendar from '../../components/Calendar/LegendCalendar.vue'
-import DayListCalendar from './components/DayListCalendar.vue'
-import DayListCalendarMobile from './components/DayListCalendarMobile.vue'
-import Birthdays from './components/Birthdays.vue'
+import LegendCalendar from '@/components/Calendar/LegendCalendar.vue'
+import DayListCalendar from '@/components/Calendar/DayListCalendar.vue'
+import DayListCalendarMobile from '@/components/Calendar/DayListCalendarMobile.vue'
+import Birthdays from '@/components/Calendar/Birthdays.vue'
 
 const isMobile = computed(() => window.innerWidth <= 768)
 

@@ -43,7 +43,7 @@
 import ButtonUI from '@/components/ButtonUI.vue'
 import CardStatistic from '@/components/CardStatistic.vue'
 import InputUi from '@/components/InputUi.vue'
-import CardWorker from './components/CardWorker.vue'
+import CardWorker from '@/components/Workers/CardWorker.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 
 const titleStore = useHeaderTitleStore()

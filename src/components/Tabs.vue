@@ -4,6 +4,7 @@
       v-for="tab in tabs"
       :key="tab.id"
       :class="['tabs-item', { 'tabs-active': activeTab === tab.id }]"
+      :style="getTabStyle(tab)"
       role="tab"
       :aria-selected="activeTab === tab.id"
       :tabindex="activeTab === tab.id ? 0 : -1"
@@ -22,20 +23,37 @@
 <script setup>
 import { ref, watch } from 'vue'
 
+/**
+ * @typedef {Object} TabColors
+ * @property {string} [activeBackground] - Цвет фона активного таба
+ * @property {string} [activeText] - Цвет текста активного таба
+ * @property {string} [text] - Цвет текста неактивного таба
+ * @property {string} [hoverBackground] - Цвет фона при наведении (неактивный таб)
+ */
+
+/**
+ * @typedef {Object} TabItem
+ * @property {string|number} id
+ * @property {string} label
+ * @property {string} [icon]
+ * @property {TabColors} [colors]
+ */
+
+const TAB_TYPES = [
+  'default',
+  'component',
+  'accent-no-background',
+  'accent',
+  'line',
+]
+
 const props = defineProps({
   type: {
     type: String,
     default: 'default',
-    validator: (value) =>
-      [
-        'default',
-        'component',
-        'accent-no-background',
-        'accent',
-        'line',
-      ].includes(value),
   },
 
+  /** @type {import('vue').PropType<TabItem[]>} */
   tabs: {
     type: Array,
     required: true,
@@ -51,7 +69,7 @@ const emit = defineEmits(['update:modelValue', 'tab-change'])
 const modelValue = defineModel()
 
 const activeTab = ref(
-  modelValue || (props.tabs.length > 0 ? props.tabs[0].id : '')
+  modelValue.value ?? (props.tabs.length > 0 ? props.tabs[0].id : '')
 )
 
 const handleTabClick = (tabId) => {
@@ -70,14 +88,29 @@ const handleArrowKey = (direction) => {
   handleTabClick(props.tabs[nextIndex].id)
 }
 
-watch(
-  () => modelValue,
-  (newValue) => {
-    if (newValue && newValue !== activeTab.value) {
-      activeTab.value = newValue
-    }
+/**
+ * Формирует inline CSS-переменные для кастомных цветов конкретного таба
+ * @param {TabItem} tab
+ * @returns {Record<string, string>}
+ */
+const getTabStyle = (tab) => {
+  const c = tab.colors
+  if (!c) return {}
+
+  const style = {}
+  if (c.activeBackground) style['--tab-active-bg'] = c.activeBackground
+  if (c.activeText) style['--tab-active-text'] = c.activeText
+  if (c.text) style['--tab-text'] = c.text
+  if (c.hoverBackground) style['--tab-hover-bg'] = c.hoverBackground
+
+  return style
+}
+
+watch(modelValue, (newValue) => {
+  if (newValue != null && newValue !== activeTab.value) {
+    activeTab.value = newValue
   }
-)
+})
 </script>
 
 <style scoped>
@@ -93,6 +126,7 @@ watch(
   height: 100%;
   display: flex;
   align-items: center;
+  color: var(--tab-text, var(--muted-text));
 }
 
 /* default */
@@ -109,11 +143,10 @@ watch(
     background-color 0.2s ease,
     color 0.2s ease;
   font-weight: 600;
-  color: var(--muted-text);
 }
 
 .default .tabs-item:hover {
-  background: var(--muted-accent);
+  background: var(--tab-hover-bg, var(--muted-accent));
 }
 
 .default .tabs-item:focus-visible {
@@ -122,8 +155,8 @@ watch(
 }
 
 .default .tabs-active {
-  background: var(--muted-accent);
-  color: var(--accent);
+  background: var(--tab-active-bg, var(--muted-accent));
+  color: var(--tab-active-text, var(--accent));
 }
 
 .default .tabs-active:hover {
@@ -138,7 +171,6 @@ watch(
 .component .tabs-item {
   cursor: pointer;
   padding: calc(var(--padding-secondary) / 2);
-  color: var(--muted-text);
   font-weight: 600;
   transition:
     background-color 0.2s ease,
@@ -146,7 +178,7 @@ watch(
 }
 
 .component .tabs-item:hover:not(.tabs-active) {
-  background: var(--muted-accent);
+  background: var(--tab-hover-bg, var(--muted-accent));
 }
 
 .component .tabs-item:focus-visible {
@@ -155,8 +187,8 @@ watch(
 }
 
 .component .tabs-active {
-  background: var(--foreground);
-  color: var(--text);
+  background: var(--tab-active-bg, var(--foreground));
+  color: var(--tab-active-text, var(--text));
 }
 
 .component .tabs-active:hover {
@@ -172,7 +204,6 @@ watch(
 .accent-no-background .tabs-item {
   cursor: pointer;
   padding: calc(var(--padding-secondary) / 2);
-  color: var(--muted-text);
   font-weight: 600;
   transition:
     background-color 0.2s ease,
@@ -180,7 +211,7 @@ watch(
 }
 
 .accent-no-background .tabs-item:hover:not(.tabs-active) {
-  background: var(--muted-accent);
+  background: var(--tab-hover-bg, var(--muted-accent));
 }
 
 .accent-no-background .tabs-item:focus-visible {
@@ -189,8 +220,8 @@ watch(
 }
 
 .accent-no-background .tabs-active {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--tab-active-bg, var(--accent));
+  color: var(--tab-active-text, var(--on-accent));
 }
 
 .accent-no-background .tabs-active:hover {
@@ -207,7 +238,6 @@ watch(
 .accent .tabs-item {
   cursor: pointer;
   padding: calc(var(--padding-secondary) / 2);
-  color: var(--muted-text);
   font-weight: 600;
   transition:
     background-color 0.2s ease,
@@ -215,7 +245,7 @@ watch(
 }
 
 .accent .tabs-item:hover:not(.tabs-active) {
-  background: var(--muted-accent);
+  background: var(--tab-hover-bg, var(--muted-accent));
 }
 
 .accent .tabs-item:focus-visible {
@@ -224,8 +254,8 @@ watch(
 }
 
 .accent .tabs-active {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--tab-active-bg, var(--accent));
+  color: var(--tab-active-text, var(--on-accent));
 }
 
 .accent .tabs-active:hover {
@@ -241,7 +271,6 @@ watch(
 .line .tabs-item {
   cursor: pointer;
   padding: calc(var(--padding-secondary) / 2);
-  color: var(--muted-text);
   font-weight: 600;
   transition:
     background-color 0.2s ease,
@@ -249,11 +278,12 @@ watch(
 }
 
 .line .tabs-item:hover:not(.tabs-active) {
-  background: var(--muted-accent);
+  background: var(--tab-hover-bg, var(--muted-accent));
 }
 
 .line .tabs-active {
-  color: var(--text);
+  background: var(--tab-active-bg, none);
+  color: var(--tab-active-text, var(--text));
   border-bottom: 0.07rem solid var(--accent);
 }
 
