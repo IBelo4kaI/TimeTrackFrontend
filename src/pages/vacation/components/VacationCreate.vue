@@ -1,5 +1,6 @@
 <template>
   <div class="vacation-form">
+    <div class="vacation-form__title">Создание заявки</div>
     <template v-if="isAdmin">
       <div class="field-wrapper">
         <label class="field-label">
@@ -210,6 +211,11 @@ const handleSubmit = async () => {
 
   min-width: 20rem;
   max-width: 30rem;
+}
+
+.vacation-form__title {
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .field-wrapper {

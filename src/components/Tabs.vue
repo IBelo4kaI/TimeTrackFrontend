@@ -83,7 +83,7 @@ watch(
 <style scoped>
 .tabs-container {
   display: inline-flex;
-  gap: 0.1rem;
+  gap: 0.4rem;
   overflow: hidden;
   align-items: center;
   border-radius: var(--border-radius);
@@ -99,12 +99,11 @@ watch(
 .default {
   padding: calc(var(--padding-secondary) / 3);
   background: var(--foreground);
-  border: 0.07rem solid var(--border-color);
 }
 
 .default .tabs-item {
   cursor: pointer;
-  border-radius: calc(var(--border-radius) / 2);
+  border-radius: var(--border-radius);
   padding: calc(var(--padding-secondary) / 2);
   transition:
     background-color 0.2s ease,
@@ -113,7 +112,7 @@ watch(
   color: var(--muted-text);
 }
 
-.default .tabs-item:hover:not(.tabs-active) {
+.default .tabs-item:hover {
   background: var(--muted-accent);
 }
 
@@ -123,8 +122,8 @@ watch(
 }
 
 .default .tabs-active {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--muted-accent);
+  color: var(--accent);
 }
 
 .default .tabs-active:hover {

@@ -70,10 +70,12 @@ export const useVacationDocs = defineStore('vacation-docs', () => {
   function downloadBlob(blob, name) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = name
-    a.click()
-    URL.revokeObjectURL(url)
+    // a.href = url
+    // a.download = name
+    // a.click()
+    // URL.revokeObjectURL(url)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }
 
   function formatDate(dateStr) {

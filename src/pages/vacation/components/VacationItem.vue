@@ -243,14 +243,15 @@ const onDownloadFile = async (file) => {
   try {
     const blob = await openFile(file.id)
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.originalName
-    a.click()
-    URL.revokeObjectURL(url)
-    notificationStore.addNotification('Файл скачан', 'success')
+    // const a = document.createElement('a')
+    // a.href = url
+    // a.download = file.originalName
+    // a.click()
+    window.open(url, '_blank')
+
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
   } catch {
-    notificationStore.addNotification('Ошибка при скачивании файла', 'error')
+    notificationStore.addNotification('Ошибка при открытии файла', 'error')
   }
 }
 

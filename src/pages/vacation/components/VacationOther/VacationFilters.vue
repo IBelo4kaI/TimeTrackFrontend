@@ -5,6 +5,7 @@
     </div>
 
     <SelectUI
+      v-if="isReadAllDep"
       v-model="store.filters.department"
       @change="store.updateFilters({ department: store.filters.department })"
       :options="departmentOptions"
@@ -38,10 +39,13 @@ import ButtonUI from '@/components/ButtonUI.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
 import { MONTH_NAMES } from '@/constants/calendar.constants'
+import { useUserStore } from '@/stores/user'
 import { useVacationOther } from '@/stores/vacationOther'
 import { computed } from 'vue'
 
 const store = useVacationOther()
+const userStore = useUserStore()
+const isReadAllDep = userStore.hasPermission('vacation.all', 'read')
 
 const activeCount = computed(() => {
   return [

@@ -1,20 +1,19 @@
 <template>
   <div class="container">
     <VacationStats v-if="vacationStore.target !== 'all'" />
-    <div class="container-row">
+    <div class="container-row" v-if="submenuStore.activeTab == 'receipt'">
       <VacationList />
       <VacationCreate />
     </div>
-    <VacationOther />
+    <VacationOther v-else-if="submenuStore.activeTab == 'other'" />
   </div>
 </template>
 
 <script setup>
-import { useAddVacationModalStore } from '@/stores/addVacationModal'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
-import { useUserStore } from '@/stores/user'
+import { useSubmenuStore } from '@/stores/submenu'
 import { useVacationStore } from '@/stores/vacation'
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import VacationCreate from './components/VacationCreate.vue'
 import VacationList from './components/VacationList.vue'
 import VacationOther from './components/VacationOther/VacationOther.vue'
@@ -23,32 +22,20 @@ import VacationStats from './components/VacationStats.vue'
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Отпуска', 'Управление отпусками')
 
-const userStore = useUserStore()
-
-const addVacationModalStore = useAddVacationModalStore()
+const submenuStore = useSubmenuStore()
+submenuStore.setItems([
+  { id: 'receipt', label: 'Заявки' },
+  { id: 'other', label: 'Отпуска других сотрудников' },
+])
+submenuStore.setActiveTab('receipt')
 
 const vacationStore = useVacationStore()
 
-const years = [
-  vacationStore.selectedYear - 1,
-  vacationStore.selectedYear,
-  vacationStore.selectedYear + 1,
-]
-
-const targets = [
-  { id: 'my', label: 'Мои заявки' },
-  { id: 'all', label: 'Все заявки' },
-]
-
-const filters = [
-  { id: 'all', label: 'Все' },
-  { id: 'approved', label: 'Утвержденные' },
-  { id: 'pending', label: 'На рассмотрении' },
-  { id: 'rejected', label: 'Отклоненные' },
-]
-
 onMounted(async () => {
   await vacationStore.fetchVacations()
+})
+onUnmounted(() => {
+  submenuStore.reset()
 })
 </script>
 

@@ -45,6 +45,7 @@ document.addEventListener('keydown', closeKeyboard)
   bottom: 0;
   top: 0;
   animation: modalIn 0.5s;
+  z-index: 100;
 }
 .back {
   background: #9c9c9c50;
@@ -53,7 +54,7 @@ document.addEventListener('keydown', closeKeyboard)
   right: 0;
   bottom: 0;
   top: 0;
-  z-index: 100;
+  z-index: 99;
 }
 .close {
   cursor: pointer;

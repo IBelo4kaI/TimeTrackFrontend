@@ -63,14 +63,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
 import { useVacationOther } from '@/stores/vacationOther'
-import { diffDays, toDateStr } from './vacationUtils.js'
-import VacationHeader from './VacationHeader.vue'
-import VacationGroup from './VacationGroup.vue'
+import { computed, onMounted } from 'vue'
 import VacationEmployee from './VacationEmployee.vue'
-import VacationYearView from './VacationYearView.vue'
+import VacationGroup from './VacationGroup.vue'
+import VacationHeader from './VacationHeader.vue'
 import VacationMonthView from './VacationMonthView.vue'
+import { toDateStr } from './vacationUtils.js'
+import VacationYearView from './VacationYearView.vue'
 
 const store = useVacationOther()
 
