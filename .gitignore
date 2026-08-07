@@ -37,3 +37,6 @@ __screenshots__/
 
 #MacOS temps
 ._*
+
+cert.pem
+key.pem
