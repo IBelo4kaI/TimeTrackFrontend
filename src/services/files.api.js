@@ -1,12 +1,21 @@
 import { timeTrackApi } from './api'
 
 export const getEntityFiles = async (entityType, entityId) => {
-  const response = await timeTrackApi.get(`/files/entity/${entityType}/${entityId}`)
+  const response = await timeTrackApi.get(
+    `/files/entity/${entityType}/${entityId}`
+  )
+  return response.data
+}
+
+export const getEntityTypeFiles = async (entityType) => {
+  const response = await timeTrackApi.get(`/files/entity/${entityType}`)
   return response.data
 }
 
 export const openFile = async (id) => {
-  const response = await timeTrackApi.get(`/files/open/${id}`, { responseType: 'blob' })
+  const response = await timeTrackApi.get(`/files/open/${id}`, {
+    responseType: 'blob',
+  })
   return response.data
 }
 

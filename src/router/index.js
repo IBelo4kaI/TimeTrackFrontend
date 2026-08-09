@@ -27,7 +27,7 @@ export const routesNavigation = {
   vacation: {
     path: '/vacation',
     name: 'vacation',
-    component: () => import('@/pages/vacation/Index.vue'),
+    component: () => import('@/pages/vacation/Vacation.vue'),
     meta: {
       title: 'Отпуск',
       icon: 'fa-light fa-tree-palm',
@@ -43,6 +43,17 @@ export const routesNavigation = {
       title: 'Больничные',
       icon: 'fa-light fa-notes-medical',
       entity: 'sick_leaves',
+      action: 'read',
+    },
+  },
+  docs: {
+    path: '/docs',
+    name: 'docs',
+    component: () => import('@/pages/document/Document.vue'),
+    meta: {
+      title: 'Документы',
+      icon: 'fa-light fa-pages',
+      entity: 'docs',
       action: 'read',
     },
   },
@@ -78,6 +89,7 @@ router.addRoute(routesNavigation.calendar)
 router.addRoute(routesNavigation.report)
 router.addRoute(routesNavigation.vacation)
 router.addRoute(routesNavigation.sickLeave)
+router.addRoute(routesNavigation.docs)
 router.addRoute(routesNavigation.settings)
 
 // Не найденная страница
