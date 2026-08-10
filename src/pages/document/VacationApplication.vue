@@ -1,10 +1,10 @@
 <template>
   <div class="container">
     <div class="back-row">
-      <RouterLink :to="{ name: 'docs' }" class="back-link">
+      <button type="button" class="back-link" @click="goBack">
         <i class="fa-regular fa-arrow-left"></i>
-        К списку заявлений
-      </RouterLink>
+        Назад
+      </button>
     </div>
 
     <VacationApplicationInfo
@@ -22,7 +22,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getVacationById } from '@/services/vacation.api'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useNotificationStore } from '@/stores/notification'
@@ -31,7 +31,21 @@ import VacationApplicationFiles from '@/components/Document/VacationApplicationF
 import VacationApplicationInfo from '@/components/Document/VacationApplicationInfo.vue'
 
 const route = useRoute()
+const router = useRouter()
 const notificationStore = useNotificationStore()
+
+// «Назад» — на ту страницу, с которой реально пришли (список заявлений на
+// /docs, строка отпуска на /vacation, и т.д.), а не всегда на /docs.
+// window.history.state.back — это то, что Vue Router 4 сам пишет в History
+// State при каждом push внутри SPA; если его нет (открыли страницу по
+// прямой ссылке/обновили), откатываемся на список заявлений.
+function goBack() {
+  if (window.history.state?.back) {
+    router.back()
+  } else {
+    router.push({ name: 'docs' })
+  }
+}
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Заявление на отпуск', 'Информация по заявке')
@@ -84,9 +98,13 @@ onMounted(load)
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0;
   color: var(--muted-text);
-  text-decoration: none;
+  font: inherit;
   font-weight: 600;
+  cursor: pointer;
   transition: color 0.2s ease;
 }
 

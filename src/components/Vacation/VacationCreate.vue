@@ -40,6 +40,26 @@
     </template>
 
     <div class="field-wrapper">
+      <label class="field-label">
+        Тип отпуска
+        <span class="required">*</span>
+      </label>
+      <SelectUI
+        v-model="formData.vacationTypeId"
+        :options="vacationTypeOptions"
+        label-key="label"
+        value-key="value"
+        placeholder="Не выбрано"
+        :disabled="isLoading || vacationTypeOptions.length === 0"
+        :error="errors.vacationTypeId != null"
+        style="width: 100%"
+      />
+      <span v-if="errors.vacationTypeId" class="error-message">
+        {{ errors.vacationTypeId }}
+      </span>
+    </div>
+
+    <div class="field-wrapper">
       <InputUi
         v-model="formData.startDate"
         type="date"
@@ -82,7 +102,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref } from 'vue'
+import { reactive, computed, onMounted, ref } from 'vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
 import SelectUI from '@/components/SelectUI.vue'
@@ -90,6 +110,7 @@ import { useUserStore } from '@/stores/user'
 import { useVacationStore } from '@/stores/vacation'
 import { useNotificationStore } from '@/stores/notification'
 import { createVacation } from '@/services/vacation.api'
+import { getActiveVacationTypes } from '@/services/vacationTypes.api'
 import { existsFreeVacation, startDateBeforeEnd } from '@/utils/modal.utils'
 
 const emit = defineEmits(['success'])
@@ -103,6 +124,7 @@ const isAdmin = userStore.hasPermission('vacation.all', 'edit')
 const formData = reactive({
   userId: userStore.user.id,
   status: 'pending',
+  vacationTypeId: '',
   startDate: '',
   endDate: '',
   description: '',
@@ -110,8 +132,34 @@ const formData = reactive({
 
 const errors = reactive({
   userId: null,
+  vacationTypeId: null,
   startDate: null,
   endDate: null,
+})
+
+// --- типы отпусков ---
+
+const vacationTypes = ref([])
+
+const vacationTypeOptions = computed(() =>
+  vacationTypes.value.map((t) => ({ value: t.id, label: t.name }))
+)
+
+onMounted(async () => {
+  try {
+    vacationTypes.value = (await getActiveVacationTypes()) ?? []
+  } catch {
+    vacationTypes.value = []
+  }
+
+  // По умолчанию выбираем системный "основной оплачиваемый" тип, если он
+  // есть, иначе — первый в списке. Пользователь может сразу поменять.
+  if (!formData.vacationTypeId && vacationTypes.value.length > 0) {
+    const defaultType =
+      vacationTypes.value.find((t) => t.systemName === 'paid') ??
+      vacationTypes.value[0]
+    formData.vacationTypeId = defaultType.id
+  }
 })
 
 const isSubmitting = ref(false)
@@ -141,6 +189,13 @@ const validate = () => {
     valid = false
   } else {
     errors.userId = null
+  }
+
+  if (!formData.vacationTypeId) {
+    errors.vacationTypeId = 'Поле обязательно'
+    valid = false
+  } else {
+    errors.vacationTypeId = null
   }
 
   if (!formData.startDate) {
@@ -179,6 +234,7 @@ const handleSubmit = async () => {
     await createVacation({
       userId: formData.userId,
       status: formData.status,
+      vacationTypeId: formData.vacationTypeId,
       startDate: new Date(formData.startDate),
       endDate: new Date(formData.endDate),
       description: formData.description || undefined,

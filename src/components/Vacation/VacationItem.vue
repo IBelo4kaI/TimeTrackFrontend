@@ -1,8 +1,15 @@
 <template>
-  <tr class="vacation-item" @click="isExtraVisible = !isExtraVisible">
+  <tr class="vacation-item">
     <td>
       <div class="vacation-item__status">
         <Badge :type="statusC.type">{{ statusC.text }}</Badge>
+        <Badge
+          v-if="item.vacationTypeName"
+          type="muted"
+          :style="typeBadgeStyle"
+        >
+          {{ item.vacationTypeName }}
+        </Badge>
       </div>
     </td>
     <td style="width: 100%">
@@ -14,6 +21,9 @@
           {{ getDateNamed(parseDate(item.startDate)) }} -
           {{ getDateNamed(parseDate(item.endDate)) }}
           {{ parseDate(item.endDate).getFullYear() }}
+          <Badge type="muted" class="vacation-item__days">
+            {{ formatStats(item.totalDays) }}
+          </Badge>
         </div>
         <div class="vacation-item__desc">
           {{ item.description }}
@@ -28,9 +38,25 @@
         </span>
       </div>
     </td>
+    <td>
+      <div class="vacation-item__actions">
+        <ButtonUI
+          type="muted-accent"
+          icon="fa-regular fa-arrow-up-right-from-square"
+          v-tooltip="'Открыть заявку'"
+          @click="onOpen"
+        />
+        <ButtonUI
+          type="muted-accent"
+          icon="fa-regular fa-ellipsis"
+          v-tooltip="'Ещё'"
+          @click="isExtraVisible = !isExtraVisible"
+        />
+      </div>
+    </td>
   </tr>
   <tr class="vacation-item__extra" v-if="isExtraVisible">
-    <td colspan="3">
+    <td colspan="4">
       <div class="extra__container">
         <template
           v-if="isAdmin && userStore.hasPermission('vacation.all', 'edit')"
@@ -90,7 +116,7 @@
           Получить шаблон заявления
         </ButtonUI>
 
-        <template v-if="files.length">
+        <!-- <template v-if="files.length">
           <ButtonUI
             @click="onDownloadFile(files[0])"
             type="muted-accent"
@@ -108,9 +134,11 @@
           >
             Удалить прикрепленный файл
           </ButtonUI>
-        </template>
+        </template> -->
 
-        <template v-else-if="userStore.hasPermission('vacation', 'edit')">
+        <template
+          v-if="!files.length && userStore.hasPermission('vacation', 'edit')"
+        >
           <ButtonUI
             icon="fa-regular fa-file-import"
             type="success"
@@ -149,15 +177,22 @@ import { useVacationStore } from '@/stores/vacation'
 import { useVacationDocs } from '@/stores/vacationDocs'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
+import { formatStats } from '@/utils/vacation.utils'
 import { computed, ref, shallowRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
 const confirmModalStore = useConfirmModal()
 const notificationStore = useNotificationStore()
 const vacationStore = useVacationStore()
 const vacationDocs = useVacationDocs()
+const router = useRouter()
 const { item, isAdmin } = defineProps(['item', 'isAdmin'])
 const isExtraVisible = shallowRef(false)
+
+const onOpen = () => {
+  router.push({ name: 'vacation-application', params: { id: item.id } })
+}
 
 // Прикрепленные файлы отпуска (через общий файловый API)
 const files = ref([])
@@ -274,20 +309,48 @@ const statusC = computed(() =>
       ? { type: 'warn', text: 'На рассмотрении' }
       : { type: 'destruct', text: 'Отклонена' }
 )
+
+const typeBadgeStyle = computed(() => {
+  const color = item.vacationTypeColor
+  if (!color) return {}
+  return {
+    color,
+    borderColor: color,
+    background: 'transparent',
+  }
+})
 </script>
 
 <style scoped>
 .vacation-item {
-  cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .vacation-item__status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.vacation-item__actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
 }
 
 .vacation-item__dates {
   font-weight: 600;
   font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.vacation-item__days {
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .vacation-item__desc {
