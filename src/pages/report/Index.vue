@@ -70,7 +70,11 @@ titleStore.setTitle('Табель', 'Детальный учёт времени'
 const reportStore = useReportStore()
 const userStore = useUserStore()
 
-const canViewAll = computed(() => userStore.hasPermission('report.all', 'read'))
+// Бэк для статистики "по всем" (usertimeentries/statistics/:userId/...)
+// зарегистрирован под Entity: "calendar" (см. internal/user_time_entry/route.go
+// в timetrack), а не "report" — так что реально нужен calendar.all:read, а не
+// report.all:read (тот код существует в каталоге прав, но бэком не проверяется).
+const canViewAll = computed(() => userStore.hasPermission('calendar.all', 'read'))
 
 // --- All users table ---
 
@@ -83,7 +87,7 @@ const filteredRows = computed(() => {
   )
 })
 
-// --- Personal statistics (for users without report.all) ---
+// --- Personal statistics (for users without calendar.all) ---
 
 const workingProcess = computed(() =>
   percent(

@@ -6,7 +6,10 @@ import { computed, ref, shallowRef } from 'vue'
 
 export const useUserStore = defineStore('user', () => {
   const user = ref(null)
-  const permissions = ref(null)
+  // Пустой массив, а не null: hasPermission() ниже делает permissions.value.includes(...)
+  // без проверки на null — с null это упало бы, если что-то дёрнет hasPermission
+  // до того, как permissionsFetch() успеет отработать (например, роут-гард).
+  const permissions = ref([])
   const usersAll = ref([])
   const isLoading = shallowRef(false)
   const isLogin = shallowRef(false)

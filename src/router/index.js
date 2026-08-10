@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { watch } from 'vue'
+import { useNotificationStore } from '@/stores/notification'
 import { useSubmenuStore } from '@/stores/submenu'
+import { useUserStore } from '@/stores/user'
 
 export const routesNavigation = {
   calendar: {
@@ -65,7 +68,7 @@ export const routesNavigation = {
     meta: {
       title: 'Настройки',
       icon: 'fa-light fa-gear',
-      entity: 'setting',
+      entity: 'system_settings',
       action: 'read',
     },
   },
@@ -95,11 +98,15 @@ router.addRoute(routesNavigation.settings)
 
 // Страница отдельной заявки на отпуск — не пункт меню, открывается по клику
 // из списка заявлений (Document/VacationList.vue), поэтому не в routesNavigation.
+// entity/action здесь — только базовая проверка (есть ли вообще доступ к
+// отпускам); свой ли это конкретный отпуск или чужой — решает бэк (403,
+// см. VacationApplication.vue) — фронт заранее этого знать не может, не
+// сходив за данными.
 router.addRoute({
   path: '/docs/vacation/:id',
   name: 'vacation-application',
   component: () => import('@/pages/document/VacationApplication.vue'),
-  meta: { title: 'Заявление на отпуск' },
+  meta: { title: 'Заявление на отпуск', entity: 'vacation', action: 'read' },
 })
 
 // Не найденная страница
@@ -108,6 +115,52 @@ router.addRoute({
   // component: () => import('@/views/AboutView.vue'),
   meta: { title: '404' },
   redirect: { name: 'home' },
+})
+
+// Ждём, пока стор пользователя закончит начальную загрузку (initialFetch()
+// в App.vue) — до этого userStore.permissions ещё не заполнен, и проверка
+// ниже всегда бы отказывала. App.vue и так не рисует RouterView, пока
+// userStore.isLoading — это просто синхронизация роут-гарда с тем же
+// состоянием.
+function waitForUserReady(userStore) {
+  if (!userStore.isLoading) return Promise.resolve()
+  return new Promise((resolve) => {
+    const unwatch = watch(
+      () => userStore.isLoading,
+      (loading) => {
+        if (!loading) {
+          unwatch()
+          resolve()
+        }
+      }
+    )
+  })
+}
+
+// Проверка прав при переходе по ссылке/прямому URL — раньше это делал только
+// v-if в NavItem.vue (скрывал пункт в сайдбаре), но сам роут ничего не
+// проверял: скрытая из сайдбара страница (например /docs без docs:read)
+// всё равно открывалась по прямому переходу.
+router.beforeEach(async (to) => {
+  const { entity, action } = to.meta
+  if (!entity || !action) return true
+
+  const userStore = useUserStore()
+  await waitForUserReady(userStore)
+
+  if (!userStore.isLogin) return true // неавторизованных отдельно гейтит App.vue
+
+  if (!userStore.hasPermission(entity, action)) {
+    useNotificationStore().addNotification(
+      'Недостаточно прав для доступа к этому разделу',
+      'error'
+    )
+    // На calendar не редиректим саму себя — иначе при отсутствии даже
+    // calendar:read была бы бесконечная переадресация.
+    return to.name === 'calendar' ? true : { name: 'calendar' }
+  }
+
+  return true
 })
 
 // Глобальный хук для изменения title

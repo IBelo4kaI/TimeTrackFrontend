@@ -69,8 +69,17 @@ async function load() {
   isLoading.value = true
   try {
     vacation.value = await getVacationById(route.params.id)
-  } catch {
+  } catch (err) {
     vacation.value = null
+
+    // Бэк отдаёт 403, если заявка чужая и нет vacation.all:read. Тост про
+    // "Нет доступа к действию" уже показывает общий перехватчик в api.js —
+    // тут только уводим со сломанной пустой страницы.
+    if (err?.response?.status === 403) {
+      router.push({ name: 'docs' })
+      return
+    }
+
     notificationStore.addNotification(
       'Не удалось загрузить заявку на отпуск',
       'error'
