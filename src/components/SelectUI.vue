@@ -1,6 +1,7 @@
 <template>
   <div
     class="custom-select"
+    :class="[`custom-select--${variant}`]"
     ref="selectRef"
     :style="computedWidth ? { width: computedWidth + 'px' } : {}"
   >
@@ -452,6 +453,11 @@ onUnmounted(() => {
   border-radius: 0;
   padding-left: 0;
   padding-right: 0;
+}
+
+.custom-select--line .select-dropdown {
+  top: 100%;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
 
 .select-trigger--line:hover:not(.select-trigger--disabled) {
