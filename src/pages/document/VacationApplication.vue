@@ -53,12 +53,14 @@ titleStore.setTitle('Заявление на отпуск', 'Информаци�
 // Сброс вкладок при уходе со страницы делает router.beforeEach (router/index.js)
 // централизованно, до монтирования следующей страницы — здесь его дублировать
 // не нужно.
+// Начальная вкладка — из query (?tab=files), чтобы можно было вести сразу на
+// файлы (например, из таблицы документов); по умолчанию — «Информация».
 const submenuStore = useSubmenuStore()
 submenuStore.setItems([
   { id: 'info', label: 'Информация' },
   { id: 'files', label: 'Файлы' },
 ])
-submenuStore.setActiveTab('info')
+submenuStore.setActiveTab(route.query.tab === 'files' ? 'files' : 'info')
 
 const vacation = ref(null)
 const isLoading = ref(false)

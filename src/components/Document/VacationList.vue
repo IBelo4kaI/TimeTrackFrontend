@@ -17,7 +17,11 @@
     <template #cell-name="{ row }">
       <RouterLink
         class="file-link"
-        :to="{ name: 'vacation-application', params: { id: row.entityId } }"
+        :to="{
+          name: 'vacation-application',
+          params: { id: row.entityId },
+          query: { tab: 'files' },
+        }"
       >
         <i class="fa-regular fa-file-pdf"></i>
         {{ row.name }}
@@ -36,35 +40,33 @@
     </template>
 
     <template #actions="{ row }">
-      <ButtonUI
-        type="muted-accent"
-        icon="fa-regular fa-file-export"
-        @click="onOpen(row)"
-        v-tooltip="'Открыть файл'"
-      >
-        Открыть
-      </ButtonUI>
-      <ButtonUI
-        v-if="userStore.hasPermission('files', 'delete')"
-        type="destructive"
-        icon="fa-regular fa-trash-can-xmark"
-        @click="onDelete(row)"
-        v-tooltip="'Удалить файл'"
-      >
-        Удалить
-      </ButtonUI>
+      <div class="row-actions">
+        <ButtonUI
+          type="muted-accent"
+          icon="fa-regular fa-circle-info"
+          @click="onOpen(row)"
+          v-tooltip="'Информация о заявке'"
+        ></ButtonUI>
+        <ButtonUI
+          v-if="userStore.hasPermission('files', 'delete')"
+          type="destructive"
+          icon="fa-regular fa-trash-can-xmark"
+          @click="onDelete(row)"
+          v-tooltip="'Удалить файл'"
+        ></ButtonUI>
+      </div>
     </template>
   </AppTable>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import AppTable from '../AppTable.vue'
 import Badge from '../Badge.vue'
 import ButtonUI from '../ButtonUI.vue'
 import SelectUI from '../SelectUI.vue'
-import { deleteFile, getEntityTypeFiles, openFile } from '@/services/files.api'
+import { deleteFile, getEntityTypeFiles } from '@/services/files.api'
 import { getAllUserVacationsByYear } from '@/services/vacation.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
@@ -77,6 +79,7 @@ import { getVacationStatusMeta } from '@/utils/vacation.utils'
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
 const confirmModalStore = useConfirmModal()
+const router = useRouter()
 
 const selectedYear = ref(new Date().getFullYear())
 const years = computed(() => [
@@ -154,15 +157,11 @@ async function load() {
   }
 }
 
-async function onOpen(row) {
-  try {
-    const blob = await openFile(row.id)
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 10_000)
-  } catch {
-    notificationStore.addNotification('Ошибка при открытии файла', 'error')
-  }
+function onOpen(row) {
+  router.push({
+    name: 'vacation-application',
+    params: { id: row.entityId },
+  })
 }
 
 function onDelete(row) {
@@ -182,6 +181,11 @@ onMounted(load)
 </script>
 
 <style scoped>
+.row-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
 .file-link {
   display: inline-flex;
   align-items: center;
