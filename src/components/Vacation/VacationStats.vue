@@ -48,7 +48,7 @@
 
 <script setup>
 import { useVacationStore } from '@/stores/vacation'
-import CardStatistics from './StatisticsCard.vue'
+import CardStatistics from '../CardStatistics.vue'
 import NextVacationCard from './NextVacationCard.vue'
 
 const vacationStore = useVacationStore()

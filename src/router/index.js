@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useSubmenuStore } from '@/stores/submenu'
 
 export const routesNavigation = {
   calendar: {
@@ -92,6 +93,15 @@ router.addRoute(routesNavigation.sickLeave)
 router.addRoute(routesNavigation.docs)
 router.addRoute(routesNavigation.settings)
 
+// Страница отдельной заявки на отпуск — не пункт меню, открывается по клику
+// из списка заявлений (Document/VacationList.vue), поэтому не в routesNavigation.
+router.addRoute({
+  path: '/docs/vacation/:id',
+  name: 'vacation-application',
+  component: () => import('@/pages/document/VacationApplication.vue'),
+  meta: { title: 'Заявление на отпуск' },
+})
+
 // Не найденная страница
 router.addRoute({
   path: '/:pathMatch(.*)*',
@@ -109,6 +119,18 @@ router.beforeEach((to, from) => {
   } else {
     document.title = 'Учет рабочего времени' // Заголовок по умолчанию
   }
+})
+
+// Сбрасываем вкладки подменю перед КАЖДОЙ навигацией — до того, как страница
+// назначения успеет их выставить. Раньше сброс делался в onUnmounted той
+// страницы, с которой уходим, и мог сработать позже, чем setup() страницы,
+// на которую переходим (Vue не гарантирует порядок unmount/mount между разными
+// компонентами при переходе по роуту) — из-за этого вкладки/контент иногда не
+// появлялись. Здесь порядок гарантирован: guard всегда отрабатывает раньше,
+// чем создаётся компонент новой страницы, так что её собственный
+// submenuStore.setItems()/setActiveTab() в setup() всегда побеждает.
+router.beforeEach(() => {
+  useSubmenuStore().reset()
 })
 
 export default router

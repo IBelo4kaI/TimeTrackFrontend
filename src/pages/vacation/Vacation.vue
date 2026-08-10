@@ -13,7 +13,7 @@
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSubmenuStore } from '@/stores/submenu'
 import { useVacationStore } from '@/stores/vacation'
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import VacationCreate from '@/components/Vacation/VacationCreate.vue'
 import VacationList from '@/components/Vacation/VacationList.vue'
 import VacationOther from '@/components/Vacation/VacationOther/VacationOther.vue'
@@ -22,6 +22,9 @@ import VacationStats from '@/components/Vacation/VacationStats.vue'
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Отпуска', 'Управление отпусками')
 
+// Сброс вкладок при уходе со страницы делает router.beforeEach (router/index.js)
+// централизованно, до монтирования следующей страницы — здесь его дублировать
+// не нужно.
 const submenuStore = useSubmenuStore()
 submenuStore.setItems([
   { id: 'receipt', label: 'Заявки' },
@@ -33,9 +36,6 @@ const vacationStore = useVacationStore()
 
 onMounted(async () => {
   await vacationStore.fetchVacations()
-})
-onUnmounted(() => {
-  submenuStore.reset()
 })
 </script>
 

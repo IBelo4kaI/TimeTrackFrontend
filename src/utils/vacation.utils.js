@@ -21,6 +21,16 @@ export const formatStats = (stat) => {
   return `${stat} дней`;
 };
 
+const VACATION_STATUS_META = {
+  approved: { text: 'Утверждена', type: 'success' },
+  pending: { type: 'warn', text: 'На рассмотрении' },
+  rejected: { type: 'destruct', text: 'Отклонена' },
+};
+
+// Текст + тип для Badge.vue по статусу отпуска ('approved' | 'pending' | 'rejected').
+export const getVacationStatusMeta = (status) =>
+  VACATION_STATUS_META[status] ?? null;
+
 export const formatHours = (hours) => {
   const lastDigit = hours % 10;
   const lastTwoDigits = hours % 100;

@@ -12,39 +12,34 @@
       <div class="report-statistic">
         <!-- Рабочее время -->
         <CardStatistic
-          title="Рабочее время"
+          label="Рабочее время"
           icon="⏱️"
           icon-variant="primary"
           :rows="workingHoursRows"
-          :show-progress="true"
-          :progress-percent="workingProcess"
+          :progress="workingProcess"
           progress-label="Выполнено"
           progress-variant="success"
           :is-loading="reportStore.isLoading"
-          :hoverable="false"
           @click="handleCardClick('working-hours')"
         />
 
         <!-- Рабочие дни -->
         <CardStatistic
-          title="Рабочие дни"
+          label="Рабочие дни"
           icon="📅"
           icon-variant="success"
           :rows="workingDaysRows"
           :is-loading="reportStore.isLoading"
-          :hoverable="false"
           @click="handleCardClick('working-days')"
         />
 
         <!-- Прочие отсутствия -->
         <CardStatistic
-          title="Прочие отсутствия"
+          label="Прочие отсутствия"
           icon="📋"
           icon-variant="destructive"
           :rows="absencesRows"
-          :show-progress="false"
           :is-loading="reportStore.isLoading"
-          :hoverable="false"
           @click="handleCardClick('absences')"
         />
       </div>
@@ -66,7 +61,7 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useReportStore } from '@/stores/report'
 import { useUserStore } from '@/stores/user'
 import { computed, onMounted, ref, watch } from 'vue'
-import CardStatistic from '@/components/Report/CardStatistic.vue'
+import CardStatistic from '@/components/CardStatistics.vue'
 import ReportTable from '@/components/Report/ReportTable.vue'
 
 const titleStore = useHeaderTitleStore()

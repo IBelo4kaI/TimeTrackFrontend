@@ -43,6 +43,17 @@ export const getVacationsByYear = async (year, userId) => {
   }
 }
 
+export const getVacationById = async (id) => {
+  try {
+    const response = await timeTrackApi.get(`/vacation/${id}`)
+
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении заявки на отпуск:', error)
+    throw error
+  }
+}
+
 export const getAllUserVacationsByYear = async (year) => {
   try {
     const response = await timeTrackApi.get(`/vacation/all/${year}`)
@@ -82,6 +93,18 @@ export const approvedVacationStatus = async (id) => {
     return response.data
   } catch (error) {
     console.error('Ошибка создания дня:', error)
+    throw error
+  }
+}
+
+export const updateVacationType = async (id, vacationTypeId) => {
+  try {
+    const response = await timeTrackApi.put(`/vacation/${id}/type`, {
+      vacationTypeId,
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка изменения типа отпуска:', error)
     throw error
   }
 }

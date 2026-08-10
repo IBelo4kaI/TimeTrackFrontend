@@ -53,6 +53,25 @@ function formatNameShort(fullName, declension) {
   return `${inflected.last} ${initials}`.trim()
 }
 
+/**
+ * Склоняет ФИО в нужный падеж и возвращает его полностью (без сокращения
+ * имени и отчества до инициалов) — например, для подписей вида
+ * "Заявление от Мишуковой Кристины Андреевны".
+ *
+ * @param {string} fullName   — "Мишукова Кристина Андреевна"
+ * @param {string} declension — 'nominative' | 'genitive' | 'dative' | ...
+ * @returns {string}          — "Мишуковой Кристины Андреевны"
+ */
+export function formatNameFull(fullName, declension) {
+  const person = parseName(fullName)
+  const gender = getGender(person)
+  const inflected = incline({ ...person, gender }, declension)
+
+  return [inflected.last, inflected.first, inflected.middle]
+    .filter(Boolean)
+    .join(' ')
+}
+
 // ─── Склонение должностей ───────────────────────────────────────────────────
 // lvovich работает только с именами, поэтому должности
 // склоняем по правилам русских окончаний.
