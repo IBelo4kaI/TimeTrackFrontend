@@ -22,7 +22,13 @@
         :key="i"
         class="vacation-date-tag"
         :class="`vacation-date-tag--${v.status}`"
+        v-tooltip="{ content: getVacationTooltip(v) }"
       >
+        <span
+          v-if="v.vacationTypeColor"
+          class="vacation-date-tag__dot"
+          :style="{ background: v.vacationTypeColor }"
+        />
         {{ formatVacationRangeCompact(v) }}
       </span>
     </div>
@@ -32,7 +38,11 @@
 </template>
 
 <script setup>
-import { getInitials, formatVacationRangeCompact } from './vacationUtils.js'
+import {
+  getInitials,
+  formatVacationRangeCompact,
+  getVacationTooltip,
+} from './vacationUtils.js'
 
 const props = defineProps({
   employee: {
@@ -165,12 +175,22 @@ const countApproved = () => {
 }
 
 .vacation-date-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.1rem 0.35rem;
   border-radius: 0.25rem;
   white-space: nowrap;
   opacity: 0.9;
+}
+
+.vacation-date-tag__dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .vacation-date-tag--approved {

@@ -29,8 +29,7 @@ import {
   parseLocalDate,
   toDateStr,
   isWeekend,
-  formatDateForTooltip,
-  getStatusInRussian,
+  getVacationTooltip,
 } from './vacationUtils.js'
 
 const props = defineProps({
@@ -70,16 +69,6 @@ function isVacationEnd(date) {
   const v = getDayVacation(date)
   if (!v) return false
   return toDateStr(date) === getEndDate(v).slice(0, 10)
-}
-
-function getVacationTooltip(vacation) {
-  if (!vacation) return ''
-
-  const startDate = formatDateForTooltip(getStartDate(vacation))
-  const endDate = formatDateForTooltip(getEndDate(vacation))
-  const status = getStatusInRussian(vacation.status)
-
-  return `Начало: ${startDate}\nКонец: ${endDate}\nСтатус: ${status}`
 }
 </script>
 

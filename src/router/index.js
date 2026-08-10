@@ -53,7 +53,7 @@ export const routesNavigation = {
     component: () => import('@/pages/document/Document.vue'),
     meta: {
       title: 'Документы',
-      icon: 'fa-light fa-pages',
+      icon: 'fa-light fa-files',
       entity: 'docs',
       action: 'read',
     },

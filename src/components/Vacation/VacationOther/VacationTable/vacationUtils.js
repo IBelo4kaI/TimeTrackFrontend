@@ -79,3 +79,20 @@ export function getStatusInRussian(status) {
   }
   return statusMap[status] || status
 }
+
+// Тултип для ячейки/бара отпуска в таблице "Отпуска других сотрудников".
+// Общий для VacationMonthView и VacationYearView, чтобы не дублировать.
+export function getVacationTooltip(vacation) {
+  const startDate = formatDateForTooltip(
+    vacation.startDate ?? vacation.start_date
+  )
+  const endDate = formatDateForTooltip(vacation.endDate ?? vacation.end_date)
+  const status = getStatusInRussian(vacation.status)
+
+  const lines = [`Начало: ${startDate}`, `Конец: ${endDate}`, `Статус: ${status}`]
+  if (vacation.vacationTypeName) {
+    lines.push(`Тип: ${vacation.vacationTypeName}`)
+  }
+
+  return lines.join('\n')
+}

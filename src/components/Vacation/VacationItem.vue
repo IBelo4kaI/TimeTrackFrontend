@@ -58,9 +58,7 @@
   <tr class="vacation-item__extra" v-if="isExtraVisible">
     <td colspan="4">
       <div class="extra__container">
-        <template
-          v-if="isAdmin && userStore.hasPermission('vacation.all', 'edit')"
-        >
+        <template v-if="userStore.hasPermission('vacation.all', 'edit')">
           <ButtonUI
             type="success"
             @click="onApproved"

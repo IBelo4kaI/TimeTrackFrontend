@@ -27,8 +27,7 @@ import {
   clamp,
   parseLocalDate,
   diffDays,
-  formatDateForTooltip,
-  getStatusInRussian,
+  getVacationTooltip,
 } from './vacationUtils.js'
 
 const props = defineProps({
@@ -82,14 +81,6 @@ function vacationBarStyle(vacation) {
     left: (startOffset / totalDays.value) * 100 + '%',
     width: (duration / totalDays.value) * 100 + '%',
   }
-}
-
-function getVacationTooltip(vacation) {
-  const startDate = formatDateForTooltip(getStartDate(vacation))
-  const endDate = formatDateForTooltip(getEndDate(vacation))
-  const status = getStatusInRussian(vacation.status)
-
-  return `Начало: ${startDate}\nКонец: ${endDate}\nСтатус: ${status}`
 }
 </script>
 
