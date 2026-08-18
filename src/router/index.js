@@ -109,6 +109,32 @@ router.addRoute({
   meta: { title: 'Заявление на отпуск', entity: 'vacation', action: 'read' },
 })
 
+// Полноэкранный просмотр файла заявления — клик по документу в таблице
+// (Document/VacationList.vue). meta.layout: 'full' убирает сайдбар/шапку
+// (см. App.vue) — работает так же, как отдельная страница, но открывается
+// только из таблицы, поэтому не в routesNavigation.
+router.addRoute({
+  path: '/docs/vacation/:id/file',
+  name: 'vacation-file-viewer',
+  component: () => import('@/pages/document/VacationFileViewer.vue'),
+  meta: {
+    title: 'Просмотр файла',
+    entity: 'vacation',
+    action: 'read',
+    layout: 'full',
+  },
+})
+
+// Карточка сотрудника — не пункт меню, открывается по клику на строку в
+// общей таблице табеля (Report/ReportTable.vue), которая сама видна только
+// с calendar.all:read — тем же правом гейтим и саму страницу.
+router.addRoute({
+  path: '/workers/:id',
+  name: 'worker',
+  component: () => import('@/pages/workers/WorkerPage.vue'),
+  meta: { title: 'Карточка сотрудника', entity: 'calendar.all', action: 'read' },
+})
+
 // Не найденная страница
 router.addRoute({
   path: '/:pathMatch(.*)*',

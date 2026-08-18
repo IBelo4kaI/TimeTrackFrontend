@@ -1,14 +1,14 @@
 import { defineStore } from 'pinia'
-import { useVacationOther } from './vacationOther'
 import { useVacationStore } from './vacation'
 import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
+import { getInternalEmployees } from '@/services/reference.api'
 import { buildDocumentHeader } from '@/utils/vacation-docs.utils'
+import { flattenInternalEmployees } from '@/utils/user.utils'
 
 export const useVacationDocs = defineStore('vacation-docs', () => {
   const TEMPLATE_PATH = '/vacation.docx'
 
-  const vacationOther = useVacationOther()
   const vacationStore = useVacationStore()
 
   // ─── Основная функция ────────────────────────────────────────────────────
@@ -18,8 +18,19 @@ export const useVacationDocs = defineStore('vacation-docs', () => {
     const vacation = vacationStore.vacations.find((v) => v.id === vacationId)
     if (!vacation) throw new Error(`Отпуск ${vacationId} не найден`)
 
-    // 2. Находим сотрудника по user_id из отпуска
-    const employee = vacationOther.allEmployeesFlat.find(
+    // 2. Находим сотрудника по user_id из отпуска.
+    // Раньше брали из vacationOther.allEmployeesFlat — тот стор грузится
+    // только при заходе на вкладку "Отпуска других сотрудников" (см.
+    // VacationTable.vue), поэтому при клике на "Получить шаблон заявления"
+    // прямо со вкладки "Заявки" (дефолтной) employees там ещё пуст — отсюда
+    // и "Сотрудник не найден" для совершенно валидного отпуска. К тому же
+    // allEmployeesFlat дополнительно фильтрует список по своему отделу для
+    // тех, у кого нет vacation.all:read — это фильтр для UI "кого можно
+    // просматривать", он не должен мешать самому себе сгенерировать
+    // документ по собственному отпуску. Тянем справочник напрямую, без
+    // зависимости от того, открывал ли пользователь другую вкладку.
+    const directory = await getInternalEmployees()
+    const employee = flattenInternalEmployees(directory).find(
       (e) => e.user_id === vacation.userId
     )
     if (!employee)

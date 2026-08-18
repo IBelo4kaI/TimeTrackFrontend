@@ -47,7 +47,12 @@
         </div>
       </div>
 
-      <PdfViewer v-if="fileBlob" :blob="fileBlob" class="files__frame" />
+      <iframe
+        v-if="previewUrl"
+        :src="previewUrl"
+        class="files__frame"
+        title="Заявление на отпуск"
+      ></iframe>
       <div class="files__state" v-else>
         <LoaderTitle />
       </div>
@@ -67,7 +72,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import ButtonUI from '../ButtonUI.vue'
 import LoaderTitle from '../Loader/LoaderTitle.vue'
-import PdfViewer from '../PdfViewer.vue'
 import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import { uploadVacationFile } from '@/services/vacation.api'
 import { useConfirmModal } from '@/stores/confirmModal'
@@ -90,9 +94,9 @@ const file = computed(() => files.value[0] ?? null)
 const isLoading = ref(false)
 const fileInput = ref(null)
 
-// Blob для кастомного вьюера (PdfViewer.vue) и, из него же, отдельный
-// object URL для «открыть в новой вкладке» — один запрос openFile() на файл.
-const fileBlob = ref(null)
+// Object URL для встроенного просмотра (стандартный PDF-вьюер браузера в
+// iframe) и «открыть в новой вкладке» — используются оба из одного и того
+// же URL.
 const previewUrl = ref(null)
 let previewBlobUrl = null
 
@@ -117,7 +121,6 @@ async function loadPreview() {
 
   try {
     const blob = await openFile(file.value.id)
-    fileBlob.value = blob
     previewBlobUrl = URL.createObjectURL(blob)
     previewUrl.value = previewBlobUrl
   } catch {
@@ -130,7 +133,6 @@ function releasePreview() {
     URL.revokeObjectURL(previewBlobUrl)
     previewBlobUrl = null
   }
-  fileBlob.value = null
   previewUrl.value = null
 }
 
@@ -280,5 +282,8 @@ function onDeleteFile() {
   flex: 1;
   width: 100%;
   min-height: 40rem;
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--foreground);
 }
 </style>

@@ -47,7 +47,14 @@
                 </td>
               </tr>
               <tr v-for="row in group.rows" :key="row.id" class="tr">
-                <td class="td align-left td-name">{{ row.name }}</td>
+                <td class="td align-left td-name">
+                  <RouterLink
+                    class="name-link"
+                    :to="{ name: 'worker', params: { id: row.id } }"
+                  >
+                    {{ row.name }}
+                  </RouterLink>
+                </td>
                 <td class="td align-center">{{ row.standardHours }}</td>
                 <td class="td align-center" :class="hoursVariant(row)">
                   {{ row.totalHours }}
@@ -72,7 +79,14 @@
 
           <template v-else>
             <tr v-for="row in rows" :key="row.id" class="tr">
-              <td class="td align-left td-name">{{ row.name }}</td>
+              <td class="td align-left td-name">
+                <RouterLink
+                  class="name-link"
+                  :to="{ name: 'worker', params: { id: row.id } }"
+                >
+                  {{ row.name }}
+                </RouterLink>
+              </td>
               <td class="td align-center">{{ row.standardHours }}</td>
               <td class="td align-center" :class="hoursVariant(row)">
                 {{ row.totalHours }}
@@ -117,6 +131,7 @@ import ButtonUI from '@/components/ButtonUI.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 
 const props = defineProps({
   rows: { type: Array, default: () => [] },
@@ -246,6 +261,18 @@ function print() {
 
 .td-name {
   font-weight: 600;
+}
+
+.name-link {
+  color: var(--text);
+  font: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.name-link:hover {
+  color: var(--accent);
 }
 
 .align-left {

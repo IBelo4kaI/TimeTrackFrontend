@@ -1,5 +1,6 @@
 import { getInternalEmployees } from '@/services/reference.api'
 import { getStatistics } from '@/services/userTimeEntries.api'
+import { flattenInternalEmployees, parseGenderId } from '@/utils/user.utils'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { useUserStore } from './user'
@@ -11,23 +12,6 @@ export const useReportStore = defineStore('report', () => {
   const currentDate = shallowRef(new Date())
   const isLoading = shallowRef(false)
   const userStore = useUserStore()
-
-  const parseGenderId = (user) => {
-    const rawGender = user?.gender?.id ?? user?.genderId ?? user?.gender
-
-    if (typeof rawGender === 'number') return rawGender
-    if (typeof rawGender === 'string') {
-      const normalizedGender = rawGender.trim().toLowerCase()
-      if (['2', 'female', 'f', 'жен', 'женский'].includes(normalizedGender)) {
-        return 2
-      }
-      if (['1', 'male', 'm', 'муж', 'мужской'].includes(normalizedGender)) {
-        return 1
-      }
-    }
-
-    return null
-  }
 
   const init = async () => {
     setUser(userStore.user)
@@ -138,12 +122,7 @@ export const useReportStore = defineStore('report', () => {
       statsResults.status === 'fulfilled' ? statsResults.value : []
 
     if (employeesResult.status === 'fulfilled') {
-      const raw = employeesResult.value ?? []
-      const flat = Array.isArray(raw)
-        ? raw.flatMap((item) =>
-            Array.isArray(item?.employees) ? item.employees : [item]
-          )
-        : []
+      const flat = flattenInternalEmployees(employeesResult.value)
 
       const map = new Map()
       const deptSet = new Set()

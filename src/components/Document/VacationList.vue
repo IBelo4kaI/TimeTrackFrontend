@@ -18,9 +18,8 @@
       <RouterLink
         class="file-link"
         :to="{
-          name: 'vacation-application',
+          name: 'vacation-file-viewer',
           params: { id: row.entityId },
-          query: { tab: 'files' },
         }"
       >
         <i class="fa-regular fa-file-pdf"></i>
