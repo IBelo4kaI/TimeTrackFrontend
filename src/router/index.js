@@ -3,16 +3,21 @@ import { watch } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 import { useSubmenuStore } from '@/stores/submenu'
 import { useUserStore } from '@/stores/user'
+import WorkerPage from '@/pages/workers/WorkerPage.vue'
+import CalendarPage from '@/pages/calendar/Index.vue'
+import ReportPage from '@/pages/report/Index.vue'
+import VacationPage from '@/pages/vacation/Vacation.vue'
+import SickLeavePage from '@/pages/sick_leave/Index.vue'
+import DocumentPage from '@/pages/document/Document.vue'
+import SettingsPage from '@/pages/settings/Index.vue'
+import VacationApplicationPage from '@/pages/document/VacationApplication.vue'
+import VacationFileViewerPage from '@/pages/document/VacationFileViewer.vue'
 
 export const routesNavigation = {
-  // Первый пункт — он же страница по умолчанию при входе (см. routes[0].redirect
-  // ниже). Та же карточка сотрудника, что видит админ на /workers/:id, только
-  // без :id в пути — WorkerPage.vue в этом случае сам подставляет
-  // userStore.user.id (см. комментарий там).
   dashboard: {
     path: '/home',
     name: 'dashboard',
-    component: () => import('@/pages/workers/WorkerPage.vue'),
+    component: WorkerPage,
     meta: {
       title: 'Главная',
       icon: 'fa-light fa-house',
@@ -24,7 +29,7 @@ export const routesNavigation = {
   calendar: {
     path: '/calendar',
     name: 'calendar',
-    component: () => import('@/pages/calendar/Index.vue'),
+    component: CalendarPage,
     meta: {
       title: 'Календарь',
       icon: 'fa-light fa-calendar',
@@ -36,7 +41,7 @@ export const routesNavigation = {
   report: {
     path: '/report',
     name: 'report',
-    component: () => import('@/pages/report/Index.vue'),
+    component: ReportPage,
     meta: {
       title: 'Табель',
       icon: 'fa-light fa-clock',
@@ -47,7 +52,7 @@ export const routesNavigation = {
   vacation: {
     path: '/vacation',
     name: 'vacation',
-    component: () => import('@/pages/vacation/Vacation.vue'),
+    component: VacationPage,
     meta: {
       title: 'Отпуск',
       icon: 'fa-light fa-tree-palm',
@@ -58,7 +63,7 @@ export const routesNavigation = {
   sickLeave: {
     path: '/sick-leave',
     name: 'sick-leave',
-    component: () => import('@/pages/sick_leave/Index.vue'),
+    component: SickLeavePage,
     meta: {
       title: 'Больничные',
       icon: 'fa-light fa-notes-medical',
@@ -69,7 +74,7 @@ export const routesNavigation = {
   docs: {
     path: '/docs',
     name: 'docs',
-    component: () => import('@/pages/document/Document.vue'),
+    component: DocumentPage,
     meta: {
       title: 'Документы',
       icon: 'fa-light fa-files',
@@ -80,7 +85,7 @@ export const routesNavigation = {
   settings: {
     path: '/settings',
     name: 'settings',
-    component: () => import('@/pages/settings/Index.vue'),
+    component: SettingsPage,
     meta: {
       title: 'Настройки',
       icon: 'fa-light fa-gear',
@@ -113,27 +118,17 @@ router.addRoute(routesNavigation.sickLeave)
 router.addRoute(routesNavigation.docs)
 router.addRoute(routesNavigation.settings)
 
-// Страница отдельной заявки на отпуск — не пункт меню, открывается по клику
-// из списка заявлений (Document/VacationList.vue), поэтому не в routesNavigation.
-// entity/action здесь — только базовая проверка (есть ли вообще доступ к
-// отпускам); свой ли это конкретный отпуск или чужой — решает бэк (403,
-// см. VacationApplication.vue) — фронт заранее этого знать не может, не
-// сходив за данными.
 router.addRoute({
   path: '/docs/vacation/:id',
   name: 'vacation-application',
-  component: () => import('@/pages/document/VacationApplication.vue'),
+  component: VacationApplicationPage,
   meta: { title: 'Заявление на отпуск', entity: 'vacation', action: 'read' },
 })
 
-// Полноэкранный просмотр файла заявления — клик по документу в таблице
-// (Document/VacationList.vue). meta.layout: 'full' убирает сайдбар/шапку
-// (см. App.vue) — работает так же, как отдельная страница, но открывается
-// только из таблицы, поэтому не в routesNavigation.
 router.addRoute({
   path: '/docs/vacation/:id/file',
   name: 'vacation-file-viewer',
-  component: () => import('@/pages/document/VacationFileViewer.vue'),
+  component: VacationFileViewerPage,
   meta: {
     title: 'Просмотр файла',
     entity: 'vacation',
@@ -142,16 +137,10 @@ router.addRoute({
   },
 })
 
-// Карточка ДРУГОГО сотрудника (с :id) — не пункт меню, открывается по клику
-// на строку в общей таблице табеля (Report/ReportTable.vue), которая сама
-// видна только с calendar.all:read — тем же правом гейтим и саму страницу.
-// Свою карточку сотрудник смотрит на /home (routesNavigation.dashboard,
-// без :id, calendar:read) — тот же компонент, WorkerPage.vue сам различает
-// эти два случая.
 router.addRoute({
   path: '/workers/:id',
   name: 'worker',
-  component: () => import('@/pages/workers/WorkerPage.vue'),
+  component: WorkerPage,
   meta: {
     title: 'Карточка сотрудника',
     entity: 'calendar.all',
@@ -162,16 +151,10 @@ router.addRoute({
 // Не найденная страница
 router.addRoute({
   path: '/:pathMatch(.*)*',
-  // component: () => import('@/views/AboutView.vue'),
   meta: { title: '404' },
   redirect: { name: 'home' },
 })
 
-// Ждём, пока стор пользователя закончит начальную загрузку (initialFetch()
-// в App.vue) — до этого userStore.permissions ещё не заполнен, и проверка
-// ниже всегда бы отказывала. App.vue и так не рисует RouterView, пока
-// userStore.isLoading — это просто синхронизация роут-гарда с тем же
-// состоянием.
 function waitForUserReady(userStore) {
   if (!userStore.isLoading) return Promise.resolve()
   return new Promise((resolve) => {
@@ -187,10 +170,6 @@ function waitForUserReady(userStore) {
   })
 }
 
-// Проверка прав при переходе по ссылке/прямому URL — раньше это делал только
-// v-if в NavItem.vue (скрывал пункт в сайдбаре), но сам роут ничего не
-// проверял: скрытая из сайдбара страница (например /docs без docs:read)
-// всё равно открывалась по прямому переходу.
 router.beforeEach(async (to) => {
   const { entity, action } = to.meta
   if (!entity || !action) return true
@@ -205,8 +184,7 @@ router.beforeEach(async (to) => {
       'Недостаточно прав для доступа к этому разделу',
       'error'
     )
-    // На calendar не редиректим саму себя — иначе при отсутствии даже
-    // calendar:read была бы бесконечная переадресация.
+
     return to.name === 'calendar' ? true : { name: 'calendar' }
   }
 
@@ -224,14 +202,6 @@ router.beforeEach((to, from) => {
   }
 })
 
-// Сбрасываем вкладки подменю перед КАЖДОЙ навигацией — до того, как страница
-// назначения успеет их выставить. Раньше сброс делался в onUnmounted той
-// страницы, с которой уходим, и мог сработать позже, чем setup() страницы,
-// на которую переходим (Vue не гарантирует порядок unmount/mount между разными
-// компонентами при переходе по роуту) — из-за этого вкладки/контент иногда не
-// появлялись. Здесь порядок гарантирован: guard всегда отрабатывает раньше,
-// чем создаётся компонент новой страницы, так что её собственный
-// submenuStore.setItems()/setActiveTab() в setup() всегда побеждает.
 router.beforeEach(() => {
   useSubmenuStore().reset()
 })
