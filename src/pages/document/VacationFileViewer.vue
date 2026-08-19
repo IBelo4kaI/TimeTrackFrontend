@@ -1,11 +1,6 @@
 <template>
   <div class="viewer-page">
     <div class="viewer-topbar">
-      <button type="button" class="back-link" @click="goBack">
-        <i class="fa-regular fa-arrow-left"></i>
-        Назад
-      </button>
-
       <span v-if="file" class="viewer-name">
         <i class="fa-regular fa-file-pdf"></i>
         {{ file.originalName }}
@@ -24,6 +19,12 @@
           icon="fa-regular fa-arrow-up-right-from-square"
           v-tooltip="'Открыть в новой вкладке'"
           @click="onOpenInNewTab"
+        />
+        <ButtonUI
+          type="muted-accent"
+          icon="fa-regular fa-xmark"
+          v-tooltip="'Закрыть'"
+          @click="goBack"
         />
       </div>
     </div>
@@ -145,25 +146,6 @@ onUnmounted(releasePreview)
   background: var(--foreground);
   border-bottom: 0.07rem solid var(--border-color);
   flex-shrink: 0;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--muted-text);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.2s ease;
-  flex-shrink: 0;
-}
-
-.back-link:hover {
-  color: var(--accent);
 }
 
 .viewer-name {
