@@ -1,97 +1,100 @@
 <template>
-  <div
-    class="custom-select"
-    :class="[`custom-select--${variant}`]"
-    ref="selectRef"
-    :style="computedWidth ? { width: computedWidth + 'px' } : {}"
-  >
+  <div class="select-field">
+    <label v-if="label" class="select-label">{{ label }}</label>
     <div
-      class="select-trigger"
-      :class="{
-        'select-trigger--open': isOpen,
-        'select-trigger--disabled': disabled,
-        'select-trigger--error': error,
-        [`select-trigger--${variant}`]: true,
-      }"
-      @click="toggleDropdown"
-      tabindex="0"
-      @keydown.enter.prevent="toggleDropdown"
-      @keydown.space.prevent="toggleDropdown"
-      @keydown.escape="closeDropdown"
-      @keydown.down.prevent="navigateOptions(1)"
-      @keydown.up.prevent="navigateOptions(-1)"
+      class="custom-select"
+      :class="[`custom-select--${variant}`]"
+      ref="selectRef"
+      :style="computedWidth ? { width: computedWidth + 'px' } : {}"
     >
-      <span
-        class="select-value"
-        :class="{ 'select-placeholder': !selectedOption }"
-        :style="{ textAlign: align }"
+      <div
+        class="select-trigger"
+        :class="{
+          'select-trigger--open': isOpen,
+          'select-trigger--disabled': disabled,
+          'select-trigger--error': error,
+          [`select-trigger--${variant}`]: true,
+        }"
+        @click="toggleDropdown"
+        tabindex="0"
+        @keydown.enter.prevent="toggleDropdown"
+        @keydown.space.prevent="toggleDropdown"
+        @keydown.escape="closeDropdown"
+        @keydown.down.prevent="navigateOptions(1)"
+        @keydown.up.prevent="navigateOptions(-1)"
       >
-        {{ displayValue }}
-      </span>
-      <svg
-        class="select-icon"
-        :class="{ 'select-icon--open': isOpen }"
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-      >
-        <path
-          d="M5 7.5L10 12.5L15 7.5"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </div>
-    <!-- Скрытый измеритель ширины -->
-    <div class="select-sizer" ref="sizerRef" aria-hidden="true">
-      <div class="select-trigger">
         <span
           class="select-value"
-          v-for="option in options"
-          :key="getOptionValue(option)"
+          :class="{ 'select-placeholder': !selectedOption }"
+          :style="{ textAlign: align }"
         >
-          {{ getOptionLabel(option) }}
+          {{ displayValue }}
         </span>
+        <svg
+          class="select-icon"
+          :class="{ 'select-icon--open': isOpen }"
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+        >
+          <path
+            d="M5 7.5L10 12.5L15 7.5"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </div>
-    </div>
-    <transition name="dropdown">
-      <div v-if="isOpen" class="select-dropdown">
-        <div class="select-options">
-          <div
-            v-for="(option, index) in options"
+      <!-- Скрытый измеритель ширины -->
+      <div class="select-sizer" ref="sizerRef" aria-hidden="true">
+        <div class="select-trigger">
+          <span
+            class="select-value"
+            v-for="option in options"
             :key="getOptionValue(option)"
-            class="select-option"
-            :class="{
-              'select-option--selected': isSelected(option),
-              'select-option--focused': focusedIndex === index,
-            }"
-            @click="selectOption(option)"
-            @mouseenter="focusedIndex = index"
           >
             {{ getOptionLabel(option) }}
-            <svg
-              v-if="isSelected(option)"
-              class="select-check"
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-            >
-              <path
-                d="M13.3333 4L6 11.3333L2.66667 8"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </div>
+          </span>
         </div>
       </div>
-    </transition>
+      <transition name="dropdown">
+        <div v-if="isOpen" class="select-dropdown">
+          <div class="select-options">
+            <div
+              v-for="(option, index) in options"
+              :key="getOptionValue(option)"
+              class="select-option"
+              :class="{
+                'select-option--selected': isSelected(option),
+                'select-option--focused': focusedIndex === index,
+              }"
+              @click="selectOption(option)"
+              @mouseenter="focusedIndex = index"
+            >
+              {{ getOptionLabel(option) }}
+              <svg
+                v-if="isSelected(option)"
+                class="select-check"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+              >
+                <path
+                  d="M13.3333 4L6 11.3333L2.66667 8"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </div>
   </div>
 </template>
 
@@ -161,6 +164,11 @@ const props = defineProps({
   error: {
     type: Boolean,
     default: false,
+  },
+  // Подпись над селектом — тот же паттерн, что и label в InputUi.vue.
+  label: {
+    type: String,
+    default: '',
   },
 })
 
@@ -281,6 +289,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.select-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.select-label {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
 .custom-select {
   position: relative;
   /* min-width: 120px; */
