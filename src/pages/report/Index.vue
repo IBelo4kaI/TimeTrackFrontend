@@ -1,52 +1,10 @@
 <template>
   <div class="container">
     <div class="report-controls">
-      <ControlsCalendar
-        :store="reportStore"
-        :is-show-selecting-user="!canViewAll"
-        page="report"
-      />
+      <ControlsCalendar :store="reportStore" :is-show-selecting-user="false" page="report" />
     </div>
 
-    <template v-if="!canViewAll">
-      <div class="report-statistic">
-        <!-- Рабочее время -->
-        <CardStatistic
-          label="Рабочее время"
-          icon="⏱️"
-          icon-variant="primary"
-          :rows="workingHoursRows"
-          :progress="workingProcess"
-          progress-label="Выполнено"
-          progress-variant="success"
-          :is-loading="reportStore.isLoading"
-          @click="handleCardClick('working-hours')"
-        />
-
-        <!-- Рабочие дни -->
-        <CardStatistic
-          label="Рабочие дни"
-          icon="📅"
-          icon-variant="success"
-          :rows="workingDaysRows"
-          :is-loading="reportStore.isLoading"
-          @click="handleCardClick('working-days')"
-        />
-
-        <!-- Прочие отсутствия -->
-        <CardStatistic
-          label="Прочие отсутствия"
-          icon="📋"
-          icon-variant="destructive"
-          :rows="absencesRows"
-          :is-loading="reportStore.isLoading"
-          @click="handleCardClick('absences')"
-        />
-      </div>
-    </template>
-
     <ReportTable
-      v-else
       v-model="selectedDepartment"
       :rows="filteredRows"
       :is-loading="reportStore.isLoadingAll"
@@ -59,24 +17,17 @@
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useReportStore } from '@/stores/report'
-import { useUserStore } from '@/stores/user'
 import { computed, onMounted, ref, watch } from 'vue'
-import CardStatistic from '@/components/CardStatistics.vue'
 import ReportTable from '@/components/Report/ReportTable.vue'
 
 const titleStore = useHeaderTitleStore()
-titleStore.setTitle('Табель', 'Детальный учёт времени')
+titleStore.setTitle('Табель', 'Сводная статистика по сотрудникам')
 
 const reportStore = useReportStore()
-const userStore = useUserStore()
 
-// Бэк для статистики "по всем" (usertimeentries/statistics/:userId/...)
-// зарегистрирован под Entity: "calendar" (см. internal/user_time_entry/route.go
-// в timetrack), а не "report" — так что реально нужен calendar.all:read, а не
-// report.all:read (тот код существует в каталоге прав, но бэком не проверяется).
-const canViewAll = computed(() => userStore.hasPermission('calendar.all', 'read'))
-
-// --- All users table ---
+// Страница доступна только с calendar.all:read (см. router/index.js) — это
+// всегда сводная таблица по всем сотрудникам, личная статистика переехала
+// на карточку сотрудника (/home → вкладка «Табель»).
 
 const selectedDepartment = ref('all')
 
@@ -87,76 +38,14 @@ const filteredRows = computed(() => {
   )
 })
 
-// --- Personal statistics (for users without calendar.all) ---
-
-const workingProcess = computed(() =>
-  percent(
-    reportStore.workingHours.totalHours,
-    reportStore.workingHours.standardHours
-  )
-)
-
-const percent = (num, all) => Math.abs((num / all) * 100)
-
-const workingHoursRows = computed(() => [
-  {
-    label: 'Норма часов',
-    value: `${reportStore.workingHours.standardHours} ч`,
-  },
-  {
-    label: 'Отработано',
-    value: `${reportStore.workingHours.totalHours} ч`,
-    valueVariant: 'success',
-  },
-])
-
-const workingDaysRows = computed(() => [
-  {
-    label: 'Норма дней',
-    value: `${reportStore.workingDays.standardWorkDays} д`,
-  },
-  {
-    label: 'Отработано',
-    value: `${reportStore.workingDays.totalWorkDays} д`,
-    valueVariant: 'success',
-  },
-])
-
-const absencesRows = computed(() => [
-  {
-    label: 'Больничные',
-    value: `${reportStore.otherDays.medicalDays.count} д`,
-    valueVariant: 'destructive',
-  },
-  {
-    label: 'Отгулы',
-    value: `${reportStore.otherDays.timeoffDays.count} д`,
-    valueVariant: 'accent',
-  },
-  {
-    label: 'Отпускные',
-    value: `${reportStore.otherDays.vacationDays.count} д`,
-    valueVariant: 'warn',
-  },
-  { label: 'Декретные', value: `${reportStore.otherDays.decreeDays.count} д` },
-])
-
-const handleCardClick = (a) => {}
-
 onMounted(async () => {
-  if (canViewAll.value) {
-    await reportStore.fetchAllStatistics()
-  } else {
-    await reportStore.init()
-  }
+  await reportStore.fetchAllStatistics()
 })
 
 watch(
   () => reportStore.currentDate,
   async () => {
-    if (canViewAll.value) {
-      await reportStore.fetchAllStatistics()
-    }
+    await reportStore.fetchAllStatistics()
   }
 )
 </script>
@@ -167,17 +56,6 @@ watch(
   flex-direction: column;
   gap: calc(var(--padding-secondary) / 2);
   height: 100%;
-}
-
-.report-statistic {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--padding-secondary) / 2);
-  width: 100%;
-}
-
-.report-statistic > * {
-  flex: 1;
 }
 
 @media print {

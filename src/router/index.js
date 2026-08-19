@@ -5,6 +5,22 @@ import { useSubmenuStore } from '@/stores/submenu'
 import { useUserStore } from '@/stores/user'
 
 export const routesNavigation = {
+  // Первый пункт — он же страница по умолчанию при входе (см. routes[0].redirect
+  // ниже). Та же карточка сотрудника, что видит админ на /workers/:id, только
+  // без :id в пути — WorkerPage.vue в этом случае сам подставляет
+  // userStore.user.id (см. комментарий там).
+  dashboard: {
+    path: '/home',
+    name: 'dashboard',
+    component: () => import('@/pages/workers/WorkerPage.vue'),
+    meta: {
+      title: 'Главная',
+      icon: 'fa-light fa-house',
+      entity: 'calendar',
+      action: 'read',
+      onMobile: true,
+    },
+  },
   calendar: {
     path: '/calendar',
     name: 'calendar',
@@ -24,7 +40,7 @@ export const routesNavigation = {
     meta: {
       title: 'Табель',
       icon: 'fa-light fa-clock',
-      entity: 'calendar',
+      entity: 'calendar.all',
       action: 'read',
     },
   },
@@ -79,7 +95,7 @@ export const routes = [
     path: '/',
     name: 'home',
     redirect: {
-      name: 'calendar',
+      name: 'dashboard',
     },
   },
 ]
@@ -89,6 +105,7 @@ const router = createRouter({
   routes: routes,
 })
 
+router.addRoute(routesNavigation.dashboard)
 router.addRoute(routesNavigation.calendar)
 router.addRoute(routesNavigation.report)
 router.addRoute(routesNavigation.vacation)
@@ -125,14 +142,21 @@ router.addRoute({
   },
 })
 
-// Карточка сотрудника — не пункт меню, открывается по клику на строку в
-// общей таблице табеля (Report/ReportTable.vue), которая сама видна только
-// с calendar.all:read — тем же правом гейтим и саму страницу.
+// Карточка ДРУГОГО сотрудника (с :id) — не пункт меню, открывается по клику
+// на строку в общей таблице табеля (Report/ReportTable.vue), которая сама
+// видна только с calendar.all:read — тем же правом гейтим и саму страницу.
+// Свою карточку сотрудник смотрит на /home (routesNavigation.dashboard,
+// без :id, calendar:read) — тот же компонент, WorkerPage.vue сам различает
+// эти два случая.
 router.addRoute({
   path: '/workers/:id',
   name: 'worker',
   component: () => import('@/pages/workers/WorkerPage.vue'),
-  meta: { title: 'Карточка сотрудника', entity: 'calendar.all', action: 'read' },
+  meta: {
+    title: 'Карточка сотрудника',
+    entity: 'calendar.all',
+    action: 'read',
+  },
 })
 
 // Не найденная страница

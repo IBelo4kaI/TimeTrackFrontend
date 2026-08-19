@@ -1,6 +1,9 @@
 <template>
   <div class="container">
-    <div class="back-row">
+    <!-- «Назад» есть только когда смотрим карточку ДРУГОГО сотрудника
+    (пришли по клику из таблицы табеля). На своей странице (/home) это
+    стартовая точка — идти «назад» некуда. -->
+    <div class="back-row" v-if="!isSelf">
       <button type="button" class="back-link" @click="goBack">
         <i class="fa-regular fa-arrow-left"></i>
         Назад
@@ -36,18 +39,27 @@ import WorkerReport from '@/components/Workers/WorkerReport.vue'
 import WorkerVacation from '@/components/Workers/WorkerVacation.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSubmenuStore } from '@/stores/submenu'
+import { useUserStore } from '@/stores/user'
 import { useWorkerStore } from '@/stores/worker'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
+
+// Один и тот же компонент для двух роутов: /home (routesNavigation.dashboard,
+// без :id — своя карточка) и /workers/:id (карточка другого сотрудника,
+// только для calendar.all:read — см. router/index.js).
+const isSelf = computed(() => !route.params.id)
 
 const titleStore = useHeaderTitleStore()
-titleStore.setTitle('Карточка сотрудника', 'Сводная информация')
+if (isSelf.value) {
+  titleStore.setTitle('Главная', 'Ваша сводная информация')
+} else {
+  titleStore.setTitle('Карточка сотрудника', 'Сводная информация')
+}
 
-// Страница открывается только по клику из общей таблицы табеля
-// (Report/ReportTable.vue), в сайдбаре пункта нет — как и у
-// vacation-application. «Назад» — туда, откуда реально пришли, иначе на
-// табель.
+// «Назад» — только в карточке другого сотрудника, туда, откуда реально
+// пришли, иначе на табель.
 function goBack() {
   if (window.history.state?.back) {
     router.back()
@@ -74,7 +86,7 @@ const activeTabLabel = computed(
 const workerStore = useWorkerStore()
 
 async function load() {
-  await workerStore.load(route.params.id)
+  await workerStore.load(route.params.id || userStore.user?.id)
 }
 
 watch(() => route.params.id, load)
