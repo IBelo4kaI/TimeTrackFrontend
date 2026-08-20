@@ -25,6 +25,7 @@
         :title="item.meta.title"
         :to="item.name"
         :meta="item.meta"
+        :badge="item.name === 'chats' ? chatStore.totalUnread : 0"
         @click="closeSidebar"
       />
     </div>
@@ -33,9 +34,11 @@
 
 <script setup>
 import { routesNavigation } from '@/router'
+import { useChatStore } from '@/stores/chat'
 import Info from '../Info.vue'
 import NavItem from '../NavItem.vue'
 
+const chatStore = useChatStore()
 const emits = defineEmits(['update:isSidebarOpen'])
 
 function closeSidebar() {

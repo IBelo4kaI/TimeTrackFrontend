@@ -145,8 +145,6 @@
             v-model="formData[field.name]"
             v-bind="field.props || {}"
             @update:modelValue="(value) => updateField(field.name, value)"
-            @change="(value) => updateField(field.name, value)"
-            @input="(value) => updateField(field.name, value)"
             :disabled="field.disabled || isLoading"
             :error="field.error"
           />

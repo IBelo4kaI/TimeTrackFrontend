@@ -1,5 +1,10 @@
 <template>
-  <div class="toast" :style="toastStyle">
+  <div
+    class="toast"
+    :class="{ 'toast--clickable': action }"
+    :style="toastStyle"
+    @click="handleClick"
+  >
     <div class="toast-content">
       <div class="toast-icon" :style="iconStyle">
         {{ icon }}
@@ -7,7 +12,7 @@
       <div class="toast-message">
         {{ message }}
       </div>
-      <button class="toast-close" @click="handleClose">×</button>
+      <button class="toast-close" @click.stop="handleClose">×</button>
     </div>
 
     <div class="toast-progress-bg">
@@ -35,6 +40,10 @@ const props = defineProps({
   duration: {
     type: Number,
     default: 4000,
+  },
+  action: {
+    type: Function,
+    default: null,
   },
   onClose: {
     type: Function,
@@ -92,6 +101,12 @@ const handleClose = () => {
   props.onClose(props.id);
 };
 
+const handleClick = () => {
+  if (!props.action) return;
+  props.action();
+  handleClose();
+};
+
 onMounted(() => {
   const startTime = Date.now();
 
@@ -122,6 +137,15 @@ onUnmounted(() => {
   animation: slideIn 0.3s ease-out;
   position: relative;
   overflow: hidden;
+}
+
+.toast--clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.toast--clickable:hover {
+  transform: translateY(-2px);
 }
 
 .toast-content {

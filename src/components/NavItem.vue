@@ -7,26 +7,23 @@
   >
     <div class="icon"><i :class="icon"></i></div>
     <div class="title">{{ title }}</div>
+    <span v-if="badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
   </RouterLink>
 </template>
 
 <script setup>
 import { useUserStore } from '@/stores/user'
-import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 
-const { icon, title, to, meta } = defineProps({
+const { icon, title, to, meta, badge } = defineProps({
   icon: String,
   to: String,
   title: String,
   meta: Object,
+  badge: { type: Number, default: 0 },
 })
 
 const userStore = useUserStore()
-
-onMounted(() => {
-  console.log(meta)
-})
 </script>
 
 <style scoped>
@@ -49,6 +46,27 @@ onMounted(() => {
 }
 
 .title {
+  flex: 1;
+}
+
+.badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.29rem;
+  height: 1.29rem;
+  padding: 0 0.36rem;
+  border-radius: 1rem;
+  background: var(--destructive);
+  color: #fff;
+  font-size: 0.71rem;
+  font-weight: 700;
+}
+
+.active .badge {
+  background: var(--on-accent);
+  color: var(--accent);
 }
 
 .active {

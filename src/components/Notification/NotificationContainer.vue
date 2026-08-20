@@ -7,6 +7,7 @@
       :message="notification.message"
       :type="notification.type"
       :duration="notification.duration"
+      :action="notification.action"
       :on-close="notificationStore.removeNotification"
     />
   </div>

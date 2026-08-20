@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, markRaw } from 'vue'
 
 export const useUniversalModalStore = defineStore('universalModal', () => {
   // Состояние
@@ -47,7 +47,18 @@ export const useUniversalModalStore = defineStore('universalModal', () => {
     submittingText.value = config.submittingText || 'Сохранение...'
     deletingText.value = config.deletingText || 'Удаление...'
 
-    fields.value = config.fields || []
+    // markRaw на field.component ОБЯЗАТЕЛЕН: fields — реактивный ref, и без
+    // markRaw само определение компонента (обычный объект с setup/render)
+    // попадает под реактивный Proxy. Vue предупреждает об этом в доках не
+    // просто так — на практике это иногда приводит к тому, что <component
+    // :is="field.component"> считает объект "новым" между рендерами и
+    // пересоздаёт инстанс не вовремя, теряя обработчики кликов у всего, что
+    // внутри (в этом чате — у полей формы и у кнопок модалки заодно).
+    fields.value = (config.fields || []).map((field) =>
+      field.type === 'component' && field.component
+        ? { ...field, component: markRaw(field.component) }
+        : field
+    )
 
     onSubmit.value = config.onSubmit || null
     onDelete.value = config.onDelete || null

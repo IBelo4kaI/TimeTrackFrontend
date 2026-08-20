@@ -1,0 +1,152 @@
+import { timeTrackApi } from './api'
+
+export const getMyChats = async () => {
+  try {
+    const response = await timeTrackApi.get('/chats')
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении списка чатов:', error)
+    throw error
+  }
+}
+
+export const getChat = async (chatId) => {
+  try {
+    const response = await timeTrackApi.get(`/chats/${chatId}`)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении чата:', error)
+    throw error
+  }
+}
+
+export const createChat = async ({ type, name, participantIds }) => {
+  try {
+    const response = await timeTrackApi.post('/chats', { type, name, participantIds })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при создании чата:', error)
+    throw error
+  }
+}
+
+export const renameChat = async (chatId, name) => {
+  try {
+    const response = await timeTrackApi.put(`/chats/${chatId}/name`, { name })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при переименовании чата:', error)
+    throw error
+  }
+}
+
+export const deleteChat = async (chatId) => {
+  try {
+    const response = await timeTrackApi.delete(`/chats/${chatId}`)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при удалении чата:', error)
+    throw error
+  }
+}
+
+export const getChatParticipants = async (chatId) => {
+  try {
+    const response = await timeTrackApi.get(`/chats/${chatId}/participants`)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении участников чата:', error)
+    throw error
+  }
+}
+
+export const addChatParticipant = async (chatId, userId, role = 'member') => {
+  try {
+    const response = await timeTrackApi.post(`/chats/${chatId}/participants`, {
+      userId,
+      role,
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при добавлении участника:', error)
+    throw error
+  }
+}
+
+export const removeChatParticipant = async (chatId, userId) => {
+  try {
+    const response = await timeTrackApi.delete(`/chats/${chatId}/participants/${userId}`)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при удалении участника:', error)
+    throw error
+  }
+}
+
+export const getChatMessages = async (chatId, { beforeId, limit } = {}) => {
+  try {
+    const response = await timeTrackApi.get(`/chats/${chatId}/messages`, {
+      params: { beforeId, limit },
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении сообщений:', error)
+    throw error
+  }
+}
+
+export const sendChatMessage = async (chatId, body) => {
+  try {
+    const response = await timeTrackApi.post(`/chats/${chatId}/messages`, { body })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при отправке сообщения:', error)
+    throw error
+  }
+}
+
+export const sendChatFileMessage = async (chatId, file, body = '') => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (body) formData.append('body', body)
+
+    const response = await timeTrackApi.post(`/chats/${chatId}/messages/file`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при отправке файла:', error)
+    throw error
+  }
+}
+
+export const deleteChatMessage = async (chatId, messageId) => {
+  try {
+    const response = await timeTrackApi.delete(`/chats/${chatId}/messages/${messageId}`)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при удалении сообщения:', error)
+    throw error
+  }
+}
+
+export const markChatRead = async (chatId, messageId) => {
+  try {
+    const response = await timeTrackApi.put(`/chats/${chatId}/read`, { messageId })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при отметке чата прочитанным:', error)
+    throw error
+  }
+}
+
+export const sendChatTyping = async (chatId) => {
+  // Эфемерный сигнал — не критично, если изредка потеряется, поэтому без
+  // console.error/throw, чтобы не шуметь в консоли на каждое нажатие клавиши.
+  try {
+    await timeTrackApi.post(`/chats/${chatId}/typing`)
+  } catch {
+    // намеренно молча игнорируем
+  }
+}

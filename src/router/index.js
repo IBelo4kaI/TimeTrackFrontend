@@ -12,6 +12,7 @@ import DocumentPage from '@/pages/document/Document.vue'
 import SettingsPage from '@/pages/settings/Index.vue'
 import VacationApplicationPage from '@/pages/document/VacationApplication.vue'
 import VacationFileViewerPage from '@/pages/document/VacationFileViewer.vue'
+import ChatPage from '@/pages/chat/Index.vue'
 
 export const routesNavigation = {
   dashboard: {
@@ -82,6 +83,17 @@ export const routesNavigation = {
       action: 'read',
     },
   },
+  chats: {
+    path: '/chats',
+    name: 'chats',
+    component: ChatPage,
+    meta: {
+      title: 'Чаты',
+      icon: 'fa-light fa-comments',
+      entity: 'chat',
+      action: 'read',
+    },
+  },
   settings: {
     path: '/settings',
     name: 'settings',
@@ -116,6 +128,7 @@ router.addRoute(routesNavigation.report)
 router.addRoute(routesNavigation.vacation)
 router.addRoute(routesNavigation.sickLeave)
 router.addRoute(routesNavigation.docs)
+router.addRoute(routesNavigation.chats)
 router.addRoute(routesNavigation.settings)
 
 router.addRoute({

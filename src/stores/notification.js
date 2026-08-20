@@ -5,13 +5,17 @@ export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref([])
   let idCounter = 0
 
-  const addNotification = (message, type = 'info', duration = 4000) => {
+  // action — необязательный колбэк: если передан, тост кликабелен (курсор
+  // pointer) и по клику вызывает его, а сам тост закрывается. Нужно, чтобы
+  // по уведомлению можно было сразу перейти куда-то (например, в чат).
+  const addNotification = (message, type = 'info', duration = 4000, action = null) => {
     const id = idCounter++
     notifications.value.push({
       id,
       message,
       type,
       duration,
+      action,
       createdAt: Date.now(),
     })
   }
