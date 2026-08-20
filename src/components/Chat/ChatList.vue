@@ -64,6 +64,9 @@ const filteredChats = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* См. тот же комментарий в ChatThread.vue (.thread) — без этого список
+     чатов растягивает всю карточку вместо внутреннего скролла. */
+  min-height: 0;
   background: var(--foreground);
   border-radius: var(--border-radius);
   border: 0.07rem solid var(--border-color);
@@ -80,6 +83,7 @@ const filteredChats = computed(() => {
 
 .chat-list__items {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0.5rem;
   display: flex;

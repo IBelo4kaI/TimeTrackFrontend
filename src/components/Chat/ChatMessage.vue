@@ -28,6 +28,22 @@
         </a>
       </div>
 
+      <component
+        :is="entityRoute ? 'RouterLink' : 'div'"
+        v-if="entityType"
+        :to="entityRoute ?? undefined"
+        class="message__entity-ref"
+        :class="{ 'message__entity-ref--static': !entityRoute }"
+      >
+        <i :class="entityRefIconClass(entityType)"></i>
+        <span class="message__entity-ref-info">
+          <span class="message__entity-ref-title">{{ entityTitle }}</span>
+          <span v-if="entitySubtitle" class="message__entity-ref-subtitle">{{
+            entitySubtitle
+          }}</span>
+        </span>
+      </component>
+
       <div v-if="message.body" class="message__body">{{ message.body }}</div>
       <div class="message__meta">
         <button
@@ -47,10 +63,13 @@
 
 <script setup>
 import {
+  entityRefIconClass,
+  entityRefRoute,
   fileIconClass,
   fileOpenUrl,
   formatFileSize,
   formatMessageTime,
+  unwrapNullString,
 } from '@/utils/chat.utils'
 import { computed } from 'vue'
 
@@ -64,6 +83,16 @@ defineEmits(['delete'])
 
 const time = computed(() => formatMessageTime(props.message.createdAt))
 const attachments = computed(() => props.message.attachments ?? [])
+
+const entityType = computed(() => unwrapNullString(props.message.entityType))
+const entityId = computed(() => unwrapNullString(props.message.entityId))
+const entityTitle = computed(
+  () => unwrapNullString(props.message.entityTitle) ?? 'Ссылка на заявку'
+)
+const entitySubtitle = computed(() => unwrapNullString(props.message.entitySubtitle))
+const entityRoute = computed(() =>
+  entityType.value && entityId.value ? entityRefRoute(entityType.value, entityId.value) : null
+)
 </script>
 
 <style scoped>
@@ -109,6 +138,54 @@ const attachments = computed(() => props.message.attachments ?? [])
   display: flex;
   flex-direction: column;
   gap: 0.36rem;
+}
+
+.message__entity-ref {
+  display: flex;
+  align-items: center;
+  gap: 0.57rem;
+  padding: 0.5rem 0.71rem;
+  background: var(--foreground);
+  border: 0.07rem solid var(--border-color);
+  border-radius: calc(var(--border-radius) * 0.7);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.message__entity-ref:not(.message__entity-ref--static):hover {
+  border-color: var(--accent);
+}
+
+.message__entity-ref--static {
+  cursor: default;
+}
+
+.message__entity-ref i {
+  font-size: 1.14rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.message__entity-ref-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.message__entity-ref-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.message__entity-ref-subtitle {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 16rem;
 }
 
 .message__attachment {

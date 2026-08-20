@@ -95,9 +95,14 @@ export const getChatMessages = async (chatId, { beforeId, limit } = {}) => {
   }
 }
 
-export const sendChatMessage = async (chatId, body) => {
+// entityRef — необязательная ссылка на сущность (например, заявку на
+// отпуск): { entityType, entityId, entityTitle, entitySubtitle }.
+export const sendChatMessage = async (chatId, body, entityRef = null) => {
   try {
-    const response = await timeTrackApi.post(`/chats/${chatId}/messages`, { body })
+    const response = await timeTrackApi.post(`/chats/${chatId}/messages`, {
+      body,
+      ...entityRef,
+    })
     return response.data
   } catch (error) {
     console.error('Ошибка при отправке сообщения:', error)
@@ -105,10 +110,12 @@ export const sendChatMessage = async (chatId, body) => {
   }
 }
 
-export const sendChatFileMessage = async (chatId, file, body = '') => {
+// files — массив File (можно один) — бэк принимает несколько полей "file"
+// в одном multipart-запросе и привязывает их все к одному сообщению.
+export const sendChatFileMessage = async (chatId, files, body = '') => {
   try {
     const formData = new FormData()
-    formData.append('file', file)
+    for (const file of files) formData.append('file', file)
     if (body) formData.append('body', body)
 
     const response = await timeTrackApi.post(`/chats/${chatId}/messages/file`, formData, {

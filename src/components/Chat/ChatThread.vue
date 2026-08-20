@@ -41,6 +41,13 @@
         <ButtonUI
           v-if="isGroup"
           type="muted-accent"
+          icon="fa-regular fa-users"
+          v-tooltip="'Участники'"
+          @click="showParticipants = true"
+        />
+        <ButtonUI
+          v-if="isGroup"
+          type="muted-accent"
           icon="fa-regular fa-user-plus"
           v-tooltip="'Добавить участника'"
           @click="openAddParticipant"
@@ -79,19 +86,63 @@
         <span>{{ typingText }}</span>
       </div>
 
+      <div v-if="attachedEntity" class="thread__attached-ref">
+        <i class="fa-regular fa-plane-departure"></i>
+        <div class="thread__attached-ref-info">
+          <span class="thread__attached-ref-title">{{ attachedEntity.entityTitle }}</span>
+          <span class="thread__attached-ref-subtitle">{{ attachedEntity.entitySubtitle }}</span>
+        </div>
+        <button
+          type="button"
+          class="thread__attached-ref-remove"
+          @click="attachedEntity = null"
+        >
+          <i class="fa-regular fa-xmark"></i>
+        </button>
+      </div>
+
+      <div v-if="attachedFiles.length" class="thread__attached-files">
+        <div
+          v-for="(file, index) in attachedFiles"
+          :key="index"
+          class="thread__attached-ref"
+        >
+          <i :class="fileIconClass(detectFileTypeFromMime(file.type))"></i>
+          <div class="thread__attached-ref-info">
+            <span class="thread__attached-ref-title">{{ file.name }}</span>
+            <span class="thread__attached-ref-subtitle">{{ formatFileSize(file.size) }}</span>
+          </div>
+          <button
+            type="button"
+            class="thread__attached-ref-remove"
+            @click="attachedFiles.splice(index, 1)"
+          >
+            <i class="fa-regular fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
       <div class="thread__composer">
         <input
           ref="fileInput"
           type="file"
+          multiple
           style="display: none"
           @change="onFileSelected"
         />
         <ButtonUI
           type="muted-accent"
           icon="fa-regular fa-paperclip"
-          v-tooltip="'Прикрепить файл'"
-          :disabled="chatStore.isSendingFile"
+          v-tooltip="'Прикрепить файлы'"
+          :disabled="chatStore.isSendingFile || !!attachedEntity"
           @click="fileInput.click()"
+        />
+        <ButtonUI
+          type="muted-accent"
+          icon="fa-regular fa-link"
+          v-tooltip="'Сослаться на заявку'"
+          :disabled="!!attachedFiles.length"
+          @click="openAttachEntity"
         />
         <textarea
           v-model="draft"
@@ -103,11 +154,13 @@
         ></textarea>
         <ButtonUI
           icon="fa-regular fa-paper-plane-top"
-          :disabled="!draft.trim()"
+          :disabled="!draft.trim() && !attachedEntity && !attachedFiles.length"
           @click="send"
         />
       </div>
     </template>
+
+    <ParticipantsModal v-if="showParticipants" @close="showParticipants = false" />
   </div>
 </template>
 
@@ -120,13 +173,18 @@ import { useUniversalModalStore } from '@/stores/modal'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
 import {
+  detectFileTypeFromMime,
+  fileIconClass,
+  formatFileSize,
   getChatDisplayName,
   getUserInitials,
   unwrapNullString,
 } from '@/utils/chat.utils'
 import { computed, nextTick, ref, watch } from 'vue'
 import ChatMessage from './ChatMessage.vue'
+import ParticipantsModal from './ParticipantsModal.vue'
 import ParticipantsPicker from './ParticipantsPicker.vue'
+import VacationRefPicker from './VacationRefPicker.vue'
 
 const chatStore = useChatStore()
 const userStore = useUserStore()
@@ -134,11 +192,15 @@ const modalStore = useUniversalModalStore()
 const confirmModalStore = useConfirmModal()
 const notificationStore = useNotificationStore()
 
+const showParticipants = ref(false)
 const draft = ref('')
 const messagesEl = ref(null)
 const fileInput = ref(null)
+const attachedEntity = ref(null)
+const attachedFiles = ref([])
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
+const MAX_FILES = 10 // см. maxAttachmentsPerMessage в internal/chat/service.go
 
 const isGroup = computed(() => chatStore.activeChat?.type === 'group')
 
@@ -178,30 +240,70 @@ function onInput() {
   chatStore.notifyTyping()
 }
 
+// Файл и ссылка на заявку — как и текст, только копятся в composer'е до
+// нажатия "Отправить" (было: файл уходил сразу по выбору). Сочетать файл и
+// ссылку в одном сообщении бэк не умеет (два разных эндпоинта), поэтому они
+// взаимоисключающие — кнопки блокируют друг друга (см. :disabled в шаблоне).
 async function send() {
   const body = draft.value
+  const files = attachedFiles.value
+  const entityRef = attachedEntity.value
   draft.value = ''
-  await chatStore.sendMessage(body)
+  attachedFiles.value = []
+  attachedEntity.value = null
+
+  if (files.length) {
+    await chatStore.sendFileMessage(files, body)
+  } else {
+    await chatStore.sendMessage(body, entityRef)
+  }
 }
 
-// --- Отправка файла ---
-async function onFileSelected(event) {
-  const selected = event.target.files[0]
+// --- Ссылка на заявку ---
+function openAttachEntity() {
+  modalStore.open({
+    title: 'Сослаться на заявку',
+    fields: [
+      {
+        name: 'vacationRef',
+        type: 'component',
+        component: VacationRefPicker,
+        value: null,
+      },
+    ],
+    submitButtonText: 'Прикрепить',
+    onSubmit: async (formData) => {
+      if (formData.vacationRef) attachedEntity.value = formData.vacationRef
+    },
+  })
+}
+
+// --- Прикрепление файлов (можно выбрать несколько сразу, можно повторить
+// выбор ещё раз — новые добавляются к уже прикреплённым) ---
+function onFileSelected(event) {
+  const selected = [...event.target.files]
   event.target.value = '' // чтобы повторный выбор того же файла тоже сработал
 
-  if (!selected) return
+  if (!selected.length) return
 
-  if (selected.size > MAX_FILE_SIZE) {
+  const tooBig = selected.filter((f) => f.size > MAX_FILE_SIZE)
+  const ok = selected.filter((f) => f.size <= MAX_FILE_SIZE)
+
+  if (tooBig.length) {
     notificationStore.addNotification(
-      'Файл слишком большой. Максимальный размер: 20MB',
+      `Файл слишком большой (макс. 20MB): ${tooBig.map((f) => f.name).join(', ')}`,
       'error'
     )
+  }
+
+  const next = [...attachedFiles.value, ...ok]
+  if (next.length > MAX_FILES) {
+    notificationStore.addNotification(`Можно прикрепить не более ${MAX_FILES} файлов`, 'error')
+    attachedFiles.value = next.slice(0, MAX_FILES)
     return
   }
 
-  const caption = draft.value
-  draft.value = ''
-  await chatStore.sendFileMessage(selected, caption)
+  attachedFiles.value = next
 }
 
 // --- Переименование группового чата (двойной клик по заголовку) ---
@@ -285,6 +387,9 @@ function scrollToBottom() {
 
 watch(() => chatStore.activeChatId, scrollToBottom)
 watch(() => chatStore.activeMessages.length, scrollToBottom)
+// Переключились на другой чат — модалка участников, если была открыта,
+// относилась к предыдущему.
+watch(() => chatStore.activeChatId, () => (showParticipants.value = false))
 </script>
 
 <style scoped>
@@ -292,6 +397,11 @@ watch(() => chatStore.activeMessages.length, scrollToBottom)
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* Без этого grid-элемент (.chat-page — грид) по умолчанию не сжимается
+     ниже высоты своего контента (min-height: auto) — список сообщений
+     тянул за собой высоту всей карточки вместо того, чтобы скроллиться
+     внутри неё. */
+  min-height: 0;
   background: var(--foreground);
   border-radius: var(--border-radius);
   border: 0.07rem solid var(--border-color);
@@ -386,6 +496,10 @@ watch(() => chatStore.activeMessages.length, scrollToBottom)
 
 .thread__messages {
   flex: 1;
+  /* Тот же трюк, но уже для flex-ребёнка: без min-height: 0 flex-элемент по
+     умолчанию не сжимается ниже контента, и overflow-y: auto никогда не
+     срабатывает — список просто растёт вместе с количеством сообщений. */
+  min-height: 0;
   overflow-y: auto;
   padding: var(--padding-secondary);
   display: flex;
@@ -399,6 +513,75 @@ watch(() => chatStore.activeMessages.length, scrollToBottom)
   color: var(--muted-text);
   font-style: italic;
   height: 1.5rem;
+}
+
+.thread__attached-files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+  margin: 0 var(--padding-secondary);
+  flex-shrink: 0;
+}
+
+.thread__attached-files .thread__attached-ref {
+  margin: 0;
+}
+
+.thread__attached-ref {
+  display: flex;
+  align-items: center;
+  gap: 0.71rem;
+  margin: 0 var(--padding-secondary);
+  padding: 0.5rem 0.86rem;
+  background: var(--muted-accent);
+  border-radius: var(--border-radius);
+  flex-shrink: 0;
+}
+
+.thread__attached-ref i:first-child {
+  font-size: 1.14rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.thread__attached-ref-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.thread__attached-ref-title {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.86rem;
+}
+
+.thread__attached-ref-subtitle {
+  font-size: 0.79rem;
+  color: var(--muted-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread__attached-ref-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.57rem;
+  height: 1.57rem;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.thread__attached-ref-remove:hover {
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .thread__composer {

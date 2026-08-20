@@ -69,7 +69,14 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 22rem 1fr;
   gap: calc(var(--padding-secondary) / 2);
-  height: 100%;
+  /* height: 100% тут ни от чего не отталкивается — ни один предок (#app,
+     .container, .main из MainLayout.vue) не имеет собственной définite-
+     высоты, только min-height: 100vh (эти страницы по умолчанию просто
+     растут и скроллится вся страница). Поэтому вместо процента считаем
+     высоту прямо от вьюпорта: 100vh минус хедер и вертикальные паддинги
+     .main (var(--padding-primary) сверху и снизу). У /chats нет сабменю,
+     иначе его высоту тоже нужно было бы вычесть. */
+  height: calc(100vh - var(--header-height) - var(--padding-primary) * 2);
   min-height: 0;
 }
 

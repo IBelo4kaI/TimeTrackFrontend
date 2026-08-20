@@ -14,7 +14,7 @@ import {
   sendChatTyping,
 } from '@/services/chat.api'
 import router from '@/router'
-import { getChatDisplayName } from '@/utils/chat.utils'
+import { getChatDisplayName, unwrapNullString } from '@/utils/chat.utils'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useNotificationStore } from './notification'
@@ -134,10 +134,23 @@ export const useChatStore = defineStore('chat', () => {
     await loadParticipants(activeChatId.value)
   }
 
+  // userId === себе — это и есть "выйти из чата" (бэк это разрешает всем
+  // участникам; удалить кого-то ДРУГОГО может только создатель/админ, см.
+  // internal/chat/service.go RemoveParticipant).
   async function removeParticipant(userId) {
-    if (!activeChatId.value) return
-    await removeChatParticipant(activeChatId.value, userId)
-    await loadParticipants(activeChatId.value)
+    const chatId = activeChatId.value
+    if (!chatId) return
+
+    try {
+      await removeChatParticipant(chatId, userId)
+      if (userId === userStore.user?.id) {
+        forgetChat(chatId)
+      } else {
+        await loadParticipants(chatId)
+      }
+    } catch {
+      notificationStore.addNotification('Не удалось удалить участника', 'error')
+    }
   }
 
   async function deleteChat(chatId) {
@@ -161,15 +174,15 @@ export const useChatStore = defineStore('chat', () => {
 
   // --- Сообщения ---
 
-  async function sendMessage(body) {
+  async function sendMessage(body, entityRef = null) {
     const chatId = activeChatId.value
-    if (!chatId || !body.trim()) return
+    if (!chatId || (!body.trim() && !entityRef)) return
 
     try {
       // Сообщение в ленту добавит SSE-событие message_created (в т.ч. для
       // собственных сообщений — бэк рассылает всем участникам без
       // исключения отправителя, это упрощает синхронизацию между вкладками).
-      await sendChatMessage(chatId, body.trim())
+      await sendChatMessage(chatId, body.trim(), entityRef)
     } catch {
       notificationStore.addNotification('Не удалось отправить сообщение', 'error')
     }
@@ -177,15 +190,17 @@ export const useChatStore = defineStore('chat', () => {
 
   const isSendingFile = ref(false)
 
-  async function sendFileMessage(file, caption = '') {
+  // files — один File или массив File.
+  async function sendFileMessage(files, caption = '') {
     const chatId = activeChatId.value
-    if (!chatId || !file) return
+    const list = Array.isArray(files) ? files : [files].filter(Boolean)
+    if (!chatId || !list.length) return
 
     isSendingFile.value = true
     try {
       // Как и с текстом — в ленту сообщение попадёт по SSE message_created
       // (рассылается всем участникам, включая отправителя).
-      await sendChatFileMessage(chatId, file, caption.trim())
+      await sendChatFileMessage(chatId, list, caption.trim())
     } catch {
       notificationStore.addNotification('Не удалось отправить файл', 'error')
     } finally {
@@ -285,8 +300,24 @@ export const useChatStore = defineStore('chat', () => {
 
     eventSource.addEventListener('chat_deleted', (e) => {
       const { chatId } = JSON.parse(e.data)
+      // Один и тот же ивент шлётся и при удалении чата (личного/группового),
+      // и при исключении из группового чата участника (RemoveParticipant на
+      // бэке) — текст тоста уточняем по типу чата, пока он ещё есть в списке.
+      const chat = chats.value.find((c) => c.id === chatId)
+      const message =
+        chat?.type === 'group' ? 'Вас удалили из группового чата' : 'Собеседник удалил чат'
       forgetChat(chatId)
-      notificationStore.addNotification('Собеседник удалил чат', 'info')
+      notificationStore.addNotification(message, 'info')
+    })
+
+    // Кого-то другого убрали из группового чата (или он вышел сам) — у нас
+    // самих доступ к чату сохраняется, просто обновляем состав уже открытого
+    // треда локально (без похода на сервер — участник уже известен по id).
+    eventSource.addEventListener('participant_removed', (e) => {
+      const { chatId, userId } = JSON.parse(e.data)
+      const list = participantsByChat.value[chatId]
+      if (!list) return
+      participantsByChat.value[chatId] = list.filter((p) => p.userId !== userId)
     })
 
     // Пришло сразу при создании чата (собеседнику) и при добавлении в
@@ -352,6 +383,8 @@ export const useChatStore = defineStore('chat', () => {
     let preview = message.body.length > 60 ? `${message.body.slice(0, 60)}…` : message.body
     if (!preview && message.attachments?.length) {
       preview = message.attachments.length > 1 ? '📎 Файлы' : `📎 ${message.attachments[0].originalName}`
+    } else if (!preview && unwrapNullString(message.entityType)) {
+      preview = `🔗 ${unwrapNullString(message.entityTitle) ?? 'Ссылка на заявку'}`
     }
 
     notificationStore.addNotification(`${senderName}: ${preview}`, 'info', 6000, () =>

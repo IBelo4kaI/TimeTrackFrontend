@@ -48,6 +48,40 @@ export function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
 }
 
+// Ссылка на сущность в сообщении (см. миграцию 012_add_chat_message_entity_ref.sql
+// в бэке) — на данный момент кликабельно поддержаны только заявки на отпуск
+// (у них есть отдельная страница-карточка); остальные типы сущностей (когда
+// появятся) просто покажутся некликабельной карточкой с заголовком/подписью.
+const ENTITY_REF_ROUTES = {
+  vacation: (id) => ({ name: 'vacation-application', params: { id } }),
+}
+
+export function entityRefRoute(entityType, entityId) {
+  return ENTITY_REF_ROUTES[entityType]?.(entityId) ?? null
+}
+
+export function entityRefIconClass(entityType) {
+  switch (entityType) {
+    case 'vacation':
+      return 'fa-regular fa-plane-departure'
+    case 'sick_leave':
+      return 'fa-regular fa-briefcase-medical'
+    default:
+      return 'fa-regular fa-link'
+  }
+}
+
+// Клиентский аналог detectFileType на бэке (internal/service/file.go) — нужен
+// только для иконки чипа ДО отправки, пока у файла есть только браузерный
+// File.type (mime), а не серверный fileType.
+export function detectFileTypeFromMime(mimeType) {
+  if (!mimeType) return 'other'
+  if (mimeType.startsWith('image/')) return 'image'
+  if (mimeType.startsWith('video/')) return 'video'
+  if (mimeType === 'application/pdf') return 'document'
+  return 'other'
+}
+
 export function fileIconClass(fileType) {
   switch (fileType) {
     case 'image':
