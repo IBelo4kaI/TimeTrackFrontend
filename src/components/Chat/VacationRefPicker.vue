@@ -41,10 +41,16 @@ const pickerValue = ref('')
 const isLoading = ref(false)
 const vacations = ref([])
 
-// vacation.all:read — тот же permission, что и у GET /vacation/all/:year
-// (см. router.go бэка) — если есть, показываем заявки всех сотрудников,
-// иначе только свои.
-const canViewAll = computed(() => userStore.hasPermission('vacation.all', 'read'))
+// Показать список заявок ВСЕХ сотрудников, а не только своих, можно только
+// если есть оба разрешения: vacation.all:read (иначе сам список чужих
+// заявок не загрузить — GET /vacation/all/:year) И vacation.all:link
+// (иначе бэк всё равно отклонит попытку сослаться на чужую заявку в
+// сообщении, см. internal/chat/handler.go checkEntityRefAccess) — без
+// второго показывать чужие заявки в пикере бессмысленно, они всё равно не
+// отправятся.
+const canViewAll = computed(
+  () => userStore.hasPermission('vacation.all', 'read') && userStore.hasPermission('vacation.all', 'link')
+)
 
 function employeeName(userId) {
   const u = userStore.usersAll.find((x) => x.id === userId)
