@@ -31,11 +31,10 @@ export const useVacationOther = defineStore('vacation-other', () => {
       Array.isArray(dept?.employees) ? dept.employees : []
     )
 
-    // Без права просмотра всех отделов показываем только свой отдел.
-    // Раньше тут проверялось vacation.all:read — то разрешение открывает
-    // ещё и полные данные заявок + менеджерские действия, раздавать его
-    // всем сотрудникам ради этого виджета было ошибкой (см. VacationList.vue).
-    if (!userStore.hasPermission('vacation_calendar', 'read')) {
+    // Только свой отдел, если нет vacation.all:edit (тот же признак "админ",
+    // что и в VacationList.vue) — vacation_calendar:read выдан всем и тут не
+    // подходит, иначе все видели бы все отделы.
+    if (!userStore.hasPermission('vacation.all', 'edit')) {
       const currentUserId = userStore.user?.id
       const currentEmployee = all.find(
         (emp) => String(emp.user_id) === String(currentUserId)
