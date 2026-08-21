@@ -1,7 +1,7 @@
 <template>
   <div class="vacation-list">
     <div class="vacation-list__controls">
-      <template v-if="userStore.hasPermission('vacation.all', 'read')">
+      <template v-if="isAdmin">
         <Tabs :tabs="targets" v-model="vacationStore.target" type="line" />
       </template>
       <Tabs
@@ -66,11 +66,21 @@ import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user.js'
 import { useVacationStore } from '@/stores/vacation'
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import VacationItem from './VacationItem.vue'
 
 const vacationStore = useVacationStore()
 const userStore = useUserStore()
 const { isMobile } = storeToRefs(useThemeStore())
+
+// vacation.all:read сейчас выдан ВСЕМ сотрудникам (нужен для виджета "отпуска
+// коллег" — см. stores/vacationOther.js), поэтому вкладку "Все заявки" (она
+// же — таблица для одобрения/отклонения чужих заявок) гейтим не им, а
+// vacation.all:edit — тем же правом, что уже используется как признак
+// админа/руководителя в VacationItem.vue и VacationCreate.vue. Иначе любой
+// сотрудник с одним лишь vacation.all:read видел бы в этой вкладке заявки
+// всех остальных.
+const isAdmin = computed(() => userStore.hasPermission('vacation.all', 'edit'))
 
 const targets = [
   { id: 'my', label: 'Мои заявки' },

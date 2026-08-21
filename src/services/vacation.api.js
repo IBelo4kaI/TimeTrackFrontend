@@ -65,6 +65,21 @@ export const getAllUserVacationsByYear = async (year) => {
   }
 }
 
+// Урезанный (без description) список отпусков всех сотрудников — для
+// виджета "отпуска коллег" (stores/vacationOther.js). Отдельное разрешение
+// time:vacation_calendar:read, специально НЕ vacation.all:read — см.
+// комментарий в VacationList.vue.
+export const getVacationCalendarByYear = async (year) => {
+  try {
+    const response = await timeTrackApi.get(`/vacation/calendar/${year}`)
+
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении календаря отпусков:', error)
+    throw error
+  }
+}
+
 export const createVacation = async (data) => {
   try {
     const response = await timeTrackApi.post('/vacation/create', data)

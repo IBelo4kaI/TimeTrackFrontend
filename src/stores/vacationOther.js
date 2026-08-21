@@ -1,4 +1,4 @@
-import { getAllUserVacationsByYear } from '@/services/vacation.api'
+import { getVacationCalendarByYear } from '@/services/vacation.api'
 import {
   getInternalEmployeeDepartments,
   getInternalEmployees,
@@ -31,8 +31,11 @@ export const useVacationOther = defineStore('vacation-other', () => {
       Array.isArray(dept?.employees) ? dept.employees : []
     )
 
-    // Без права просмотра всех отделов показываем только свой отдел
-    if (!userStore.hasPermission('vacation.all', 'read')) {
+    // Без права просмотра всех отделов показываем только свой отдел.
+    // Раньше тут проверялось vacation.all:read — то разрешение открывает
+    // ещё и полные данные заявок + менеджерские действия, раздавать его
+    // всем сотрудникам ради этого виджета было ошибкой (см. VacationList.vue).
+    if (!userStore.hasPermission('vacation_calendar', 'read')) {
       const currentUserId = userStore.user?.id
       const currentEmployee = all.find(
         (emp) => String(emp.user_id) === String(currentUserId)
@@ -133,7 +136,7 @@ export const useVacationOther = defineStore('vacation-other', () => {
     try {
       const [vacationsResult, employeesResult, departmentsResult] =
         await Promise.allSettled([
-          getAllUserVacationsByYear(filters.value.year),
+          getVacationCalendarByYear(filters.value.year),
           getInternalEmployees(),
           getInternalEmployeeDepartments(),
         ])

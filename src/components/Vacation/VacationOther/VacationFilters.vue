@@ -45,7 +45,9 @@ import { computed } from 'vue'
 
 const store = useVacationOther()
 const userStore = useUserStore()
-const isReadAllDep = userStore.hasPermission('vacation.all', 'read')
+// Тот же permission, что и у самого виджета (vacationOther.js) — см.
+// комментарий там про то, почему не vacation.all:read.
+const isReadAllDep = userStore.hasPermission('vacation_calendar', 'read')
 
 const activeCount = computed(() => {
   return [
