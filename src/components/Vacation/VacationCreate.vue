@@ -112,6 +112,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { createVacation } from '@/services/vacation.api'
 import { getActiveVacationTypes } from '@/services/vacationTypes.api'
 import { existsFreeVacation, startDateBeforeEnd } from '@/utils/modal.utils'
+import { getUserFullName } from '@/utils/user.utils'
 
 const emit = defineEmits(['success'])
 
@@ -231,10 +232,22 @@ const handleSubmit = async () => {
   isSubmitting.value = true
 
   try {
+    const selfName = [
+      userStore.user?.surname,
+      userStore.user?.name,
+      userStore.user?.patronymic,
+    ]
+      .filter(Boolean)
+      .join(' ')
+
     await createVacation({
       userId: formData.userId,
       status: formData.status,
       vacationTypeId: formData.vacationTypeId,
+      applicantName:
+        formData.userId === userStore.user.id
+          ? selfName
+          : getUserFullName(userStore.usersAll, formData.userId),
       startDate: new Date(formData.startDate),
       endDate: new Date(formData.endDate),
       description: formData.description || undefined,

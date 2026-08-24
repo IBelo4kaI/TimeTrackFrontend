@@ -20,6 +20,15 @@ export const parseGenderId = (user) => {
   return null
 }
 
+// Полное имя сотрудника по id из уже загруженного userStore.usersAll —
+// нужно, например, чтобы подставить "от кого заявка" в уведомление,
+// не делая для этого отдельный запрос к сервису пользователей.
+export const getUserFullName = (usersAll, userId) => {
+  const user = usersAll?.find((u) => u.id === userId)
+  if (!user) return ''
+  return [user.surname, user.name, user.patronymic].filter(Boolean).join(' ')
+}
+
 // getInternalEmployees() (services/reference.api.js) отдаёт либо плоский
 // список сотрудников, либо список групп {department, employees: [...]} —
 // приводим к единому плоскому списку. Вынесено из stores/report.js.

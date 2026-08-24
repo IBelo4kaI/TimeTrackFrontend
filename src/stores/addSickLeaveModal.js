@@ -1,5 +1,6 @@
 import { createSickLeave } from '@/services/sick_leave.api'
 import { startDateBeforeEnd } from '@/utils/modal.utils'
+import { getUserFullName } from '@/utils/user.utils'
 import { defineStore } from 'pinia'
 import { useUniversalModalStore } from './modal'
 import { useNotificationStore } from './notification'
@@ -70,8 +71,20 @@ export const useAddSickLeaveModalStore = defineStore('add-sick-leave-modal', () 
       submitButtonText: 'Добавить',
       submittingText: 'Сохранение...',
       onSubmit: async (data) => {
+        const selfName = [
+          userStore.user?.surname,
+          userStore.user?.name,
+          userStore.user?.patronymic,
+        ]
+          .filter(Boolean)
+          .join(' ')
+
         await createSickLeave({
           ...data,
+          applicantName:
+            data.userId === userId
+              ? selfName
+              : getUserFullName(userStore.usersAll, data.userId),
           startDate: new Date(data.startDate),
           endDate: new Date(data.endDate),
         })

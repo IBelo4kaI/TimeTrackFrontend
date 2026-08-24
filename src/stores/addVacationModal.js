@@ -1,5 +1,6 @@
 import { createVacation } from '@/services/vacation.api'
 import { existsFreeVacation, startDateBeforeEnd } from '@/utils/modal.utils'
+import { getUserFullName } from '@/utils/user.utils'
 import { defineStore } from 'pinia'
 import { useUniversalModalStore } from './modal'
 import { useNotificationStore } from './notification'
@@ -101,8 +102,20 @@ export const useAddVacationModalStore = defineStore(
           console.log(data)
 
           try {
+            const selfName = [
+              userStore.user?.surname,
+              userStore.user?.name,
+              userStore.user?.patronymic,
+            ]
+              .filter(Boolean)
+              .join(' ')
+
             await createVacation({
               ...data,
+              applicantName:
+                data.userId === userId
+                  ? selfName
+                  : getUserFullName(userStore.usersAll, data.userId),
               startDate: new Date(data.startDate),
               endDate: new Date(data.endDate),
             })
