@@ -90,7 +90,7 @@
 
         <template v-else>
           <ButtonUI
-            v-if="item.status != 'approved'"
+            v-if="item.status == 'pending'"
             @click="
               confirmModalStore.open(
                 onDeleted,
