@@ -86,6 +86,19 @@
           >
             Отклонить
           </ButtonUI>
+          <ButtonUI
+            @click="
+              confirmModalStore.open(
+                onDeleted,
+                'Вы действительно хотите удалить?'
+              )
+            "
+            type="destructive"
+            icon="fa-regular fa-trash-can-xmark"
+            v-tooltip="'Удалить отпуск'"
+          >
+            Удалить отпуск
+          </ButtonUI>
         </template>
 
         <template v-else>
