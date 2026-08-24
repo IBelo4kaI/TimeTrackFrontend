@@ -422,6 +422,12 @@ function confirmDelete() {
 
 // --- Уведомления: полностью (тост/браузер/звук/VK) или только VK-дубликат ---
 function openNotificationsMenu(event) {
+  // contextMenuStore.openMenu вешает document click-listener на закрытие
+  // синхронно, внутри вызова — без stopPropagation этот же клик, всплыв до
+  // document, тут же сам себя и закрывает (contexMenu.js рассчитан на
+  // @contextmenu, у него такой самозакрывающей коллизии нет).
+  event.stopPropagation()
+
   const chat = chatStore.activeChat
   if (!chat) return
 
