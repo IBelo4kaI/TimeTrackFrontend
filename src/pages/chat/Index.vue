@@ -14,6 +14,7 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUniversalModalStore } from '@/stores/modal'
 import { useNotificationStore } from '@/stores/notification'
 import { onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Чаты', 'Личные и групповые обсуждения')
@@ -21,6 +22,7 @@ titleStore.setTitle('Чаты', 'Личные и групповые обсужд
 const chatStore = useChatStore()
 const modalStore = useUniversalModalStore()
 const notificationStore = useNotificationStore()
+const route = useRoute()
 
 function openNewChatModal() {
   modalStore.open({
@@ -59,8 +61,13 @@ function openNewChatModal() {
 // сеанс, а не только пока открыта эта страница, поэтому чат, оставшийся
 // активным после ухода со страницы, уже получал все события по сообщениям
 // live и отдельно перезапрашивать его тут не нужно.
-onMounted(() => {
-  chatStore.loadChats()
+// ?open=<chatId> — глубокая ссылка на конкретный чат (используется, например,
+// VK-уведомлениями, см. internal/vk/service.go на бэке).
+onMounted(async () => {
+  await chatStore.loadChats()
+  if (route.query.open) {
+    chatStore.openChat(route.query.open)
+  }
 })
 
 // Открытый чат — состояние страницы, а не сессии: закрываем при уходе,
