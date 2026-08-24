@@ -20,6 +20,12 @@ export const parseGenderId = (user) => {
   return null
 }
 
+// ФИО текущего пользователя (userStore.user) — та же необходимость, что и
+// у getUserFullName, но для себя самого: не нужно искать в usersAll.
+export const getSelfFullName = (user) => {
+  return [user?.surname, user?.name, user?.patronymic].filter(Boolean).join(' ')
+}
+
 // Полное имя сотрудника по id из уже загруженного userStore.usersAll —
 // нужно, например, чтобы подставить "от кого заявка" в уведомление,
 // не делая для этого отдельный запрос к сервису пользователей.

@@ -54,27 +54,17 @@
 <script setup>
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import { useNotificationCenterStore } from '@/stores/notificationCenter'
-import { unwrapNull, unwrapNullString, unwrapNullTime } from '@/utils/chat.utils'
+import { unwrapNull, unwrapNullTime } from '@/utils/chat.utils'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const store = useNotificationCenterStore()
+const linkFor = store.linkFor
 
 const open = ref(false)
 const wrapperRef = ref(null)
 
 function isRead(item) {
   return !!unwrapNull(item.isRead, 'Bool')
-}
-
-// Кликабельно только на заявку на отпуск — у неё есть отдельная страница-
-// карточка; у больничных её нет (см. internal/sick_leave — только общий список).
-function linkFor(item) {
-  const entityType = unwrapNullString(item.entityType)
-  const entityId = unwrapNullString(item.entityId)
-  if (entityType === 'vacation' && entityId) {
-    return { name: 'vacation-application', params: { id: entityId } }
-  }
-  return null
 }
 
 function formatDateTime(createdAt) {
@@ -104,19 +94,15 @@ function onClickOutside(e) {
   }
 }
 
-let pollTimer = null
-
 onMounted(() => {
   store.loadUnreadCount()
   document.addEventListener('mousedown', onClickOutside)
-  // Своей SSE-рассылки у персистентных уведомлений нет — просто освежаем
-  // бейдж время от времени, пока вкладка открыта.
-  pollTimer = setInterval(() => store.loadUnreadCount(), 60000)
+  // SSE-подключение (App.vue) держит бейдж/список в реальном времени —
+  // поллинг тут больше не нужен.
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onClickOutside)
-  clearInterval(pollTimer)
 })
 </script>
 

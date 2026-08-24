@@ -18,7 +18,7 @@ import {
   setViewingChat,
 } from '@/services/chat.api'
 import router from '@/router'
-import { getChatDisplayName, unwrapNullString } from '@/utils/chat.utils'
+import { getSelfFullName } from '@/utils/user.utils'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useNotificationStore } from './notification'
@@ -227,7 +227,7 @@ export const useChatStore = defineStore('chat', () => {
       // Сообщение в ленту добавит SSE-событие message_created (в т.ч. для
       // собственных сообщений — бэк рассылает всем участникам без
       // исключения отправителя, это упрощает синхронизацию между вкладками).
-      await sendChatMessage(chatId, body.trim(), entityRef)
+      await sendChatMessage(chatId, body.trim(), entityRef, getSelfFullName(userStore.user))
     } catch {
       notificationStore.addNotification('Не удалось отправить сообщение', 'error')
     }
@@ -245,7 +245,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       // Как и с текстом — в ленту сообщение попадёт по SSE message_created
       // (рассылается всем участникам, включая отправителя).
-      await sendChatFileMessage(chatId, list, caption.trim())
+      await sendChatFileMessage(chatId, list, caption.trim(), getSelfFullName(userStore.user))
     } catch {
       notificationStore.addNotification('Не удалось отправить файл', 'error')
     } finally {
@@ -294,9 +294,9 @@ export const useChatStore = defineStore('chat', () => {
   function connect() {
     if (eventSource) return
 
-    requestBrowserNotificationPermission()
-    primeAudioContext()
-
+    // Запрос разрешения на браузерные уведомления и прогрев звука теперь
+    // делает notificationCenter.js (общий источник тостов/звука/браузерных
+    // уведомлений, включая чатовые — см. connect() там).
     eventSource = new EventSource(STREAM_URL, { withCredentials: true })
 
     eventSource.addEventListener('message_created', (e) => {
@@ -313,7 +313,9 @@ export const useChatStore = defineStore('chat', () => {
       } else if (!isOwn) {
         const chat = chats.value.find((c) => c.id === message.chatId)
         if (chat) chat.unreadCount = (chat.unreadCount ?? 0) + 1
-        notifyNewMessage(message)
+        // Тост/звук/браузерное уведомление о новом сообщении теперь приходят
+        // из notificationCenter.js (общая таблица notifications + свой SSE) —
+        // здесь только обновляем счётчик непрочитанных для сайдбара.
       }
 
       clearTyping(message.chatId, message.senderUserId)
@@ -371,29 +373,10 @@ export const useChatStore = defineStore('chat', () => {
     // Пришло сразу при создании чата (собеседнику) и при добавлении в
     // существующий групповой чат — в обоих случаях у нас нет персональных
     // (role/unreadCount) данных этого чата под текущего юзера, проще
-    // перезапросить список целиком, чем гадать.
-    eventSource.addEventListener('chat_created', async (e) => {
-      const { chatId } = JSON.parse(e.data)
+    // перезапросить список целиком, чем гадать. Тост/звук/браузерное
+    // уведомление — из notificationCenter.js, см. message_created выше.
+    eventSource.addEventListener('chat_created', async () => {
       await loadChats()
-
-      const chat = chats.value.find((c) => c.id === chatId)
-      const name = chat
-        ? getChatDisplayName(
-            chat,
-            participantsByChat.value[chatId] ?? [],
-            userStore.user?.id,
-            userStore.usersAll
-          )
-        : null
-
-      notificationStore.addNotification(
-        name ? `Новый чат: ${name}` : 'У вас новый чат',
-        'info',
-        6000,
-        () => goToChat(chatId)
-      )
-      notifyBrowser('Новый чат', name ?? 'У вас новый чат', chatId, () => goToChat(chatId))
-      playNotificationSound()
     })
 
     eventSource.onerror = () => {
@@ -412,118 +395,6 @@ export const useChatStore = defineStore('chat', () => {
   // со страницы), а реально открыта страница чатов именно с этим чатом.
   function isViewingChat(chatId) {
     return router.currentRoute.value.name === 'chats' && activeChatId.value === chatId
-  }
-
-  // Открывает чат и уводит на страницу чатов — action для кликабельного
-  // тоста уведомления (новое сообщение/новый чат), работает из любой страницы.
-  function goToChat(chatId) {
-    openChat(chatId)
-    if (router.currentRoute.value.name !== 'chats') {
-      router.push({ name: 'chats' })
-    }
-  }
-
-  function notifyNewMessage(message) {
-    if (chats.value.find((c) => c.id === message.chatId)?.muted) return
-
-    const sender = userStore.usersAll.find((u) => u.id === message.senderUserId)
-    const senderName = sender
-      ? [sender.surname, sender.name].filter(Boolean).join(' ')
-      : 'Сотрудник'
-    // Сообщение может быть файлом без подписи (body пустой) — тогда в
-    // превью тоста показываем что вложено, а не пустую строку после двоеточия.
-    let preview = message.body.length > 60 ? `${message.body.slice(0, 60)}…` : message.body
-    if (!preview && message.attachments?.length) {
-      preview = message.attachments.length > 1 ? '📎 Файлы' : `📎 ${message.attachments[0].originalName}`
-    } else if (!preview && unwrapNullString(message.entityType)) {
-      preview = `🔗 ${unwrapNullString(message.entityTitle) ?? 'Ссылка на заявку'}`
-    }
-
-    notificationStore.addNotification(`${senderName}: ${preview}`, 'info', 6000, () =>
-      goToChat(message.chatId)
-    )
-    notifyBrowser(senderName, preview, message.chatId, () => goToChat(message.chatId))
-    playNotificationSound()
-  }
-
-  // --- Уведомления браузера (Notification API) ---
-
-  // Спрашиваем только если ответа ещё не было — повторный запрос при
-  // "denied" браузеры и так молча игнорируют, а при "granted" он не нужен.
-  function requestBrowserNotificationPermission() {
-    if (!('Notification' in window)) return
-    if (Notification.permission === 'default') Notification.requestPermission()
-  }
-
-  // Нативное уведомление — только пока вкладка не в фокусе, иначе дублирует
-  // уже видимый тост. tag группирует уведомления по чату (новое заменяет
-  // предыдущее непрочитанное из того же чата, а не копится поверх).
-  function notifyBrowser(title, body, tag, onClick) {
-    if (!('Notification' in window)) return
-    if (Notification.permission !== 'granted') {
-      console.warn('[chat] уведомление браузера не показано, permission =', Notification.permission)
-      return
-    }
-    if (!document.hidden && document.hasFocus()) return
-
-    const notification = new Notification(title, { body, icon: '/favicon.ico', tag })
-    notification.onclick = () => {
-      window.focus()
-      onClick?.()
-      notification.close()
-    }
-  }
-
-  // Короткий "дзынь" через Web Audio — без mp3-файла, чтобы не таскать
-  // отдельный ассет. Один AudioContext на вкладку, создаём лениво.
-  let audioCtx = null
-
-  // Автоплей-политика браузера не даёт стартовать AudioContext без жеста
-  // пользователя — resume() из playNotificationSound() к моменту реального
-  // уведомления это уже не спасает. Прогреваем на первый же клик/клавишу/тап
-  // по странице, задолго до того, как звук реально понадобится.
-  function primeAudioContext() {
-    const unlock = () => {
-      audioCtx ??= new (window.AudioContext || window.webkitAudioContext)()
-      if (audioCtx.state === 'suspended') audioCtx.resume()
-    }
-    document.addEventListener('click', unlock, { once: true })
-    document.addEventListener('keydown', unlock, { once: true })
-    document.addEventListener('touchstart', unlock, { once: true })
-  }
-
-  function playTone(ctx, freq, startAt, duration) {
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(freq, startAt)
-    gain.gain.setValueAtTime(0.0001, startAt)
-    gain.gain.exponentialRampToValueAtTime(0.2, startAt + 0.01)
-    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration)
-
-    osc.start(startAt)
-    osc.stop(startAt + duration)
-  }
-
-  async function playNotificationSound() {
-    try {
-      audioCtx ??= new (window.AudioContext || window.webkitAudioContext)()
-
-      // Без клика/тапа по странице контекст создаётся в состоянии
-      // "suspended" (автоплей-политика браузера) — без явного resume()
-      // звука просто не будет, без единой ошибки в консоли.
-      if (audioCtx.state === 'suspended') await audioCtx.resume()
-
-      const now = audioCtx.currentTime
-      // Два восходящих тона ("динь-дон") вместо одного плоского бипа.
-      playTone(audioCtx, 659.25, now, 0.13) // E5
-      playTone(audioCtx, 987.77, now + 0.11, 0.22) // B5
-    } catch (err) {
-      console.warn('[chat] звук уведомления не сыграл:', err)
-    }
   }
 
   function clearTyping(chatId, userId) {

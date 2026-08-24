@@ -22,6 +22,7 @@ import NotificationContainer from './components/Notification/NotificationContain
 import MainLayout from './layouts/MainLayout.vue'
 import { useChatStore } from './stores/chat'
 import { useDayTypesStore } from './stores/dayTypes'
+import { useNotificationCenterStore } from './stores/notificationCenter'
 import { useThemeStore } from './stores/themes'
 import { useUserStore } from './stores/user'
 
@@ -44,14 +45,18 @@ dayTypesStore.load()
 // Sidebar.vue/chatStore.totalUnread) считать не из чего, пока пользователь
 // сам не зайдёт на /chats хотя бы раз за сессию.
 const chatStore = useChatStore()
+const notificationCenterStore = useNotificationCenterStore()
 watch(
   () => userStore.isLogin,
   (loggedIn) => {
     if (loggedIn) {
       chatStore.connect()
       chatStore.loadChats()
+      notificationCenterStore.connect()
+      notificationCenterStore.loadUnreadCount()
     } else {
       chatStore.disconnect()
+      notificationCenterStore.disconnect()
     }
   },
   { immediate: true }
@@ -65,6 +70,7 @@ onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
   chatStore.disconnect()
+  notificationCenterStore.disconnect()
 })
 </script>
 <style scoped></style>

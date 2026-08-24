@@ -1,20 +1,39 @@
 // Персистентные уведомления (таблица notifications на бэке) — список,
-// который открывается по колокольчику в шапке. Не путать со стором
-// notification.js — тот про эфемерные тосты, этот про историю.
+// который открывается по колокольчику в шапке, и общий источник тостов/
+// звука/браузерных уведомлений для ВСЕГО, что через эту таблицу проходит
+// (заявки на отпуск/больничный, новые сообщения и чаты — см.
+// internal/notification/hub.go на бэке). Не путать со стором
+// notification.js — тот про эфемерные тосты, этот про историю + SSE.
+import router from '@/router'
 import {
   getNotifications,
   getUnreadNotificationsCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from '@/services/notifications.api'
-import { unwrapNull } from '@/utils/chat.utils'
+import { unwrapNull, unwrapNullString } from '@/utils/chat.utils'
+import {
+  notifyBrowser,
+  playNotificationSound,
+  primeAudioContext,
+  requestBrowserNotificationPermission,
+} from '@/utils/browserNotify.utils'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useNotificationStore } from './notification'
+
+// /apitime уже проксируется на бэк (см. vite.config.js) — тот же паттерн,
+// что у STREAM_URL в stores/chat.js.
+const STREAM_URL = '/apitime/notifications/stream'
 
 export const useNotificationCenterStore = defineStore('notification-center', () => {
+  const toastStore = useNotificationStore()
+
   const items = ref([])
   const unreadCount = ref(0)
   const isLoading = ref(false)
+
+  let eventSource = null
 
   async function load() {
     isLoading.value = true
@@ -61,6 +80,55 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
     }
   }
 
+  // Кликабельно только там, где есть куда вести: заявка на отпуск (у неё
+  // есть отдельная страница-карточка; у больничных её нет — только общий
+  // список) и чат (открываем тем же query-параметром, что и диплинк из VK,
+  // см. pages/chat/Index.vue).
+  function linkFor(item) {
+    const entityType = unwrapNullString(item.entityType)
+    const entityId = unwrapNullString(item.entityId)
+    if (entityType === 'vacation' && entityId) {
+      return { name: 'vacation-application', params: { id: entityId } }
+    }
+    if (entityType === 'chat' && entityId) {
+      return { name: 'chats', query: { open: entityId } }
+    }
+    return null
+  }
+
+  function goTo(item) {
+    const link = linkFor(item)
+    if (link) router.push(link)
+  }
+
+  function connect() {
+    if (eventSource) return
+
+    requestBrowserNotificationPermission()
+    primeAudioContext()
+
+    eventSource = new EventSource(STREAM_URL, { withCredentials: true })
+
+    eventSource.addEventListener('notification_created', (e) => {
+      const item = JSON.parse(e.data)
+      items.value = [item, ...items.value]
+      unreadCount.value += 1
+
+      toastStore.addNotification(`${item.title}: ${item.message}`, 'info', 6000, () => goTo(item))
+      notifyBrowser(item.title, item.message, item.id, () => goTo(item))
+      playNotificationSound()
+    })
+
+    eventSource.onerror = () => {
+      // EventSource сам переподключается — тут ничего специально делать не нужно.
+    }
+  }
+
+  function disconnect() {
+    eventSource?.close()
+    eventSource = null
+  }
+
   return {
     items,
     unreadCount,
@@ -69,5 +137,8 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
     loadUnreadCount,
     markRead,
     markAllRead,
+    linkFor,
+    connect,
+    disconnect,
   }
 })
