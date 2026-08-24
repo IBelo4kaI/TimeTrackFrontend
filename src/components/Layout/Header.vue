@@ -18,13 +18,16 @@
     <div class="header-theme">
       <ToggleTheme />
     </div>
-    <div class="header-notify"></div>
+    <div class="header-notify">
+      <NotificationBell />
+    </div>
     <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
   </div>
 </template>
 
 <script setup>
 import Info from '../Info.vue'
+import NotificationBell from './NotificationBell.vue'
 import Profile from '../Profile.vue'
 import ToggleTheme from '../ToggleTheme.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
