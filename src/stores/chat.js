@@ -250,6 +250,7 @@ export const useChatStore = defineStore('chat', () => {
     if (eventSource) return
 
     requestBrowserNotificationPermission()
+    primeAudioContext()
 
     eventSource = new EventSource(STREAM_URL, { withCredentials: true })
 
@@ -347,6 +348,7 @@ export const useChatStore = defineStore('chat', () => {
         () => goToChat(chatId)
       )
       notifyBrowser('Новый чат', name ?? 'У вас новый чат', chatId, () => goToChat(chatId))
+      playNotificationSound()
     })
 
     eventSource.onerror = () => {
@@ -394,6 +396,7 @@ export const useChatStore = defineStore('chat', () => {
       goToChat(message.chatId)
     )
     notifyBrowser(senderName, preview, message.chatId, () => goToChat(message.chatId))
+    playNotificationSound()
   }
 
   // --- Уведомления браузера (Notification API) ---
@@ -410,7 +413,10 @@ export const useChatStore = defineStore('chat', () => {
   // предыдущее непрочитанное из того же чата, а не копится поверх).
   function notifyBrowser(title, body, tag, onClick) {
     if (!('Notification' in window)) return
-    if (Notification.permission !== 'granted') return
+    if (Notification.permission !== 'granted') {
+      console.warn('[chat] уведомление браузера не показано, permission =', Notification.permission)
+      return
+    }
     if (!document.hidden && document.hasFocus()) return
 
     const notification = new Notification(title, { body, icon: '/favicon.ico', tag })
@@ -418,6 +424,52 @@ export const useChatStore = defineStore('chat', () => {
       window.focus()
       onClick?.()
       notification.close()
+    }
+  }
+
+  // Короткий "дзынь" через Web Audio — без mp3-файла, чтобы не таскать
+  // отдельный ассет. Один AudioContext на вкладку, создаём лениво.
+  let audioCtx = null
+
+  // Автоплей-политика браузера не даёт стартовать AudioContext без жеста
+  // пользователя — resume() из playNotificationSound() к моменту реального
+  // уведомления это уже не спасает. Прогреваем на первый же клик/клавишу/тап
+  // по странице, задолго до того, как звук реально понадобится.
+  function primeAudioContext() {
+    const unlock = () => {
+      audioCtx ??= new (window.AudioContext || window.webkitAudioContext)()
+      if (audioCtx.state === 'suspended') audioCtx.resume()
+    }
+    document.addEventListener('click', unlock, { once: true })
+    document.addEventListener('keydown', unlock, { once: true })
+    document.addEventListener('touchstart', unlock, { once: true })
+  }
+
+  async function playNotificationSound() {
+    try {
+      audioCtx ??= new (window.AudioContext || window.webkitAudioContext)()
+
+      // Без клика/тапа по странице контекст создаётся в состоянии
+      // "suspended" (автоплей-политика браузера) — без явного resume()
+      // звука просто не будет, без единой ошибки в консоли.
+      if (audioCtx.state === 'suspended') await audioCtx.resume()
+
+      const now = audioCtx.currentTime
+      const osc = audioCtx.createOscillator()
+      const gain = audioCtx.createGain()
+      osc.connect(gain)
+      gain.connect(audioCtx.destination)
+
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(880, now)
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35)
+
+      osc.start(now)
+      osc.stop(now + 0.35)
+    } catch (err) {
+      console.warn('[chat] звук уведомления не сыграл:', err)
     }
   }
 
