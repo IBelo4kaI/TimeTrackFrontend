@@ -33,6 +33,37 @@ export function formatMessageTime(iso) {
   return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
+function isSameDay(a, b) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+// Разделитель дат между сообщениями — "Сегодня"/"Вчера"/полная дата.
+export function formatMessageDateLabel(iso) {
+  if (!iso) return ''
+  const date = new Date(iso)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+
+  if (isSameDay(date, today)) return 'Сегодня'
+  if (isSameDay(date, yesterday)) return 'Вчера'
+
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric',
+  })
+}
+
+export function isSameMessageDay(isoA, isoB) {
+  if (!isoA || !isoB) return false
+  return isSameDay(new Date(isoA), new Date(isoB))
+}
+
 // Вложения сообщений отдаются самим бэком (GET /files/open/:id) — тот же
 // эндпоинт, что уже используется для файлов отпусков/больничных, поэтому
 // отдельного blob-фетча для превью/скачивания не нужно: /apitime — тот же

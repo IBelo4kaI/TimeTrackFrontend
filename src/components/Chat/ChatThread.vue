@@ -71,15 +71,19 @@
           Сообщений пока нет — напишите первым
         </div>
 
-        <ChatMessage
-          v-for="message in chatStore.activeMessages"
-          :key="message.id"
-          :message="message"
-          :is-own="message.senderUserId === userStore.user?.id"
-          :show-sender="isGroup && message.senderUserId !== userStore.user?.id"
-          :sender-name="senderName(message.senderUserId)"
-          @delete="chatStore.removeMessage"
-        />
+        <template v-for="entry in messagesWithDateSeparators" :key="entry.key">
+          <div v-if="entry.type === 'date'" class="thread__date-separator">
+            <span>{{ entry.label }}</span>
+          </div>
+          <ChatMessage
+            v-else
+            :message="entry.message"
+            :is-own="entry.message.senderUserId === userStore.user?.id"
+            :show-sender="isGroup && entry.message.senderUserId !== userStore.user?.id"
+            :sender-name="senderName(entry.message.senderUserId)"
+            @delete="chatStore.removeMessage"
+          />
+        </template>
       </div>
 
       <div class="thread__typing" v-if="typingText">
@@ -176,8 +180,10 @@ import {
   detectFileTypeFromMime,
   fileIconClass,
   formatFileSize,
+  formatMessageDateLabel,
   getChatDisplayName,
   getUserInitials,
+  isSameMessageDay,
   unwrapNullString,
 } from '@/utils/chat.utils'
 import { computed, nextTick, ref, watch } from 'vue'
@@ -227,6 +233,27 @@ function senderName(userId) {
   const u = userStore.usersAll.find((x) => x.id === userId)
   return u ? [u.surname, u.name].filter(Boolean).join(' ') : 'Сотрудник'
 }
+
+// Сообщения вперемешку с разделителями дат — вставляем перед первым
+// сообщением каждого нового дня.
+const messagesWithDateSeparators = computed(() => {
+  const result = []
+  let prevCreatedAt = null
+
+  for (const message of chatStore.activeMessages) {
+    if (!isSameMessageDay(prevCreatedAt, message.createdAt)) {
+      result.push({
+        type: 'date',
+        key: `date-${message.id}`,
+        label: formatMessageDateLabel(message.createdAt),
+      })
+    }
+    result.push({ type: 'message', key: message.id, message })
+    prevCreatedAt = message.createdAt
+  }
+
+  return result
+})
 
 const typingText = computed(() => {
   const names = chatStore.activeTypingUserIds.map(senderName)
@@ -505,6 +532,21 @@ watch(() => chatStore.activeChatId, () => (showParticipants.value = false))
   display: flex;
   flex-direction: column;
   gap: 0.57rem;
+}
+
+.thread__date-separator {
+  display: flex;
+  justify-content: center;
+  margin: 0.36rem 0;
+}
+
+.thread__date-separator span {
+  padding: 0.29rem 0.86rem;
+  background: var(--muted-foreground);
+  color: var(--muted-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 1rem;
 }
 
 .thread__typing {
