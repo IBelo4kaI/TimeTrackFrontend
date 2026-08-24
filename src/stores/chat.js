@@ -249,6 +249,8 @@ export const useChatStore = defineStore('chat', () => {
   function connect() {
     if (eventSource) return
 
+    requestBrowserNotificationPermission()
+
     eventSource = new EventSource(STREAM_URL, { withCredentials: true })
 
     eventSource.addEventListener('message_created', (e) => {
@@ -344,6 +346,7 @@ export const useChatStore = defineStore('chat', () => {
         6000,
         () => goToChat(chatId)
       )
+      notifyBrowser('Новый чат', name ?? 'У вас новый чат', chatId, () => goToChat(chatId))
     })
 
     eventSource.onerror = () => {
@@ -390,6 +393,32 @@ export const useChatStore = defineStore('chat', () => {
     notificationStore.addNotification(`${senderName}: ${preview}`, 'info', 6000, () =>
       goToChat(message.chatId)
     )
+    notifyBrowser(senderName, preview, message.chatId, () => goToChat(message.chatId))
+  }
+
+  // --- Уведомления браузера (Notification API) ---
+
+  // Спрашиваем только если ответа ещё не было — повторный запрос при
+  // "denied" браузеры и так молча игнорируют, а при "granted" он не нужен.
+  function requestBrowserNotificationPermission() {
+    if (!('Notification' in window)) return
+    if (Notification.permission === 'default') Notification.requestPermission()
+  }
+
+  // Нативное уведомление — только пока вкладка не в фокусе, иначе дублирует
+  // уже видимый тост. tag группирует уведомления по чату (новое заменяет
+  // предыдущее непрочитанное из того же чата, а не копится поверх).
+  function notifyBrowser(title, body, tag, onClick) {
+    if (!('Notification' in window)) return
+    if (Notification.permission !== 'granted') return
+    if (!document.hidden && document.hasFocus()) return
+
+    const notification = new Notification(title, { body, icon: '/favicon.ico', tag })
+    notification.onclick = () => {
+      window.focus()
+      onClick?.()
+      notification.close()
+    }
   }
 
   function clearTyping(chatId, userId) {
