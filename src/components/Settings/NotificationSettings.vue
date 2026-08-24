@@ -40,19 +40,23 @@ const isLoadingVacation = ref(true)
 const isLoadingSickLeave = ref(true)
 
 async function onVacationChange(ids) {
+  const previous = vacationIds.value
   vacationIds.value = ids
   try {
     await updateVacationNotificationAdminUserIds(ids)
   } catch {
+    vacationIds.value = previous
     notificationStore.addNotification('Не удалось сохранить получателей уведомлений', 'error')
   }
 }
 
 async function onSickLeaveChange(ids) {
+  const previous = sickLeaveIds.value
   sickLeaveIds.value = ids
   try {
     await updateSickLeaveNotificationAdminUserIds(ids)
   } catch {
+    sickLeaveIds.value = previous
     notificationStore.addNotification('Не удалось сохранить получателей уведомлений', 'error')
   }
 }
