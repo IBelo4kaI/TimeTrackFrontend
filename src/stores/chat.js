@@ -57,8 +57,9 @@ export const useChatStore = defineStore('chat', () => {
   const activeTypingUserIds = computed(() =>
     Object.keys(typingByChat.value[activeChatId.value] ?? {})
   )
-  const totalUnread = computed(() =>
-    chats.value.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0)
+  // Кол-во чатов с непрочитанным, а не сумма непрочитанных сообщений.
+  const totalUnread = computed(
+    () => chats.value.filter((c) => (c.unreadCount ?? 0) > 0).length
   )
 
   // --- Чаты ---
