@@ -13,7 +13,7 @@ import { useChatStore } from '@/stores/chat'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUniversalModalStore } from '@/stores/modal'
 import { useNotificationStore } from '@/stores/notification'
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Чаты', 'Личные и групповые обсуждения')
@@ -61,6 +61,15 @@ function openNewChatModal() {
 // live и отдельно перезапрашивать его тут не нужно.
 onMounted(() => {
   chatStore.loadChats()
+})
+
+// Открытый чат — состояние страницы, а не сессии: закрываем при уходе,
+// чтобы при повторном заходе список открывался без выбранного чата (а не с
+// тем, что был открыт в прошлый раз). Переход по клику на уведомление
+// (goToChat → openChat, потом навигация сюда) это не задевает — chatId
+// выставляется ДО монтирования этой страницы, а не после.
+onUnmounted(() => {
+  chatStore.closeChat()
 })
 </script>
 

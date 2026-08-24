@@ -65,6 +65,12 @@
           v-tooltip="isGroup ? 'Удалить чат для всех' : 'Удалить чат'"
           @click="confirmDelete"
         />
+        <ButtonUI
+          type="muted-accent"
+          icon="fa-regular fa-xmark"
+          v-tooltip="'Закрыть чат'"
+          @click="chatStore.closeChat()"
+        />
       </div>
 
       <div ref="messagesEl" class="thread__messages">

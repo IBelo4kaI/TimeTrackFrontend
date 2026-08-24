@@ -116,6 +116,11 @@ export const useChatStore = defineStore('chat', () => {
     await markAsRead(chatId)
   }
 
+  // "Антивыбор" — закрыть открытый чат, ничего не выбирая взамен.
+  function closeChat() {
+    activeChatId.value = null
+  }
+
   async function createNewChat({ participantIds, name }) {
     const type = participantIds.length > 1 ? 'group' : 'direct'
     const chat = await createChat({ type, name: name ?? '', participantIds })
@@ -529,6 +534,7 @@ export const useChatStore = defineStore('chat', () => {
     loadChats,
     loadParticipants,
     openChat,
+    closeChat,
     createNewChat,
     renameActiveChat,
     toggleMute,
