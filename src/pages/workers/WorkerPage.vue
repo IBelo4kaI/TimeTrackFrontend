@@ -17,7 +17,7 @@
     </div>
 
     <template v-else>
-      <WorkerHome v-if="submenuStore.activeTab === 'home'" />
+      <WorkerHome v-if="submenuStore.activeTab === 'home'" :is-self="isSelf" />
       <WorkerReport v-else-if="submenuStore.activeTab === 'report'" />
       <WorkerVacation v-else-if="submenuStore.activeTab === 'vacation'" />
 

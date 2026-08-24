@@ -109,6 +109,10 @@
           </li>
         </ul>
       </div>
+
+      <!-- Привязка VK — личная настройка, есть смысл только на своей
+      странице, не в карточке другого сотрудника. -->
+      <VKLinkCard v-if="isSelf" />
     </div>
   </div>
 </template>
@@ -120,6 +124,11 @@ import { useWorkerStore } from '@/stores/worker'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { formatStats, getVacationStatusMeta } from '@/utils/vacation.utils'
 import { computed } from 'vue'
+import VKLinkCard from './VKLinkCard.vue'
+
+defineProps({
+  isSelf: { type: Boolean, default: false },
+})
 
 const workerStore = useWorkerStore()
 
