@@ -39,6 +39,12 @@
         </div>
 
         <ButtonUI
+          type="muted-accent"
+          :icon="chatStore.activeChat.muted ? 'fa-regular fa-bell-slash' : 'fa-regular fa-bell'"
+          v-tooltip="chatStore.activeChat.muted ? 'Включить уведомления' : 'Отключить уведомления'"
+          @click="chatStore.toggleMute(chatStore.activeChat.id, !chatStore.activeChat.muted)"
+        />
+        <ButtonUI
           v-if="isGroup"
           type="muted-accent"
           icon="fa-regular fa-users"

@@ -7,7 +7,10 @@
 
     <div class="chat-item__body">
       <div class="chat-item__top">
-        <span class="chat-item__name">{{ name }}</span>
+        <span class="chat-item__name">
+          {{ name }}
+          <i v-if="chat.muted" class="fa-regular fa-bell-slash chat-item__muted"></i>
+        </span>
         <span v-if="time" class="chat-item__time">{{ time }}</span>
       </div>
       <div class="chat-item__bottom">
@@ -118,6 +121,12 @@ const time = computed(() => formatMessageTime(unwrapNullTime(props.chat.lastMess
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-item__muted {
+  margin-left: 0.29rem;
+  font-size: 0.75rem;
+  color: var(--muted-text);
 }
 
 .chat-item__time {

@@ -40,6 +40,16 @@ export const renameChat = async (chatId, name) => {
   }
 }
 
+export const setChatMuted = async (chatId, muted) => {
+  try {
+    const response = await timeTrackApi.put(`/chats/${chatId}/mute`, { muted })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при изменении уведомлений чата:', error)
+    throw error
+  }
+}
+
 export const deleteChat = async (chatId) => {
   try {
     const response = await timeTrackApi.delete(`/chats/${chatId}`)

@@ -12,6 +12,7 @@ import {
   sendChatFileMessage,
   sendChatMessage,
   sendChatTyping,
+  setChatMuted,
 } from '@/services/chat.api'
 import router from '@/router'
 import { getChatDisplayName, unwrapNullString } from '@/utils/chat.utils'
@@ -126,6 +127,23 @@ export const useChatStore = defineStore('chat', () => {
     await renameChat(activeChatId.value, name)
     const chat = chats.value.find((c) => c.id === activeChatId.value)
     if (chat) chat.name = { String: name, Valid: name !== '' }
+  }
+
+  // Личное для текущего пользователя (не влияет на остальных участников) —
+  // глушит тост/браузерное уведомление/звук по этому чату; бейдж
+  // непрочитанных продолжает считать как обычно.
+  async function toggleMute(chatId, muted) {
+    const chat = chats.value.find((c) => c.id === chatId)
+    if (!chat) return
+
+    const previous = chat.muted
+    chat.muted = muted // оптимистично
+    try {
+      await setChatMuted(chatId, muted)
+    } catch {
+      chat.muted = previous
+      notificationStore.addNotification('Не удалось изменить уведомления чата', 'error')
+    }
   }
 
   async function addParticipant(userId) {
@@ -379,6 +397,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function notifyNewMessage(message) {
+    if (chats.value.find((c) => c.id === message.chatId)?.muted) return
+
     const sender = userStore.usersAll.find((u) => u.id === message.senderUserId)
     const senderName = sender
       ? [sender.surname, sender.name].filter(Boolean).join(' ')
@@ -445,6 +465,22 @@ export const useChatStore = defineStore('chat', () => {
     document.addEventListener('touchstart', unlock, { once: true })
   }
 
+  function playTone(ctx, freq, startAt, duration) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(freq, startAt)
+    gain.gain.setValueAtTime(0.0001, startAt)
+    gain.gain.exponentialRampToValueAtTime(0.2, startAt + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration)
+
+    osc.start(startAt)
+    osc.stop(startAt + duration)
+  }
+
   async function playNotificationSound() {
     try {
       audioCtx ??= new (window.AudioContext || window.webkitAudioContext)()
@@ -455,19 +491,9 @@ export const useChatStore = defineStore('chat', () => {
       if (audioCtx.state === 'suspended') await audioCtx.resume()
 
       const now = audioCtx.currentTime
-      const osc = audioCtx.createOscillator()
-      const gain = audioCtx.createGain()
-      osc.connect(gain)
-      gain.connect(audioCtx.destination)
-
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(880, now)
-      gain.gain.setValueAtTime(0.0001, now)
-      gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35)
-
-      osc.start(now)
-      osc.stop(now + 0.35)
+      // Два восходящих тона ("динь-дон") вместо одного плоского бипа.
+      playTone(audioCtx, 659.25, now, 0.13) // E5
+      playTone(audioCtx, 987.77, now + 0.11, 0.22) // B5
     } catch (err) {
       console.warn('[chat] звук уведомления не сыграл:', err)
     }
@@ -504,6 +530,7 @@ export const useChatStore = defineStore('chat', () => {
     openChat,
     createNewChat,
     renameActiveChat,
+    toggleMute,
     addParticipant,
     removeParticipant,
     deleteChat,
