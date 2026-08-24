@@ -1,5 +1,6 @@
 import {
   addChatParticipant,
+  clearViewingChat,
   createChat,
   deleteChat as deleteChatApi,
   deleteChatMessage,
@@ -13,6 +14,7 @@ import {
   sendChatMessage,
   sendChatTyping,
   setChatMuted,
+  setViewingChat,
 } from '@/services/chat.api'
 import router from '@/router'
 import { getChatDisplayName, unwrapNullString } from '@/utils/chat.utils'
@@ -95,6 +97,7 @@ export const useChatStore = defineStore('chat', () => {
 
   async function openChat(chatId) {
     activeChatId.value = chatId
+    setViewingChat(chatId)
 
     if (!participantsByChat.value[chatId]) {
       await loadParticipants(chatId)
@@ -119,6 +122,7 @@ export const useChatStore = defineStore('chat', () => {
   // "Антивыбор" — закрыть открытый чат, ничего не выбирая взамен.
   function closeChat() {
     activeChatId.value = null
+    clearViewingChat()
   }
 
   async function createNewChat({ participantIds, name }) {

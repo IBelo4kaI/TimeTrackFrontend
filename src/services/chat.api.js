@@ -158,6 +158,25 @@ export const markChatRead = async (chatId, messageId) => {
   }
 }
 
+// "Я сейчас смотрю в этот чат" / "я его закрыл" — эфемерные сигналы, как
+// typing, нужны бэку только чтобы не слать VK-дубликат уведомления, пока
+// человек и так сидит в чате в приложении (internal/chat/hub.go viewing).
+export const setViewingChat = async (chatId) => {
+  try {
+    await timeTrackApi.put(`/chats/${chatId}/viewing`)
+  } catch {
+    // намеренно молча игнорируем — не критично, максимум придёт лишний VK-дубль
+  }
+}
+
+export const clearViewingChat = async () => {
+  try {
+    await timeTrackApi.delete(`/chats/viewing`)
+  } catch {
+    // намеренно молча игнорируем
+  }
+}
+
 export const sendChatTyping = async (chatId) => {
   // Эфемерный сигнал — не критично, если изредка потеряется, поэтому без
   // console.error/throw, чтобы не шуметь в консоли на каждое нажатие клавиши.
