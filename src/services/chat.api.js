@@ -50,6 +50,18 @@ export const setChatMuted = async (chatId, muted) => {
   }
 }
 
+// Отдельно от setChatMuted — глушит только VK-дубликат, тост/браузер/звук
+// в приложении продолжают работать как обычно.
+export const setChatVKMuted = async (chatId, muted) => {
+  try {
+    const response = await timeTrackApi.put(`/chats/${chatId}/vk-mute`, { muted })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при изменении VK-уведомлений чата:', error)
+    throw error
+  }
+}
+
 export const deleteChat = async (chatId) => {
   try {
     const response = await timeTrackApi.delete(`/chats/${chatId}`)

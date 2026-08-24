@@ -14,6 +14,7 @@ import {
   sendChatMessage,
   sendChatTyping,
   setChatMuted,
+  setChatVKMuted,
   setViewingChat,
 } from '@/services/chat.api'
 import router from '@/router'
@@ -153,6 +154,22 @@ export const useChatStore = defineStore('chat', () => {
     } catch {
       chat.muted = previous
       notificationStore.addNotification('Не удалось изменить уведомления чата', 'error')
+    }
+  }
+
+  // Отдельно от toggleMute — глушит только VK-дубликат, приложение
+  // продолжает уведомлять как обычно (тост/браузер/звук/бейдж).
+  async function toggleVKMute(chatId, muted) {
+    const chat = chats.value.find((c) => c.id === chatId)
+    if (!chat) return
+
+    const previous = chat.vkMuted
+    chat.vkMuted = muted
+    try {
+      await setChatVKMuted(chatId, muted)
+    } catch {
+      chat.vkMuted = previous
+      notificationStore.addNotification('Не удалось изменить VK-уведомления чата', 'error')
     }
   }
 
@@ -542,6 +559,7 @@ export const useChatStore = defineStore('chat', () => {
     createNewChat,
     renameActiveChat,
     toggleMute,
+    toggleVKMute,
     addParticipant,
     removeParticipant,
     deleteChat,

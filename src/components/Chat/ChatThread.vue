@@ -40,9 +40,9 @@
 
         <ButtonUI
           type="muted-accent"
-          :icon="chatStore.activeChat.muted ? 'fa-regular fa-bell-slash' : 'fa-regular fa-bell'"
-          v-tooltip="chatStore.activeChat.muted ? 'Включить уведомления' : 'Отключить уведомления'"
-          @click="chatStore.toggleMute(chatStore.activeChat.id, !chatStore.activeChat.muted)"
+          :icon="chatStore.activeChat.muted || chatStore.activeChat.vkMuted ? 'fa-regular fa-bell-slash' : 'fa-regular fa-bell'"
+          v-tooltip="'Уведомления'"
+          @click="openNotificationsMenu"
         />
         <ButtonUI
           v-if="isGroup"
@@ -177,14 +177,17 @@
     </template>
 
     <ParticipantsModal v-if="showParticipants" @close="showParticipants = false" />
+    <ContextMenu />
   </div>
 </template>
 
 <script setup>
 import ButtonUI from '@/components/ButtonUI.vue'
+import ContextMenu from '@/components/ContextMenu/ContextMenu.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import { useChatStore } from '@/stores/chat'
 import { useConfirmModal } from '@/stores/confirmModal'
+import { useContextMenuStore } from '@/stores/contexMenu'
 import { useUniversalModalStore } from '@/stores/modal'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
@@ -209,6 +212,7 @@ const userStore = useUserStore()
 const modalStore = useUniversalModalStore()
 const confirmModalStore = useConfirmModal()
 const notificationStore = useNotificationStore()
+const contextMenuStore = useContextMenuStore()
 
 const showParticipants = ref(false)
 const draft = ref('')
@@ -414,6 +418,41 @@ function confirmDelete() {
       ? 'Удалить чат для всех участников? Все сообщения будут потеряны.'
       : 'Удалить чат? Переписка исчезнет у обеих сторон.'
   )
+}
+
+// --- Уведомления: полностью (тост/браузер/звук/VK) или только VK-дубликат ---
+function openNotificationsMenu(event) {
+  const chat = chatStore.activeChat
+  if (!chat) return
+
+  const items = []
+
+  if (chat.muted) {
+    items.push({ action: 'enable-all', label: 'Включить уведомления' })
+  } else {
+    items.push(
+      chat.vkMuted
+        ? { action: 'enable-vk', label: 'Включить уведомления VK' }
+        : { action: 'disable-vk', label: 'Отключить уведомления VK' }
+    )
+    items.push({ action: 'disable-all', label: 'Отключить все уведомления', danger: true })
+  }
+
+  contextMenuStore.openMenu(event, {
+    items,
+    onAction: (action) => {
+      if (action === 'enable-all') {
+        chatStore.toggleMute(chat.id, false)
+        chatStore.toggleVKMute(chat.id, false)
+      } else if (action === 'disable-all') {
+        chatStore.toggleMute(chat.id, true)
+      } else if (action === 'enable-vk') {
+        chatStore.toggleVKMute(chat.id, false)
+      } else if (action === 'disable-vk') {
+        chatStore.toggleVKMute(chat.id, true)
+      }
+    },
+  })
 }
 
 // --- Автоскролл вниз при новых сообщениях/открытии чата ---
