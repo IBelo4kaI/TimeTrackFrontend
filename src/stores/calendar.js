@@ -197,8 +197,11 @@ export const useCalendarStore = defineStore('calendar', () => {
     const genderId = parseGenderId(user)
     if (!genderId) return null
 
+    // По месяцу И полу: форма настроек заводит на сотрудника обе гендерные
+    // строки на месяц (см. StandardSettings.vue) — без фильтра по полу
+    // можно случайно подхватить не ту, если заполнены обе.
     const individualStandard = individualStandards.value.find(
-      (s) => s.month === currentMonth.value
+      (s) => s.month === currentMonth.value && s.gender === genderId
     )
     return plannedMonthHours(calendarDays.value, genderId, individualStandard)
   })

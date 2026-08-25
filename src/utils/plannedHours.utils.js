@@ -7,18 +7,18 @@
 
 const DEFAULT_DAILY_HOURS = 8 // мужчины всегда, женщины кроме пятницы
 const FEMALE_FRIDAY_HOURS = 6
-const INDIVIDUAL_SCHEDULE_DIVISOR = 5
 
 const GENDER_FEMALE = 2
 
 // dailyNorm — часы нормы на конкретный рабочий день.
 // individualStandard — строка work_standards с user_id = этот сотрудник за
-// этот месяц (если есть) — тогда норма фиксированная (standardHours / 5)
-// каждый рабочий день, без пятничного исключения. Без индивидуального
-// графика — 8ч, у женщин по пятницам 6ч.
+// этот месяц (если есть) — там standardHours/standardDays это часы/дни ЗА
+// ВЕСЬ МЕСЯЦ (та же форма, что и у общих норм — см. StandardSettings.vue),
+// поэтому дневная норма — их отношение, без пятничного исключения. Без
+// индивидуального графика — 8ч, у женщин по пятницам 6ч.
 export function dailyNorm(date, genderId, individualStandard) {
-  if (individualStandard) {
-    return individualStandard.standardHours / INDIVIDUAL_SCHEDULE_DIVISOR
+  if (individualStandard?.standardDays) {
+    return individualStandard.standardHours / individualStandard.standardDays
   }
   if (genderId === GENDER_FEMALE && date.getDay() === 5) {
     return FEMALE_FRIDAY_HOURS
