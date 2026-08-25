@@ -11,6 +11,20 @@ export const getStandardsByYear = async (year) => {
   }
 }
 
+// Только собственные индивидуальные нормы вызывающего (в отличие от
+// getStandardsByYear — та отдаёт нормы всех и доступна только админам) —
+// для расчёта плановых часов на странице календаря, доступно всем.
+export const getMyWorkStandards = async (year) => {
+  try {
+    const response = await timeTrackApi.get(`/work-standards/mine/${year}`)
+
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении своих норм:', error)
+    throw error
+  }
+}
+
 export const createStandard = async (standardData) => {
   try {
     const response = await timeTrackApi.post('/work-standards', standardData)

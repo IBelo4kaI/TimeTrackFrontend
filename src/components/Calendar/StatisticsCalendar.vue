@@ -12,6 +12,12 @@
         {{ calendarStore.workingHours.totalHours }} ч
       </div>
     </div>
+    <div class="statistics__row" v-if="calendarStore.plannedHours !== null">
+      <div class="statistics__title" v-tooltip="'Отработано + плановая отработка по оставшимся дням'">
+        Плановое кол-во часов
+      </div>
+      <div class="statistics__value">{{ calendarStore.plannedHours }} ч</div>
+    </div>
     <div class="statistics__row" v-if="overtimeHours !== 0">
       <div class="statistics__title">
         {{ overtimeHours > 0 ? 'Переработка' : 'Недоработка' }}

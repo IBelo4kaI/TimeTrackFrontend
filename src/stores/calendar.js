@@ -6,11 +6,13 @@ import {
   updateUserTimeEntry,
   getStatistics,
 } from '@/services/userTimeEntries.api'
+import { getMyWorkStandards, getStandardsByYear } from '@/services/workStandard.api'
 import {
   getFirstDateOfMonth,
   getLastDateOfMonth,
   getMonthYearName,
 } from '@/utils/calendar.utils'
+import { plannedMonthHours } from '@/utils/plannedHours.utils'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import {
@@ -23,6 +25,9 @@ export const useCalendarStore = defineStore('calendar', () => {
   // State
   const data = ref([])
   const statsData = ref(null)
+  // work_standards с user_id = просматриваемый сотрудник, за текущий год —
+  // для "Плановое кол-во часов" (см. utils/plannedHours.utils.js).
+  const individualStandards = ref([])
   const selectedUserId = shallowRef(null)
   const selectedUser = shallowRef(null)
   const prevMonthDays = shallowRef([])
@@ -71,6 +76,30 @@ export const useCalendarStore = defineStore('calendar', () => {
     )
   }
 
+  // Индивидуальный график просматриваемого сотрудника за текущий год —
+  // свой смотрим через /mine (доступно всем), чужой — best-effort через
+  // общий /year (доступен только с work_standards:read, т.е. админам;
+  // без прав просто считаем, что индивидуального графика нет).
+  const fetchIndividualStandards = async () => {
+    if (!selectedUserId.value) {
+      individualStandards.value = []
+      return
+    }
+
+    try {
+      if (selectedUserId.value === userStore.user?.id) {
+        individualStandards.value = (await getMyWorkStandards(currentYear.value)) ?? []
+      } else {
+        const all = (await getStandardsByYear(currentYear.value)) ?? []
+        individualStandards.value = all.filter(
+          (s) => s.userId?.Valid && s.userId.String === selectedUserId.value
+        )
+      }
+    } catch {
+      individualStandards.value = []
+    }
+  }
+
   const initialFetch = async () => {
     isLoading.value = true
 
@@ -93,6 +122,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     nextMonthDays.value = generateNextMonthDays(lastDateOfMonth.value)
 
     await fetchStatistics()
+    await fetchIndividualStandards()
 
     isLoading.value = false
   }
@@ -151,6 +181,28 @@ export const useCalendarStore = defineStore('calendar', () => {
       : { totalWorkDays: 0, standardWorkDays: 0 }
   )
 
+  // Плановое кол-во часов за месяц: уже отработано (факт по дням с
+  // отметкой) + плановая отработка (норма по дням без отметки) — см.
+  // utils/plannedHours.utils.js. null, если пол просматриваемого
+  // сотрудника неизвестен (норму посчитать не из чего).
+  const plannedHours = computed(() => {
+    // selectedUser не всегда синхронизирован с selectedUserId (например,
+    // при выборе другого сотрудника через Autocomplete в ControlsCalendar —
+    // тот меняет только selectedUserId) — тот же обход, что в fetchStatistics.
+    const user =
+      selectedUser.value?.id === selectedUserId.value
+        ? selectedUser.value
+        : userStore.usersAll.find((u) => u.id === selectedUserId.value)
+
+    const genderId = parseGenderId(user)
+    if (!genderId) return null
+
+    const individualStandard = individualStandards.value.find(
+      (s) => s.month === currentMonth.value
+    )
+    return plannedMonthHours(calendarDays.value, genderId, individualStandard)
+  })
+
   const otherDays = computed(() =>
     statsData.value
       ? {
@@ -175,6 +227,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     nextMonthDays,
     data,
     statsData,
+    individualStandards,
     selectedUserId,
     selectedUser,
 
@@ -188,6 +241,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     workingHours,
     workingDays,
     otherDays,
+    plannedHours,
 
     // Actions
     updateDay,
