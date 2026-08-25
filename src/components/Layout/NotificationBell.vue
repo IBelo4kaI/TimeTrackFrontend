@@ -54,7 +54,7 @@
 <script setup>
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import { useNotificationCenterStore } from '@/stores/notificationCenter'
-import { unwrapNull, unwrapNullTime } from '@/utils/chat.utils'
+import { unwrapNull } from '@/utils/chat.utils'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const store = useNotificationCenterStore()
@@ -67,10 +67,12 @@ function isRead(item) {
   return !!unwrapNull(item.isRead, 'Bool')
 }
 
+// createdAt — обычная ISO-строка (не sql.NullTime-обёртка): колонка
+// notifications.created_at теперь DATETIME NOT NULL, см. бэк
+// 018_notification_timestamp_utc.sql (тот же фикс, что раньше для чата).
 function formatDateTime(createdAt) {
-  const iso = unwrapNullTime(createdAt)
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('ru-RU', {
+  if (!createdAt) return ''
+  return new Date(createdAt).toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
