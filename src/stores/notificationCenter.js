@@ -119,6 +119,26 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
       playNotificationSound()
     })
 
+    // Прочитали сущность целиком (например, открыли чат) — гасим все её
+    // накопленные уведомления разом, см. chat.Service.MarkRead на бэке.
+    // Сколько именно строк там прочиталось, не знаем — просто гасим все
+    // непрочитанные с таким entityType/entityId среди уже загруженных.
+    eventSource.addEventListener('notifications_read', (e) => {
+      const { entityType, entityId } = JSON.parse(e.data)
+      let cleared = 0
+      items.value.forEach((n) => {
+        if (
+          unwrapNullString(n.entityType) === entityType &&
+          unwrapNullString(n.entityId) === entityId &&
+          !unwrapNull(n.isRead, 'Bool')
+        ) {
+          n.isRead = { Bool: true, Valid: true }
+          cleared++
+        }
+      })
+      unreadCount.value = Math.max(0, unreadCount.value - cleared)
+    })
+
     eventSource.onerror = () => {
       // EventSource сам переподключается — тут ничего специально делать не нужно.
     }
