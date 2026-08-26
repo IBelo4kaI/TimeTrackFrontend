@@ -13,7 +13,19 @@
     </template>
 
     <template v-else-if="code">
-      <p class="vk-hint">
+      <template v-if="linkUrl">
+        <p class="vk-hint">
+          Нажмите — откроется бот в VK, останется нажать «Начать»:
+        </p>
+        <a :href="linkUrl" target="_blank" rel="noopener" class="vk-open-link">
+          <i class="fa-brands fa-vk"></i>
+          Открыть бота и привязать
+        </a>
+        <p class="vk-hint vk-hint--muted">
+          Не открылось само — отправьте боту код вручную:
+        </p>
+      </template>
+      <p v-else class="vk-hint">
         Отправьте это сообщение нашему боту в VK, чтобы привязать аккаунт:
       </p>
       <div class="vk-code">{{ code }}</div>
@@ -47,9 +59,7 @@ import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { computed, onMounted, ref } from 'vue'
 
-// TODO: замените на реальную ссылку на сообщество/бота (например,
-// https://vk.com/your_community).
-const VK_COMMUNITY_URL = 'https://vk.ru/club241036953'
+const VK_COMMUNITY_URL = 'https://vk.ru/timetrackcr'
 
 const notificationStore = useNotificationStore()
 const confirmModalStore = useConfirmModal()
@@ -57,6 +67,7 @@ const confirmModalStore = useConfirmModal()
 const isLoading = ref(true)
 const linked = ref(false)
 const code = ref('')
+const linkUrl = ref('')
 const expiresInSeconds = ref(0)
 
 const expiresLabel = computed(
@@ -79,6 +90,7 @@ async function onGenerate() {
   try {
     const result = await generateVKLinkCode()
     code.value = result.code
+    linkUrl.value = result.linkUrl
     expiresInSeconds.value = result.expiresInSeconds
   } catch {
     notificationStore.addNotification('Не удалось сгенерировать код', 'error')
@@ -91,6 +103,7 @@ function onUnlink() {
       await unlinkVK()
       linked.value = false
       code.value = ''
+      linkUrl.value = ''
     } catch {
       notificationStore.addNotification('Не удалось отвязать VK', 'error')
     }
@@ -148,6 +161,24 @@ onMounted(loadStatus)
   font-weight: 700;
   letter-spacing: 0.14rem;
   color: var(--accent);
+}
+
+.vk-open-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.43rem;
+  padding: 0.5rem 0.86rem;
+  background: #0077ff;
+  border-radius: var(--border-radius);
+  font-size: 0.93rem;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+}
+
+.vk-open-link:hover {
+  filter: brightness(0.93);
 }
 
 .vk-community-link {
