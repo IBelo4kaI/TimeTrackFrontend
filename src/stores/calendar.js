@@ -12,13 +12,14 @@ import {
   getLastDateOfMonth,
   getMonthYearName,
 } from '@/utils/calendar.utils'
-import { plannedMonthHours } from '@/utils/plannedHours.utils'
+import { plannedMonthHours, vacationNormHours } from '@/utils/plannedHours.utils'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import {
   generateNextMonthDays,
   generatePrevMonthDays,
 } from '../helpers/calendar.helpers'
+import { useDayTypesStore } from './dayTypes'
 import { useUserStore } from './user'
 
 export const useCalendarStore = defineStore('calendar', () => {
@@ -36,6 +37,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   const isLoading = shallowRef(false)
 
   const userStore = useUserStore()
+  const dayTypesStore = useDayTypesStore()
 
   const parseGenderId = (user) => {
     const rawGender = user?.gender?.id ?? user?.genderId ?? user?.gender
@@ -181,29 +183,51 @@ export const useCalendarStore = defineStore('calendar', () => {
       : { totalWorkDays: 0, standardWorkDays: 0 }
   )
 
+  // selectedUser не всегда синхронизирован с selectedUserId (например, при
+  // выборе другого сотрудника через Autocomplete в ControlsCalendar — тот
+  // меняет только selectedUserId) — тут разрешаем реального просматриваемого
+  // пользователя один раз, для plannedHours/effectiveStandardHours ниже.
+  const viewedUser = computed(() =>
+    selectedUser.value?.id === selectedUserId.value
+      ? selectedUser.value
+      : userStore.usersAll.find((u) => u.id === selectedUserId.value)
+  )
+
+  const viewedGenderId = computed(() => parseGenderId(viewedUser.value))
+
+  // По месяцу И полу: форма настроек заводит на сотрудника обе гендерные
+  // строки на месяц (см. StandardSettings.vue) — без фильтра по полу можно
+  // случайно подхватить не ту, если заполнены обе.
+  const viewedIndividualStandard = computed(() =>
+    individualStandards.value.find(
+      (s) => s.month === currentMonth.value && s.gender === viewedGenderId.value
+    )
+  )
+
   // Плановое кол-во часов за месяц: уже отработано (факт по дням с
   // отметкой) + плановая отработка (норма по дням без отметки) — см.
   // utils/plannedHours.utils.js. null, если пол просматриваемого
   // сотрудника неизвестен (норму посчитать не из чего).
   const plannedHours = computed(() => {
-    // selectedUser не всегда синхронизирован с selectedUserId (например,
-    // при выборе другого сотрудника через Autocomplete в ControlsCalendar —
-    // тот меняет только selectedUserId) — тот же обход, что в fetchStatistics.
-    const user =
-      selectedUser.value?.id === selectedUserId.value
-        ? selectedUser.value
-        : userStore.usersAll.find((u) => u.id === selectedUserId.value)
+    if (!viewedGenderId.value) return null
+    return plannedMonthHours(calendarDays.value, viewedGenderId.value, viewedIndividualStandard.value)
+  })
 
-    const genderId = parseGenderId(user)
-    if (!genderId) return null
+  // Норма месяца (с бэка) за вычетом нормы дней отпуска — иначе отпуск
+  // всегда считался бы недоработкой в "Недоработка/Переработка" на
+  // странице календаря, хотя остальные дни отработаны как надо.
+  const effectiveStandardHours = computed(() => {
+    const standard = workingHours.value.standardHours
+    if (!viewedGenderId.value) return standard
 
-    // По месяцу И полу: форма настроек заводит на сотрудника обе гендерные
-    // строки на месяц (см. StandardSettings.vue) — без фильтра по полу
-    // можно случайно подхватить не ту, если заполнены обе.
-    const individualStandard = individualStandards.value.find(
-      (s) => s.month === currentMonth.value && s.gender === genderId
+    const vacationTypeId = dayTypesStore.getDayTypeIdByName('vacation')
+    const vacationNorm = vacationNormHours(
+      calendarDays.value,
+      vacationTypeId,
+      viewedGenderId.value,
+      viewedIndividualStandard.value
     )
-    return plannedMonthHours(calendarDays.value, genderId, individualStandard)
+    return Math.max(0, standard - vacationNorm)
   })
 
   const otherDays = computed(() =>
@@ -245,6 +269,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     workingDays,
     otherDays,
     plannedHours,
+    effectiveStandardHours,
 
     // Actions
     updateDay,

@@ -90,9 +90,12 @@ import { computed } from 'vue'
 
 const calendarStore = useCalendarStore()
 
+// effectiveStandardHours — норма месяца за вычетом нормы дней отпуска (см.
+// calendarStore), чтобы отпуск не считался недоработкой, если остальные
+// дни отработаны как надо.
 const overtimeHours = computed(() => {
   const total = calendarStore.workingHours.totalHours
-  const standard = calendarStore.workingHours.standardHours
+  const standard = calendarStore.effectiveStandardHours
   return total - standard
 })
 </script>

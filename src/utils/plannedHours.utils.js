@@ -39,3 +39,19 @@ export function plannedMonthHours(days, genderId, individualStandard) {
   }
   return total
 }
+
+// vacationNormHours — сколько часов нормы приходится на дни отпуска в этом
+// месяце (по рабочим дням внутри отпуска). Нужно, чтобы вычесть их из
+// нормы месяца перед расчётом "Недоработка/Переработка" — иначе отпуск
+// всегда выглядел бы как недоработка, хотя остальные дни отработаны как надо.
+export function vacationNormHours(days, vacationTypeId, genderId, individualStandard) {
+  if (!vacationTypeId) return 0
+
+  let total = 0
+  for (const day of days) {
+    if (day.userTimeTypeId === vacationTypeId && !day.isWeekend) {
+      total += dailyNorm(new Date(day.date), genderId, individualStandard)
+    }
+  }
+  return total
+}
