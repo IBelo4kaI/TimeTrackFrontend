@@ -16,6 +16,7 @@
     <VacationApplicationFiles
       v-else-if="submenuStore.activeTab === 'files'"
       :vacation-id="route.params.id"
+      :vacation="vacation"
     />
   </div>
 </template>

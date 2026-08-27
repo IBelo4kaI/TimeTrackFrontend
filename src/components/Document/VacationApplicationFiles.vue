@@ -80,13 +80,24 @@ import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
   vacationId: { type: String, required: true },
+  vacation: { type: Object, default: null },
 })
 
 const userStore = useUserStore()
 const confirmModalStore = useConfirmModal()
 const notificationStore = useNotificationStore()
 
-const canManage = computed(() => userStore.hasPermission('vacation', 'edit'))
+// Зеркалит бэк (RequireOwnerOrAll в UploadVacationFile, см.
+// internal/vacation/handler.go): свою заявку можно дополнить файлом при
+// базовом vacation:edit, чужую — только с vacation.all:edit. Раньше тут
+// проверялся только базовый vacation:edit без учёта владельца — кнопка
+// "Прикрепить" была видна и на чужих заявках, хотя бэк такой запрос уже
+// отклонял.
+const canManage = computed(() => {
+  if (userStore.hasPermission('vacation.all', 'edit')) return true
+  if (!userStore.hasPermission('vacation', 'edit')) return false
+  return props.vacation?.userId === userStore.user?.id
+})
 const canDelete = computed(() => userStore.hasPermission('files', 'delete'))
 
 const files = ref([])
