@@ -73,14 +73,14 @@ const vacationStore = useVacationStore()
 const userStore = useUserStore()
 const { isMobile } = storeToRefs(useThemeStore())
 
-// vacation.all:read сейчас выдан ВСЕМ сотрудникам (нужен для виджета "отпуска
-// коллег" — см. stores/vacationOther.js), поэтому вкладку "Все заявки" (она
-// же — таблица для одобрения/отклонения чужих заявок) гейтим не им, а
-// vacation.all:edit — тем же правом, что уже используется как признак
-// админа/руководителя в VacationItem.vue и VacationCreate.vue. Иначе любой
-// сотрудник с одним лишь vacation.all:read видел бы в этой вкладке заявки
-// всех остальных.
-const isAdmin = computed(() => userStore.hasPermission('vacation.all', 'edit'))
+// vacation.all:read теперь сужен до админов/руководителей (виджет "отпуска
+// коллег" использует отдельное узкое vacation_calendar:read, см.
+// stores/vacationOther.js) — поэтому вкладку "Все заявки" можно гейтить
+// именно им, а не vacation.all:edit: сама вкладка — просмотр, а не
+// изменение (approve/reject — отдельные действия внутри VacationItem.vue,
+// у них свой gate на .edit). GET /vacation/all/:year на бэке и так требует
+// ровно vacation.all:read (RequireAll), см. internal/vacation/route.go.
+const isAdmin = computed(() => userStore.hasPermission('vacation.all', 'read'))
 
 const targets = [
   { id: 'my', label: 'Мои заявки' },
