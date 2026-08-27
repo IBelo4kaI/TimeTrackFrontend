@@ -5,7 +5,10 @@
       <VacationTypeSettings />
     </template>
     <StandardSettings v-else-if="submenuStore.activeTab === 'standards'" />
-    <NotificationSettings v-else-if="submenuStore.activeTab === 'notifications'" />
+    <template v-else-if="submenuStore.activeTab === 'notifications'">
+      <NotificationSettings />
+      <TimesheetReminderCard />
+    </template>
     <CalendarEventsList v-else-if="submenuStore.activeTab === 'calendar'" />
   </div>
 </template>
@@ -14,6 +17,7 @@
 import CalendarEventsList from '@/components/Settings/CalendarEvents/CalendarEventsList.vue'
 import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
 import StandardSettings from '@/components/Settings/StandardSettings.vue'
+import TimesheetReminderCard from '@/components/Settings/TimesheetReminderCard.vue'
 import VacationSettings from '@/components/Settings/VacationSettings.vue'
 import VacationTypeSettings from '@/components/Settings/VacationTypeSettings.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
