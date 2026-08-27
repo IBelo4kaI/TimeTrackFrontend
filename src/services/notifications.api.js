@@ -37,3 +37,21 @@ export const markAllNotificationsRead = async () => {
     throw error
   }
 }
+
+export const deleteNotification = async (id) => {
+  try {
+    await timeTrackApi.delete(`/notifications/${id}`)
+  } catch (error) {
+    console.error('Ошибка при удалении уведомления:', error)
+    throw error
+  }
+}
+
+export const deleteAllNotifications = async () => {
+  try {
+    await timeTrackApi.delete('/notifications')
+  } catch (error) {
+    console.error('Ошибка при очистке уведомлений:', error)
+    throw error
+  }
+}

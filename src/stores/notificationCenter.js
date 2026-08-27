@@ -6,6 +6,8 @@
 // notification.js — тот про эфемерные тосты, этот про историю + SSE.
 import router from '@/router'
 import {
+  deleteAllNotifications,
+  deleteNotification,
   getNotifications,
   getUnreadNotificationsCount,
   markAllNotificationsRead,
@@ -80,6 +82,33 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
     }
   }
 
+  async function deleteOne(id) {
+    const item = items.value.find((n) => n.id === id)
+    const wasUnread = !unwrapNull(item?.isRead, 'Bool')
+
+    try {
+      await deleteNotification(id)
+      items.value = items.value.filter((n) => n.id !== id)
+      if (wasUnread) unreadCount.value = Math.max(0, unreadCount.value - 1)
+    } catch {
+      // тихо игнорируем — не критично, попробуют ещё раз
+    }
+  }
+
+  async function clearAll() {
+    const previous = items.value
+    const previousUnread = unreadCount.value
+    items.value = []
+    unreadCount.value = 0
+
+    try {
+      await deleteAllNotifications()
+    } catch {
+      items.value = previous
+      unreadCount.value = previousUnread
+    }
+  }
+
   // Кликабельно только там, где есть куда вести: заявка на отпуск (у неё
   // есть отдельная страница-карточка; у больничных её нет — только общий
   // список) и чат (открываем тем же query-параметром, что и диплинк из VK,
@@ -142,6 +171,21 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
       unreadCount.value = Math.max(0, unreadCount.value - cleared)
     })
 
+    // Удалили в другой вкладке — синхронизируем список тут же.
+    eventSource.addEventListener('notification_deleted', (e) => {
+      const { id } = JSON.parse(e.data)
+      const item = items.value.find((n) => n.id === id)
+      if (!item) return
+      const wasUnread = !unwrapNull(item.isRead, 'Bool')
+      items.value = items.value.filter((n) => n.id !== id)
+      if (wasUnread) unreadCount.value = Math.max(0, unreadCount.value - 1)
+    })
+
+    eventSource.addEventListener('notifications_cleared', () => {
+      items.value = []
+      unreadCount.value = 0
+    })
+
     eventSource.onerror = () => {
       // EventSource сам переподключается — тут ничего специально делать не нужно.
     }
@@ -160,6 +204,8 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
     loadUnreadCount,
     markRead,
     markAllRead,
+    deleteOne,
+    clearAll,
     linkFor,
     connect,
     disconnect,

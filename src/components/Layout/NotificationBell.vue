@@ -11,14 +11,24 @@
       <div v-if="open" class="notification-panel">
         <div class="notification-panel__header">
           <span>Уведомления</span>
-          <button
-            v-if="store.unreadCount > 0"
-            type="button"
-            class="notification-panel__mark-all"
-            @click="store.markAllRead"
-          >
-            Прочитать все
-          </button>
+          <div class="notification-panel__header-actions">
+            <button
+              v-if="store.unreadCount > 0"
+              type="button"
+              class="notification-panel__action"
+              @click="store.markAllRead"
+            >
+              Прочитать все
+            </button>
+            <button
+              v-if="store.items.length > 0"
+              type="button"
+              class="notification-panel__action"
+              @click="onClearAll"
+            >
+              Очистить
+            </button>
+          </div>
         </div>
 
         <LoaderTitle v-if="store.isLoading" />
@@ -44,6 +54,14 @@
               <span class="notification-item__message">{{ item.message }}</span>
               <span class="notification-item__time">{{ formatDateTime(item.createdAt) }}</span>
             </div>
+            <button
+              type="button"
+              class="notification-item__delete"
+              v-tooltip="'Удалить'"
+              @click.stop.prevent="store.deleteOne(item.id)"
+            >
+              <i class="fa-regular fa-trash-can"></i>
+            </button>
           </component>
         </div>
       </div>
@@ -53,15 +71,24 @@
 
 <script setup>
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationCenterStore } from '@/stores/notificationCenter'
 import { unwrapNull } from '@/utils/chat.utils'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const store = useNotificationCenterStore()
+const confirmModalStore = useConfirmModal()
 const linkFor = store.linkFor
 
 const open = ref(false)
 const wrapperRef = ref(null)
+
+function onClearAll() {
+  confirmModalStore.open(
+    () => store.clearAll(),
+    'Удалить все уведомления без возможности восстановить?'
+  )
+}
 
 function isRead(item) {
   return !!unwrapNull(item.isRead, 'Bool')
@@ -180,7 +207,13 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
-.notification-panel__mark-all {
+.notification-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.71rem;
+}
+
+.notification-panel__action {
   background: none;
   border: none;
   color: var(--accent);
@@ -189,7 +222,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.notification-panel__mark-all:hover {
+.notification-panel__action:hover {
   text-decoration: underline;
 }
 
@@ -278,6 +311,35 @@ onBeforeUnmount(() => {
 .notification-item__time {
   font-size: 0.71rem;
   color: var(--muted-text);
+}
+
+.notification-item__delete {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.86rem;
+  height: 1.86rem;
+  background: none;
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--muted-text);
+  font-size: 0.86rem;
+  cursor: pointer;
+  opacity: 0.5;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.notification-item:hover .notification-item__delete {
+  opacity: 1;
+}
+
+.notification-item__delete:hover {
+  color: var(--destructive);
+  background: var(--muted-destructive);
 }
 
 .panel-fade-enter-active,
