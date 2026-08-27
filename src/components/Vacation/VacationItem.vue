@@ -224,8 +224,14 @@ const user = computed(() => {
   else return null
 })
 
+const applicantName = computed(() =>
+  [user.value?.surname, user.value?.name, user.value?.patronymic]
+    .filter(Boolean)
+    .join(' ')
+)
+
 const onApproved = async () => {
-  const resp = await approvedVacationStatus(item.id)
+  const resp = await approvedVacationStatus(item.id, applicantName.value)
   notificationStore.addNotification(resp.message, 'success')
   await vacationStore.fetchVacations()
 }
@@ -237,7 +243,7 @@ const onDeleted = async () => {
 }
 
 const onStatus = async (status) => {
-  const resp = await updateVacationStatus(item.id, status)
+  const resp = await updateVacationStatus(item.id, status, applicantName.value)
   notificationStore.addNotification(resp.message, 'success')
   await vacationStore.fetchVacations()
 }

@@ -90,10 +90,14 @@ export const createVacation = async (data) => {
   }
 }
 
-export const updateVacationStatus = async (id, status) => {
+// applicantName — ФИО сотрудника, чья заявка (фронт уже знает его из
+// usersAll) — только для текста уведомления об утверждении, см.
+// applicantName у createVacation.
+export const updateVacationStatus = async (id, status, applicantName = '') => {
   try {
     const response = await timeTrackApi.put(`/vacation/${id}/status`, {
       status: status,
+      applicantName,
     })
     return response.data
   } catch (error) {
@@ -102,9 +106,11 @@ export const updateVacationStatus = async (id, status) => {
   }
 }
 
-export const approvedVacationStatus = async (id) => {
+export const approvedVacationStatus = async (id, applicantName = '') => {
   try {
-    const response = await timeTrackApi.put(`/vacation/${id}/approve`)
+    const response = await timeTrackApi.put(`/vacation/${id}/approve`, {
+      applicantName,
+    })
     return response.data
   } catch (error) {
     console.error('Ошибка создания дня:', error)

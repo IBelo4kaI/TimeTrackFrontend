@@ -63,3 +63,10 @@ export const getSickLeaveNotificationAdminUserIds = () =>
   getNotificationRecipients('notification_sick_leave_admin_user_ids')
 export const updateSickLeaveNotificationAdminUserIds = (userIds) =>
   updateNotificationRecipients('notification_sick_leave_admin_user_ids', userIds)
+
+// Отдельно от notification_vacation_admin_user_ids — тем шлют про новые
+// заявки, этим — про уже утверждённые (см. GetVacationApprovedRecipients).
+export const getVacationApprovedNotificationUserIds = () =>
+  getNotificationRecipients('notification_vacation_approved_user_ids')
+export const updateVacationApprovedNotificationUserIds = (userIds) =>
+  updateNotificationRecipients('notification_vacation_approved_user_ids', userIds)

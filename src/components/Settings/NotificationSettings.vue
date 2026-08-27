@@ -19,13 +19,30 @@
       @update:model-value="onSickLeaveChange"
     />
   </div>
+
+  <div class="settings-notifications">
+    <div class="settings-notifications__title">Уведомления об утверждении отпуска</div>
+    <div class="settings-notifications__hint">
+      Отдельно от списка выше: сам сотрудник о решении по своей заявке уведомляется всегда
+      автоматически, тут — кому ещё сообщить, когда его отпуск утвердили (ФИО и даты).
+    </div>
+
+    <NotificationRecipientsPicker
+      title="Утверждённые отпуска"
+      :model-value="vacationApprovedIds"
+      :is-loading="isLoadingVacationApproved"
+      @update:model-value="onVacationApprovedChange"
+    />
+  </div>
 </template>
 
 <script setup>
 import {
   getSickLeaveNotificationAdminUserIds,
+  getVacationApprovedNotificationUserIds,
   getVacationNotificationAdminUserIds,
   updateSickLeaveNotificationAdminUserIds,
+  updateVacationApprovedNotificationUserIds,
   updateVacationNotificationAdminUserIds,
 } from '@/services/systemSettings.api'
 import { useNotificationStore } from '@/stores/notification'
@@ -36,8 +53,10 @@ const notificationStore = useNotificationStore()
 
 const vacationIds = ref([])
 const sickLeaveIds = ref([])
+const vacationApprovedIds = ref([])
 const isLoadingVacation = ref(true)
 const isLoadingSickLeave = ref(true)
+const isLoadingVacationApproved = ref(true)
 
 async function onVacationChange(ids) {
   const previous = vacationIds.value
@@ -61,6 +80,17 @@ async function onSickLeaveChange(ids) {
   }
 }
 
+async function onVacationApprovedChange(ids) {
+  const previous = vacationApprovedIds.value
+  vacationApprovedIds.value = ids
+  try {
+    await updateVacationApprovedNotificationUserIds(ids)
+  } catch {
+    vacationApprovedIds.value = previous
+    notificationStore.addNotification('Не удалось сохранить получателей уведомлений', 'error')
+  }
+}
+
 onMounted(async () => {
   try {
     vacationIds.value = (await getVacationNotificationAdminUserIds()) ?? []
@@ -76,6 +106,14 @@ onMounted(async () => {
     sickLeaveIds.value = []
   } finally {
     isLoadingSickLeave.value = false
+  }
+
+  try {
+    vacationApprovedIds.value = (await getVacationApprovedNotificationUserIds()) ?? []
+  } catch {
+    vacationApprovedIds.value = []
+  } finally {
+    isLoadingVacationApproved.value = false
   }
 })
 </script>

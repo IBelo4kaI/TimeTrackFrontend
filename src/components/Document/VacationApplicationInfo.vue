@@ -233,7 +233,7 @@ async function loadVacationTypes() {
 
 async function onApprove() {
   await runMutation(
-    () => approvedVacationStatus(props.vacation.id),
+    () => approvedVacationStatus(props.vacation.id, employeeName.value),
     'Отпуск утверждён',
     'Ошибка при утверждении отпуска'
   )
@@ -241,7 +241,7 @@ async function onApprove() {
 
 async function onStatus(newStatus) {
   await runMutation(
-    () => updateVacationStatus(props.vacation.id, newStatus),
+    () => updateVacationStatus(props.vacation.id, newStatus, employeeName.value),
     'Статус обновлён',
     'Ошибка при обновлении статуса'
   )
