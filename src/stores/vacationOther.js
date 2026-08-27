@@ -31,10 +31,14 @@ export const useVacationOther = defineStore('vacation-other', () => {
       Array.isArray(dept?.employees) ? dept.employees : []
     )
 
-    // Только свой отдел, если нет vacation.all:edit (тот же признак "админ",
-    // что и в VacationList.vue) — vacation_calendar:read выдан всем и тут не
-    // подходит, иначе все видели бы все отделы.
-    if (!userStore.hasPermission('vacation.all', 'edit')) {
+    // Только свой отдел, если нет ни vacation.all:edit, ни vacation.all:read
+    // (тот же признак "видит всех", что и в VacationList.vue/VacationFilters.vue) —
+    // vacation_calendar:read выдан всем и тут не подходит, иначе все видели
+    // бы все отделы.
+    if (
+      !userStore.hasPermission('vacation.all', 'edit') &&
+      !userStore.hasPermission('vacation.all', 'read')
+    ) {
       const currentUserId = userStore.user?.id
       const currentEmployee = all.find(
         (emp) => String(emp.user_id) === String(currentUserId)

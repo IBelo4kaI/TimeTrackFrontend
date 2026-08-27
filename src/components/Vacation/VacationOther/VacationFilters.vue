@@ -46,7 +46,9 @@ import { computed } from 'vue'
 const store = useVacationOther()
 const userStore = useUserStore()
 // Тот же признак "видит все отделы", что и в store.allEmployeesFlat.
-const isReadAllDep = userStore.hasPermission('vacation.all', 'edit')
+const isReadAllDep =
+  userStore.hasPermission('vacation.all', 'edit') ||
+  userStore.hasPermission('vacation.all', 'read')
 
 const activeCount = computed(() => {
   return [
