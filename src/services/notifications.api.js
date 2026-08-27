@@ -55,3 +55,15 @@ export const deleteAllNotifications = async () => {
     throw error
   }
 }
+
+// Ручная рассылка от админа сотрудникам (свободный текст или подставленный
+// на фронте из выбранного шаблона).
+export const sendManualNotification = async ({ userIds, title, message }) => {
+  try {
+    const response = await timeTrackApi.post('/notifications/send', { userIds, title, message })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при отправке уведомления:', error)
+    throw error
+  }
+}

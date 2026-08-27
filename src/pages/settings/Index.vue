@@ -7,6 +7,8 @@
     <StandardSettings v-else-if="submenuStore.activeTab === 'standards'" />
     <template v-else-if="submenuStore.activeTab === 'notifications'">
       <NotificationSettings />
+      <ManualNotificationSender />
+      <NotificationTemplateSettings />
       <TimesheetReminderCard />
     </template>
     <CalendarEventsList v-else-if="submenuStore.activeTab === 'calendar'" />
@@ -15,7 +17,9 @@
 
 <script setup>
 import CalendarEventsList from '@/components/Settings/CalendarEvents/CalendarEventsList.vue'
+import ManualNotificationSender from '@/components/Settings/ManualNotificationSender.vue'
 import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
+import NotificationTemplateSettings from '@/components/Settings/NotificationTemplateSettings.vue'
 import StandardSettings from '@/components/Settings/StandardSettings.vue'
 import TimesheetReminderCard from '@/components/Settings/TimesheetReminderCard.vue'
 import VacationSettings from '@/components/Settings/VacationSettings.vue'
