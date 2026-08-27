@@ -269,9 +269,10 @@ onBeforeUnmount(() => {
 .notification-item__message {
   font-size: 0.86rem;
   color: var(--muted-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* pre-line — переносы строк в тексте (дата/тип/описание, см.
+     vacationNotificationBody на бэке) сохраняются, а не схлопываются в
+     одну строку. */
+  white-space: pre-line;
 }
 
 .notification-item__time {
