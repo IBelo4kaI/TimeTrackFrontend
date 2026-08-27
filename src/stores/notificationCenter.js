@@ -93,6 +93,9 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
     if (entityType === 'chat' && entityId) {
       return { name: 'chats', query: { open: entityId } }
     }
+    if (entityType === 'timesheet') {
+      return { name: 'calendar' }
+    }
     return null
   }
 
