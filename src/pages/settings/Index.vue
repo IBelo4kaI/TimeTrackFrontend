@@ -1,22 +1,40 @@
 <template>
   <div class="container">
-    <VacationSettings />
-    <StandardSettings />
-    <NotificationSettings />
-    <CalendarEventsList />
+    <template v-if="submenuStore.activeTab === 'vacation'">
+      <VacationSettings />
+      <VacationTypeSettings />
+    </template>
+    <StandardSettings v-else-if="submenuStore.activeTab === 'standards'" />
+    <NotificationSettings v-else-if="submenuStore.activeTab === 'notifications'" />
+    <CalendarEventsList v-else-if="submenuStore.activeTab === 'calendar'" />
   </div>
 </template>
 
 <script setup>
-import { useHeaderTitleStore } from '@/stores/headerTitle'
-import VacationSettings from '@/components/Settings/VacationSettings.vue'
-import { useStandardSetting } from '@/stores/standardSetting'
-import StandardSettings from '@/components/Settings/StandardSettings.vue'
-import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
 import CalendarEventsList from '@/components/Settings/CalendarEvents/CalendarEventsList.vue'
+import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
+import StandardSettings from '@/components/Settings/StandardSettings.vue'
+import VacationSettings from '@/components/Settings/VacationSettings.vue'
+import VacationTypeSettings from '@/components/Settings/VacationTypeSettings.vue'
+import { useHeaderTitleStore } from '@/stores/headerTitle'
+import { useStandardSetting } from '@/stores/standardSetting'
+import { useSubmenuStore } from '@/stores/submenu'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Настройки', 'Конфигурация системы')
+
+// Сброс вкладок при уходе со страницы делает router.beforeEach (router/index.js)
+// централизованно, до монтирования следующей страницы — здесь его дублировать
+// не нужно.
+const submenuStore = useSubmenuStore()
+submenuStore.setItems([
+  { id: 'vacation', label: 'Отпуска' },
+  { id: 'standards', label: 'Нормативы' },
+  { id: 'notifications', label: 'Уведомления' },
+  { id: 'calendar', label: 'Календарь' },
+])
+submenuStore.setActiveTab('vacation')
+
 const standardSetting = useStandardSetting()
 standardSetting.initialFetch()
 </script>

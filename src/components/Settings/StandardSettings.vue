@@ -1,161 +1,58 @@
 <template>
   <div class="standard-setting">
+    <div class="standard-setting__title">Нормы часов и дней</div>
     <div class="standard-setting__header">
-      <h2>Нормы часов и дней</h2>
-      <div class="standard-setting__controls">
-        <div class="standard-setting__control-group">
-          <SelectUI
-            v-model="selectedYear"
-            :options="yearOptions"
-            label="Год"
-            @update:model-value="loadStandards"
-          />
-        </div>
-        <div class="standard-setting__control-group">
-          <SelectUI
-            v-model="selectedUser"
-            :options="userOptions"
-            label="Сотрудник"
-            placeholder="Общие нормы"
-            @update:model-value="loadStandards"
-          />
-        </div>
-      </div>
+      <Tabs
+        :tabs="scopeTabs"
+        v-model="scope"
+        type="line"
+        @update:model-value="onScopeChange"
+      />
+      <SelectUI
+        v-model="selectedYear"
+        :options="yearOptions"
+        @update:model-value="loadStandards"
+      />
+      <template v-if="scope === 'individual'">
+        <SelectUI
+          v-model="selectedUser"
+          :options="userOptions"
+          placeholder="Выберите сотрудника"
+          @update:model-value="loadStandards"
+        />
+      </template>
     </div>
 
-    <div v-if="!isInitialized" class="standard-setting__loading">
-      <LoaderTitle />
-    </div>
+    <LoaderTitle v-if="!isInitialized" />
 
-    <div v-else class="standard-setting__content">
-      <div v-if="selectedUser" class="standard-setting__user-info">
-        <div class="standard-setting__user-name">
-          Индивидуальные нормы для:
-          <strong>{{ selectedUserName }}</strong>
-        </div>
-        <div class="standard-setting__user-hint">
-          Эти нормы будут применяться только к выбранному сотруднику
-        </div>
+    <template v-else-if="scope === 'individual' && !selectedUser">
+      <div class="standard-setting__empty">
+        Выберите сотрудника, чтобы посмотреть или задать его индивидуальный
+        график
       </div>
-      <div v-else class="standard-setting__user-info">
-        <div class="standard-setting__user-name">
-          <strong>Общие нормы</strong>
+    </template>
+
+    <div v-else class="standard-setting__grid">
+      <button
+        v-for="month in months"
+        :key="month.value"
+        type="button"
+        class="month-card"
+        @click="openMonthModal(month)"
+      >
+        <div class="month-card__header">
+          <span class="month-card__title">{{ month.label }}</span>
+          <i class="fa-regular fa-pen month-card__edit-icon"></i>
         </div>
-        <div class="standard-setting__user-hint">
-          Эти нормы будут применяться ко всем сотрудникам, у которых нет
-          индивидуальных норм
+        <div class="month-card__row">
+          Мужчины: {{ getMonthData(month.value).men.standardHours }}ч ·
+          {{ getMonthData(month.value).men.standardDays }}дн
         </div>
-      </div>
-
-      <div class="standard-setting__table-container">
-        <table class="standard-setting__table">
-          <thead>
-            <tr>
-              <th rowspan="2">Месяц</th>
-              <th colspan="2" class="text-center">Мужчины</th>
-              <th colspan="2" class="text-center">Женщины</th>
-              <th rowspan="2">Действия</th>
-            </tr>
-            <tr>
-              <th>Часы</th>
-              <th>Дни</th>
-              <th>Часы</th>
-              <th>Дни</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="month in months" :key="month.value">
-              <td class="standard-setting__month-cell">
-                {{ month.label }}
-              </td>
-
-              <!-- Мужчины (gender: 1) -->
-              <td>
-                <InputUi
-                  v-model="getMonthData(month.value).men.standardHours"
-                  type="number"
-                  placeholder="Часы"
-                  :min="0"
-                  @input="markAsChanged(month.value, 'men')"
-                />
-              </td>
-              <td>
-                <InputUi
-                  v-model="getMonthData(month.value).men.standardDays"
-                  type="number"
-                  placeholder="Дни"
-                  :min="0"
-                  @input="markAsChanged(month.value, 'men')"
-                />
-              </td>
-
-              <!-- Женщины (gender: 2) -->
-              <td>
-                <InputUi
-                  v-model="getMonthData(month.value).women.standardHours"
-                  type="number"
-                  placeholder="Часы"
-                  :min="0"
-                  @input="markAsChanged(month.value, 'women')"
-                />
-              </td>
-              <td>
-                <InputUi
-                  v-model="getMonthData(month.value).women.standardDays"
-                  type="number"
-                  placeholder="Дни"
-                  :min="0"
-                  @input="markAsChanged(month.value, 'women')"
-                />
-              </td>
-
-              <td class="standard-setting__actions-cell">
-                <div class="standard-setting__action-buttons">
-                  <ButtonUI
-                    type="accent"
-                    :disabled="
-                      !hasChanges(month.value) || isSaving(month.value)
-                    "
-                    @click="saveMonthStandards(month.value)"
-                  >
-                    <template v-if="isSaving(month.value)">
-                      <LoaderTitle text="Сохранение" />
-                    </template>
-                    <template v-else>
-                      {{
-                        getMonthData(month.value).men.id ||
-                        getMonthData(month.value).women.id
-                          ? 'Обновить'
-                          : 'Создать'
-                      }}
-                    </template>
-                  </ButtonUI>
-
-                  <!-- Кнопка удаления (только для индивидуальных норм с существующими записями) -->
-                  <ButtonUI
-                    v-if="
-                      selectedUser &&
-                      (getMonthData(month.value).men.id ||
-                        getMonthData(month.value).women.id)
-                    "
-                    type="destructive"
-                    :disabled="isDeleting(month.value)"
-                    @click="deleteMonthStandards(month.value)"
-                  >
-                    <template v-if="isDeleting(month.value)">
-                      <LoaderTitle text="Удаление" />
-                    </template>
-                    <template v-else>
-                      <i class="fa-regular fa-trash"></i>
-                      Удалить
-                    </template>
-                  </ButtonUI>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <div class="month-card__row">
+          Женщины: {{ getMonthData(month.value).women.standardHours }}ч ·
+          {{ getMonthData(month.value).women.standardDays }}дн
+        </div>
+      </button>
     </div>
 
     <div v-if="error" class="standard-setting__error">
@@ -165,18 +62,19 @@
 </template>
 
 <script setup>
-import ButtonUI from '@/components/ButtonUI.vue'
-import InputUi from '@/components/InputUi.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import SelectUI from '@/components/SelectUI.vue'
+import Tabs from '@/components/Tabs.vue'
 import {
   createStandard,
   deleteStandard,
   getStandardsByYear,
   updateStandard,
 } from '@/services/workStandard.api'
+import { useUniversalModalStore } from '@/stores/modal'
+import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 // Константы
 const months = [
@@ -194,18 +92,24 @@ const months = [
   { value: 12, label: 'Декабрь' },
 ]
 
+const scopeTabs = [
+  { id: 'general', label: 'Общие нормы' },
+  { id: 'individual', label: 'Индивидуальные' },
+]
+
 // Store
 const userStore = useUserStore()
+const modalStore = useUniversalModalStore()
+const notificationStore = useNotificationStore()
 
 // Реактивные переменные
 const selectedYear = ref(new Date().getFullYear())
-const selectedUser = ref(null) // null = общие нормы, string = userId сотрудника
+const scope = ref('general')
+const selectedUser = ref(null) // string = userId сотрудника, только при scope === 'individual'
 const standards = ref({})
 const isInitialized = ref(false)
 const isLoading = ref(false)
 const error = ref('')
-const savingMonths = ref(new Set())
-const deletingMonths = ref(new Set())
 
 // Вычисляемые свойства
 const yearOptions = computed(() => {
@@ -217,68 +121,35 @@ const yearOptions = computed(() => {
   return years
 })
 
-const userOptions = computed(() => {
-  const options = [{ value: null, label: 'Общие нормы' }]
-
-  if (userStore.usersAll && userStore.usersAll.length > 0) {
-    userStore.usersAll.forEach((user) => {
-      options.push({
-        value: user.id,
-        label:
-          `${user.surname} ${user.name} ${user.patronymic ? user.patronymic : ''}`.trim(),
-        user: user,
-      })
-    })
-  }
-
-  return options
-})
-
-const selectedUserName = computed(() => {
-  if (!selectedUser.value) return ''
-
-  const userOption = userOptions.value.find(
-    (option) => option.value === selectedUser.value
-  )
-  return userOption ? userOption.label : ''
-})
-
-// Вспомогательные функции
-const isSaving = (month) => savingMonths.value.has(month)
-const isDeleting = (month) => deletingMonths.value.has(month)
-
-const hasChanges = (month) => {
-  const monthData = getMonthData(month)
-  return monthData.men.isChanged || monthData.women.isChanged
-}
+const userOptions = computed(() =>
+  (userStore.usersAll ?? []).map((user) => ({
+    value: user.id,
+    label:
+      `${user.surname} ${user.name} ${user.patronymic ? user.patronymic : ''}`.trim(),
+  }))
+)
 
 const getMonthData = (month) => {
   if (!standards.value[month]) {
     // Возвращаем пустую структуру если данных нет
     return {
-      men: {
-        id: null,
-        userId: selectedUser.value,
-        month: month,
-        year: selectedYear.value,
-        standardHours: 0,
-        standardDays: 0,
-        gender: 1,
-        isChanged: false,
-      },
-      women: {
-        id: null,
-        userId: selectedUser.value,
-        month: month,
-        year: selectedYear.value,
-        standardHours: 0,
-        standardDays: 0,
-        gender: 2,
-        isChanged: false,
-      },
+      men: emptyRecord(month, 1),
+      women: emptyRecord(month, 2),
     }
   }
   return standards.value[month]
+}
+
+function emptyRecord(month, gender) {
+  return {
+    id: null,
+    userId: selectedUser.value,
+    month,
+    year: selectedYear.value,
+    standardHours: 0,
+    standardDays: 0,
+    gender,
+  }
 }
 
 // Инициализация стандартов
@@ -286,30 +157,17 @@ const initializeStandards = () => {
   const initialStandards = {}
   months.forEach((month) => {
     initialStandards[month.value] = {
-      men: {
-        id: null,
-        userId: selectedUser.value,
-        month: month.value,
-        year: selectedYear.value,
-        standardHours: 0,
-        standardDays: 0,
-        gender: 1,
-        isChanged: false,
-      },
-      women: {
-        id: null,
-        userId: selectedUser.value,
-        month: month.value,
-        year: selectedYear.value,
-        standardHours: 0,
-        standardDays: 0,
-        gender: 2,
-        isChanged: false,
-      },
+      men: emptyRecord(month.value, 1),
+      women: emptyRecord(month.value, 2),
     }
   })
   standards.value = initialStandards
   isInitialized.value = true
+}
+
+function onScopeChange(newScope) {
+  if (newScope === 'general') selectedUser.value = null
+  loadStandards()
 }
 
 // Загрузка стандартов
@@ -334,33 +192,19 @@ const loadStandards = async () => {
           const userId = standard.userId?.Valid ? standard.userId.String : null
 
           // Фильтруем данные по выбранному пользователю
-          if (selectedUser.value === null && userId === null) {
-            // Общие нормы (userId = null)
-            if (standards.value[monthKey]) {
-              standards.value[monthKey][genderKey] = {
-                id: standard.id,
-                userId: userId,
-                month: standard.month,
-                year: standard.year,
-                standardHours: standard.standardHours,
-                standardDays: standard.standardDays,
-                gender: standard.gender,
-                isChanged: false,
-              }
-            }
-          } else if (selectedUser.value === userId) {
-            // Индивидуальные нормы для выбранного пользователя
-            if (standards.value[monthKey]) {
-              standards.value[monthKey][genderKey] = {
-                id: standard.id,
-                userId: userId,
-                month: standard.month,
-                year: standard.year,
-                standardHours: standard.standardHours,
-                standardDays: standard.standardDays,
-                gender: standard.gender,
-                isChanged: false,
-              }
+          const isMatch =
+            (selectedUser.value === null && userId === null) ||
+            selectedUser.value === userId
+
+          if (isMatch && standards.value[monthKey]) {
+            standards.value[monthKey][genderKey] = {
+              id: standard.id,
+              userId: userId,
+              month: standard.month,
+              year: standard.year,
+              standardHours: standard.standardHours,
+              standardDays: standard.standardDays,
+              gender: standard.gender,
             }
           }
         }
@@ -372,51 +216,6 @@ const loadStandards = async () => {
     initializeStandards()
   } finally {
     isLoading.value = false
-  }
-}
-
-// Отметка как измененного
-const markAsChanged = (month, gender) => {
-  const monthData = getMonthData(month)
-  if (monthData && monthData[gender]) {
-    // Обновляем данные в standards
-    if (!standards.value[month]) {
-      standards.value[month] = { ...monthData }
-    }
-    standards.value[month][gender].isChanged = true
-  }
-}
-
-// Сохранение стандартов для месяца (оба пола)
-const saveMonthStandards = async (month) => {
-  const monthData = getMonthData(month)
-  if (!monthData || (!monthData.men.isChanged && !monthData.women.isChanged))
-    return
-
-  savingMonths.value.add(month)
-  error.value = ''
-
-  try {
-    // Сохраняем стандарты для мужчин
-    if (monthData.men.isChanged) {
-      await saveStandardRecord(monthData.men)
-      if (standards.value[month]) {
-        standards.value[month].men.isChanged = false
-      }
-    }
-
-    // Сохраняем стандарты для женщин
-    if (monthData.women.isChanged) {
-      await saveStandardRecord(monthData.women)
-      if (standards.value[month]) {
-        standards.value[month].women.isChanged = false
-      }
-    }
-  } catch (err) {
-    console.error('Ошибка при сохранении стандартов:', err)
-    error.value = 'Не удалось сохранить данные. Пожалуйста, попробуйте еще раз.'
-  } finally {
-    savingMonths.value.delete(month)
   }
 }
 
@@ -437,11 +236,10 @@ const saveStandardRecord = async (standard) => {
 
   if (standard.id) {
     // Обновление существующего стандарта
-    const updateData = {
+    await updateStandard(standard.id, {
       standard_hours: standard.standardHours,
       standard_days: standard.standardDays,
-    }
-    await updateStandard(standard.id, updateData)
+    })
   } else {
     // Создание нового стандарта
     const response = await createStandard(standardData)
@@ -449,50 +247,78 @@ const saveStandardRecord = async (standard) => {
   }
 }
 
-// Удаление стандартов для месяца (оба пола)
-const deleteMonthStandards = async (month) => {
-  const monthData = getMonthData(month)
-  if (!monthData || (!monthData.men.id && !monthData.women.id)) return
+// Модалка редактирования нормы месяца — применяется сразу по кнопке в окне.
+function openMonthModal(month) {
+  const monthData = getMonthData(month.value)
+  const hasIndividualRecord =
+    scope.value === 'individual' && (monthData.men.id || monthData.women.id)
 
-  if (
-    !confirm(
-      'Вы уверены, что хотите удалить индивидуальные нормы для этого месяца?'
-    )
-  ) {
-    return
-  }
+  modalStore.open({
+    title: `Норма — ${month.label}`,
+    submitButtonText: 'Сохранить',
+    submittingText: 'Сохранение...',
+    showDeleteButton: hasIndividualRecord,
+    deleteButtonText: 'Удалить',
+    deletingText: 'Удаление...',
+    fields: [
+      {
+        name: 'menHours',
+        type: 'number',
+        label: 'Мужчины — часы',
+        value: monthData.men.standardHours,
+      },
+      {
+        name: 'menDays',
+        type: 'number',
+        label: 'Мужчины — дни',
+        value: monthData.men.standardDays,
+      },
+      {
+        name: 'womenHours',
+        type: 'number',
+        label: 'Женщины — часы',
+        value: monthData.women.standardHours,
+      },
+      {
+        name: 'womenDays',
+        type: 'number',
+        label: 'Женщины — дни',
+        value: monthData.women.standardDays,
+      },
+    ],
+    onSubmit: async (data) => {
+      try {
+        monthData.men.standardHours = Number(data.menHours) || 0
+        monthData.men.standardDays = Number(data.menDays) || 0
+        monthData.women.standardHours = Number(data.womenHours) || 0
+        monthData.women.standardDays = Number(data.womenDays) || 0
 
-  deletingMonths.value.add(month)
-  error.value = ''
-
-  try {
-    // Удаляем стандарты для мужчин
-    if (monthData.men.id) {
-      await deleteStandard(monthData.men.id)
-      if (standards.value[month]) {
-        standards.value[month].men.id = null
-        standards.value[month].men.standardHours = 0
-        standards.value[month].men.standardDays = 0
-        standards.value[month].men.isChanged = false
+        await saveStandardRecord(monthData.men)
+        await saveStandardRecord(monthData.women)
+        standards.value[month.value] = monthData
+      } catch (err) {
+        console.error('Ошибка при сохранении стандартов:', err)
+        notificationStore.addNotification('Не удалось сохранить норму', 'error')
+        throw err
       }
-    }
-
-    // Удаляем стандарты для женщин
-    if (monthData.women.id) {
-      await deleteStandard(monthData.women.id)
-      if (standards.value[month]) {
-        standards.value[month].women.id = null
-        standards.value[month].women.standardHours = 0
-        standards.value[month].women.standardDays = 0
-        standards.value[month].women.isChanged = false
+      notificationStore.addNotification('Норма сохранена', 'success')
+    },
+    onDelete: async () => {
+      try {
+        if (monthData.men.id) await deleteStandard(monthData.men.id)
+        if (monthData.women.id) await deleteStandard(monthData.women.id)
+        standards.value[month.value] = {
+          men: emptyRecord(month.value, 1),
+          women: emptyRecord(month.value, 2),
+        }
+      } catch (err) {
+        console.error('Ошибка при удалении стандартов:', err)
+        notificationStore.addNotification('Не удалось удалить норму', 'error')
+        throw err
       }
-    }
-  } catch (err) {
-    console.error('Ошибка при удалении стандартов:', err)
-    error.value = 'Не удалось удалить данные. Пожалуйста, попробуйте еще раз.'
-  } finally {
-    deletingMonths.value.delete(month)
-  }
+      notificationStore.addNotification('Норма удалена', 'success')
+    },
+  })
 }
 
 // Загрузка пользователей при монтировании
@@ -505,130 +331,92 @@ onMounted(async () => {
   initializeStandards()
   loadStandards()
 })
-
-// Наблюдаем за изменениями usersAll
-watch(
-  () => userStore.usersAll,
-  () => {
-    // Обновляем опции пользователей при изменении списка
-  },
-  { deep: true }
-)
 </script>
 
 <style scoped>
 .standard-setting {
-  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-primary);
+  padding: var(--padding-secondary);
   background: var(--foreground);
   border-radius: var(--border-radius);
   border: 0.07rem solid var(--border-color);
+}
+
+.standard-setting__title {
+  display: flex;
+  align-items: center;
+  padding: var(--padding-secondary) var(--padding-secondary);
+  font-size: 1.14rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .standard-setting__header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
   gap: 1rem;
-}
-
-.standard-setting__header h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: 1.5rem;
-  font-weight: 600;
-  flex: 1;
-  min-width: 200px;
-}
-
-.standard-setting__controls {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
 }
 
 .standard-setting__control-group {
-  width: 200px;
+  width: 14rem;
+  max-width: 100%;
 }
 
-.standard-setting__content {
+.standard-setting__empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted-text);
+  font-size: 0.93rem;
+}
+
+.standard-setting__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: calc(var(--padding-secondary) / 2);
+}
+
+.month-card {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
-
-.standard-setting__user-info {
-  padding: 1rem;
-  background: var(--foreground);
+  align-items: stretch;
+  gap: 0.36rem;
+  padding: 0.86rem;
+  background: var(--background);
   border-radius: var(--border-radius);
   border: 0.07rem solid var(--border-color);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
 }
 
-.standard-setting__user-name {
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+.month-card:hover {
+  border-color: var(--accent);
+}
+
+.month-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month-card__title {
+  font-weight: 600;
   color: var(--text);
 }
 
-.standard-setting__user-hint {
-  font-size: 0.9rem;
+.month-card__edit-icon {
   color: var(--muted-text);
 }
 
-.standard-setting__table-container {
-  overflow-x: auto;
+.month-card:hover .month-card__edit-icon {
+  color: var(--accent);
 }
 
-.standard-setting__table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px;
-}
-
-.standard-setting__table th {
-  text-align: left;
-  padding: 1rem;
-  background: var(--foreground);
-  color: var(--text);
-  font-weight: 600;
-  border-bottom: 0.07rem solid var(--border-color);
-}
-
-.standard-setting__table th.text-center {
-  text-align: center;
-}
-
-.standard-setting__table td {
-  padding: 1rem;
-  border-bottom: 0.07rem solid var(--border-color);
-  vertical-align: middle;
-}
-
-.standard-setting__month-cell {
-  font-weight: 500;
-  color: var(--text);
-  min-width: 120px;
-}
-
-.standard-setting__actions-cell {
-  min-width: 150px;
-}
-
-.standard-setting__action-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.standard-setting__table tr:hover {
-  background: var(--background);
-}
-
-.standard-setting__loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 2rem;
+.month-card__row {
+  font-size: 0.86rem;
+  color: var(--muted-text);
 }
 
 .standard-setting__error {
@@ -636,21 +424,6 @@ watch(
   background: var(--muted-destructive);
   color: var(--destructive);
   border-radius: var(--border-radius);
-  margin-top: 1rem;
   text-align: center;
-}
-
-@media (max-width: 768px) {
-  .standard-setting__header {
-    flex-direction: column;
-  }
-
-  .standard-setting__controls {
-    width: 100%;
-  }
-
-  .standard-setting__control-group {
-    width: 100%;
-  }
 }
 </style>
