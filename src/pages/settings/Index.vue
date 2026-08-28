@@ -11,12 +11,16 @@
       <NotificationTemplateSettings />
       <TimesheetReminderCard />
     </template>
-    <CalendarEventsList v-else-if="submenuStore.activeTab === 'calendar'" />
+    <template v-else-if="submenuStore.activeTab === 'calendar'">
+      <DayTypeSettings />
+      <CalendarEventsList />
+    </template>
   </div>
 </template>
 
 <script setup>
 import CalendarEventsList from '@/components/Settings/CalendarEvents/CalendarEventsList.vue'
+import DayTypeSettings from '@/components/Settings/DayTypeSettings.vue'
 import ManualNotificationSender from '@/components/Settings/ManualNotificationSender.vue'
 import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
 import NotificationTemplateSettings from '@/components/Settings/NotificationTemplateSettings.vue'
