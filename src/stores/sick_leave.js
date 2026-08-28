@@ -1,7 +1,16 @@
-import { getAllUsersSickLeavesByYear, getSickLeavesByYear } from '@/services/sick_leave.api'
+import {
+  getAllUsersSickLeavesByYear,
+  getSickLeavesByYear,
+  getSickLeaveStats,
+} from '@/services/sick_leave.api'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useUserStore } from './user'
+
+const createEmptyStats = () => ({
+  official: 0,
+  unofficial: 0,
+})
 
 export const useSickLeaveStore = defineStore('sick-leave', () => {
   const selectedYear = ref(new Date().getFullYear())
@@ -9,6 +18,7 @@ export const useSickLeaveStore = defineStore('sick-leave', () => {
   const target = ref('my')
 
   const sickLeaves = ref([])
+  const sickLeaveStats = ref(createEmptyStats())
   const isLoading = ref(false)
 
   const userStore = useUserStore()
@@ -25,7 +35,11 @@ export const useSickLeaveStore = defineStore('sick-leave', () => {
 
   const fetchUserSickLeaves = async () => {
     isLoading.value = true
-    const list = await getSickLeavesByYear(selectedYear.value, userStore.user.id)
+    const [stats, list] = await Promise.all([
+      getSickLeaveStats(selectedYear.value, userStore.user.id),
+      getSickLeavesByYear(selectedYear.value, userStore.user.id),
+    ])
+    sickLeaveStats.value = stats ?? createEmptyStats()
     sickLeaves.value = list ?? []
     isLoading.value = false
   }
@@ -48,6 +62,7 @@ export const useSickLeaveStore = defineStore('sick-leave', () => {
     filter,
     target,
     sickLeaves,
+    sickLeaveStats,
     isLoading,
     filteredSickLeaves,
     fetchSickLeaves,

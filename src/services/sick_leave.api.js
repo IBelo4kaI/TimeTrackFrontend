@@ -10,6 +10,11 @@ export const getAllUsersSickLeavesByYear = async (year) => {
   return response.data
 }
 
+export const getSickLeaveStats = async (year, userId) => {
+  const response = await timeTrackApi.get(`/sick-leaves/stats/${userId}/${year}`)
+  return response.data
+}
+
 export const createSickLeave = async (data) => {
   const response = await timeTrackApi.post('/sick-leaves/create', data)
   return response.data

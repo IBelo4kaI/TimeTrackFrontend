@@ -6,6 +6,15 @@
     :loading="isLoading"
     empty-text="Больничные не найдены"
   >
+    <template #toolbar>
+      <template v-if="userStore.hasPermission('sick_leaves.all', 'read')">
+        <Tabs :tabs="targets" v-model="sickLeaveStore.target" type="line" />
+      </template>
+      <Tabs :tabs="filterTabs" v-model="sickLeaveStore.filter" type="line" />
+      <div class="spacer"></div>
+      <SelectUI :options="years" v-model="sickLeaveStore.selectedYear" />
+    </template>
+
     <template #cell-status="{ row }">
       <Badge :type="getStatus(row.status).type">
         {{ getStatus(row.status).text }}
@@ -99,6 +108,8 @@ import { computed, ref, watch } from 'vue'
 import AppTable from '@/components/AppTable.vue'
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
+import SelectUI from '@/components/SelectUI.vue'
+import Tabs from '@/components/Tabs.vue'
 import { deleteSickLeave, updateSickLeaveStatus, uploadSickLeaveFile } from '@/services/sick_leave.api'
 import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import { useConfirmModal } from '@/stores/confirmModal'
@@ -122,6 +133,20 @@ const sickLeaveStore = useSickLeaveStore()
 const fileInputs = ref({})
 const filesMap = ref({})
 const rows = computed(() => props.items ?? [])
+
+const targets = [
+  { id: 'my', label: 'Мои' },
+  { id: 'all', label: 'Все' },
+]
+
+const filterTabs = [
+  { id: 'all', label: 'Все' },
+  { id: 'official', label: 'Официальные' },
+  { id: 'unofficial', label: 'Неофициальные' },
+]
+
+const currentYear = new Date().getFullYear()
+const years = [currentYear - 1, currentYear, currentYear + 1]
 
 async function loadFiles() {
   const items = props.items ?? []
@@ -236,6 +261,10 @@ async function onDeleteFile(file, sickLeaveId) {
 </script>
 
 <style scoped>
+.spacer {
+  flex: 1;
+}
+
 .actions {
   display: flex;
   gap: 0.35rem;
