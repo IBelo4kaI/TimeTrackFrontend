@@ -249,6 +249,9 @@ textarea {
   border-radius: var(--border-radius);
   outline: none;
   font-size: 1rem;
+  font-family: inherit;
+  font-weight: 400;
+  color: var(--text);
   background-color: var(--foreground);
   cursor: pointer;
   transition: border-color 0.2s;

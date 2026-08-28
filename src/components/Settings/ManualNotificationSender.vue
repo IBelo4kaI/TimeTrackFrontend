@@ -151,6 +151,8 @@ textarea {
   outline: none;
   font-size: 1rem;
   font-family: inherit;
+  font-weight: 400;
+  color: var(--text);
   background-color: var(--foreground);
   resize: vertical;
 }

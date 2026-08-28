@@ -15,6 +15,7 @@
       <DayTypeSettings />
       <CalendarEventsList />
     </template>
+    <NewsSettings v-else-if="submenuStore.activeTab === 'news'" />
   </div>
 </template>
 
@@ -22,6 +23,7 @@
 import CalendarEventsList from '@/components/Settings/CalendarEvents/CalendarEventsList.vue'
 import DayTypeSettings from '@/components/Settings/DayTypeSettings.vue'
 import ManualNotificationSender from '@/components/Settings/ManualNotificationSender.vue'
+import NewsSettings from '@/components/Settings/NewsSettings.vue'
 import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
 import NotificationTemplateSettings from '@/components/Settings/NotificationTemplateSettings.vue'
 import StandardSettings from '@/components/Settings/StandardSettings.vue'
@@ -44,6 +46,7 @@ submenuStore.setItems([
   { id: 'standards', label: 'Нормативы' },
   { id: 'notifications', label: 'Уведомления' },
   { id: 'calendar', label: 'Календарь' },
+  { id: 'news', label: 'Новости' },
 ])
 submenuStore.setActiveTab('vacation')
 

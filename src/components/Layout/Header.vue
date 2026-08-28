@@ -19,6 +19,7 @@
       <ToggleTheme />
     </div>
     <div class="header-notify">
+      <NewsBell />
       <NotificationBell />
     </div>
     <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
@@ -27,6 +28,7 @@
 
 <script setup>
 import Info from '../Info.vue'
+import NewsBell from './NewsBell.vue'
 import NotificationBell from './NotificationBell.vue'
 import Profile from '../Profile.vue'
 import ToggleTheme from '../ToggleTheme.vue'
@@ -57,6 +59,11 @@ const emit = defineEmits(['toggle-sidebar'])
 
 .header-title {
   flex: 1;
+}
+
+.header-notify {
+  display: flex;
+  align-items: center;
 }
 
 .header-profile {
