@@ -21,20 +21,19 @@
         <thead>
           <tr>
             <th class="th align-left">Сотрудник</th>
-            <th class="th align-center">Норма ч</th>
-            <th class="th align-center">Отработано ч</th>
-            <th class="th align-center">Норма д</th>
-            <th class="th align-center">Отработано д</th>
+            <th class="th align-center">Часы</th>
+            <th class="th align-center">Дни</th>
             <th class="th align-center">Больничные</th>
             <th class="th align-center">Отгулы</th>
             <th class="th align-center">Отпуск</th>
             <th class="th align-center">Декрет</th>
+            <th class="th align-center"></th>
           </tr>
         </thead>
 
         <tbody>
           <tr v-if="isLoading">
-            <td colspan="9" class="state-cell">
+            <td colspan="8" class="state-cell">
               <LoaderTitle />
             </td>
           </tr>
@@ -42,7 +41,7 @@
           <template v-else-if="isGrouped">
             <template v-for="group in groupedRows" :key="group.department">
               <tr class="tr-department">
-                <td colspan="9" class="td-department">
+                <td colspan="8" class="td-department">
                   {{ group.department || 'Без отдела' }}
                 </td>
               </tr>
@@ -55,13 +54,11 @@
                     {{ row.name }}
                   </RouterLink>
                 </td>
-                <td class="td align-center">{{ row.standardHours }}</td>
                 <td class="td align-center" :class="hoursVariant(row)">
-                  {{ row.totalHours }}
+                  {{ row.totalHours }} / {{ row.standardHours }}ч
                 </td>
-                <td class="td align-center">{{ row.standardWorkDays }}</td>
                 <td class="td align-center" :class="daysVariant(row)">
-                  {{ row.totalWorkDays }}
+                  {{ row.totalWorkDays }} / {{ row.standardWorkDays }}д
                 </td>
                 <td class="td align-center destructive">
                   {{ row.medicalDays }}
@@ -73,6 +70,15 @@
                   {{ row.vacationDays }}
                 </td>
                 <td class="td align-center">{{ row.decreeDays }}</td>
+                <td class="td align-center">
+                  <RouterLink
+                    class="calendar-link"
+                    v-tooltip="'Перейти к календарю'"
+                    :to="calendarLinkFor(row)"
+                  >
+                    <i class="fa-regular fa-calendar"></i>
+                  </RouterLink>
+                </td>
               </tr>
             </template>
           </template>
@@ -87,13 +93,11 @@
                   {{ row.name }}
                 </RouterLink>
               </td>
-              <td class="td align-center">{{ row.standardHours }}</td>
               <td class="td align-center" :class="hoursVariant(row)">
-                {{ row.totalHours }}
+                {{ row.totalHours }} / {{ row.standardHours }}ч
               </td>
-              <td class="td align-center">{{ row.standardWorkDays }}</td>
               <td class="td align-center" :class="daysVariant(row)">
-                {{ row.totalWorkDays }}
+                {{ row.totalWorkDays }} / {{ row.standardWorkDays }}д
               </td>
               <td
                 class="td align-center"
@@ -114,11 +118,20 @@
                 {{ row.vacationDays }}
               </td>
               <td class="td align-center">{{ row.decreeDays }}</td>
+              <td class="td align-center">
+                <RouterLink
+                  class="calendar-link"
+                  v-tooltip="'Перейти к календарю'"
+                  :to="calendarLinkFor(row)"
+                >
+                  <i class="fa-regular fa-calendar"></i>
+                </RouterLink>
+              </td>
             </tr>
           </template>
 
           <tr v-if="!isLoading && !rows.length">
-            <td colspan="9" class="state-cell empty">Нет данных</td>
+            <td colspan="8" class="state-cell empty">Нет данных</td>
           </tr>
         </tbody>
       </table>
@@ -130,6 +143,7 @@
 import ButtonUI from '@/components/ButtonUI.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import SelectUI from '@/components/SelectUI.vue'
+import { useReportStore } from '@/stores/report'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -139,6 +153,22 @@ const props = defineProps({
   departments: { type: Array, default: () => [] },
   modelValue: { type: String, default: 'all' },
 })
+
+const reportStore = useReportStore()
+
+// Табель показывает статистику за месяц из reportStore.currentDate — календарь
+// сотрудника открываем на том же месяце (см. pages/calendar/Index.vue,
+// который по query id/month/year подставляет calendarStore.selectedUserId).
+function calendarLinkFor(row) {
+  return {
+    name: 'calendar',
+    query: {
+      id: row.id,
+      month: reportStore.currentDate.getMonth() + 1,
+      year: reportStore.currentDate.getFullYear(),
+    },
+  }
+}
 
 const emits = defineEmits(['update:modelValue', 'print'])
 
@@ -273,6 +303,26 @@ function print() {
 
 .name-link:hover {
   color: var(--accent);
+}
+
+.calendar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.71rem;
+  height: 1.71rem;
+  border-radius: var(--border-radius);
+  color: var(--muted-text);
+  font-size: 0.86rem;
+  flex-shrink: 0;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.calendar-link:hover {
+  color: var(--accent);
+  background: var(--background);
 }
 
 .align-left {

@@ -28,15 +28,15 @@
         <span :class="{ 'row-total': row.isTotal }">{{ row.monthLabel }}</span>
       </template>
 
-      <template #cell-totalHours="{ row }">
+      <template #cell-hours="{ row }">
         <span :class="[hoursVariant(row), { 'row-total': row.isTotal }]">
-          {{ row.totalHours }}
+          {{ row.totalHours }} / {{ row.standardHours }}ч
         </span>
       </template>
 
-      <template #cell-totalWorkDays="{ row }">
+      <template #cell-workDays="{ row }">
         <span :class="[daysVariant(row), { 'row-total': row.isTotal }]">
-          {{ row.totalWorkDays }}
+          {{ row.totalWorkDays }} / {{ row.standardWorkDays }}д
         </span>
       </template>
 
@@ -85,10 +85,8 @@ const workerStore = useWorkerStore()
 
 const headers = [
   { valueKey: 'monthLabel', title: 'Месяц' },
-  { valueKey: 'standardHours', title: 'Норма ч', align: 'center' },
-  { valueKey: 'totalHours', title: 'Отработано ч', align: 'center' },
-  { valueKey: 'standardWorkDays', title: 'Норма д', align: 'center' },
-  { valueKey: 'totalWorkDays', title: 'Отработано д', align: 'center' },
+  { valueKey: 'hours', title: 'Часы', align: 'center' },
+  { valueKey: 'workDays', title: 'Дни', align: 'center' },
   { valueKey: 'medicalDays', title: 'Больничные', align: 'center' },
   { valueKey: 'timeoffDays', title: 'Отгулы', align: 'center' },
   { valueKey: 'vacationDays', title: 'Отпуск', align: 'center' },
