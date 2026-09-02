@@ -44,12 +44,7 @@
   --muted-destructive: #5a2a2a;
   --calendar-weekend: #1c1c1c;
 
-  --border-radius: 0.7rem;
   --border-color: #2d2d2d;
-  --sidebar-width: 15rem;
-  --header-height: 4.5rem;
-  --padding-primary: 1.45rem;
-  --padding-secondary: 1rem;
 }
 
 *,
@@ -110,12 +105,12 @@ html {
   }
 }
 
-  body {
-    color: var(--text);
-    background: var(--background);
-    font-family: 'Manrope', serif;
-    font-size: 1rem;
-  }
+body {
+  color: var(--text);
+  background: var(--background);
+  font-family: 'Manrope', serif;
+  font-size: 1rem;
+}
 
 @media print {
   #__vue-devtools-container__ {
