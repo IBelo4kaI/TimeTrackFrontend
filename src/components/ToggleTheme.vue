@@ -1,255 +1,213 @@
 <template>
-  <!-- Overlay заливки экрана -->
-  <div ref="overlayRef" class="theme-overlay"></div>
-
-  <button
-    class="toggle-btn"
-    :style="{ '--icon-size': size, '--width': width, '--height': height }"
-    @click="toggle"
-    :aria-label="
-      themeStore.isDark() ? 'Switch to light mode' : 'Switch to dark mode'
-    "
-  >
-    <svg
-      ref="svgRef"
-      class="icon-svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
+  <div class="toggle-theme">
+    <div class="toggle-theme__indicator" :style="indicatorStyle"></div>
+    <button
+      v-for="option in themeOptions"
+      :key="option.value"
+      ref="btnRefs"
+      type="button"
+      class="toggle-theme__btn"
+      :class="{ active: themeStore.currentTheme === option.value }"
+      :aria-label="option.value"
+      @click="themeStore.setTheme(option.value)"
     >
-      <!-- Основная форма: морфится между луной и солнцем -->
-      <path
-        ref="morphRef"
-        class="morph-shape"
-        :d="currentPath"
+      <svg
+        width="1.875rem"
+        height="1.875rem"
+        viewBox="0 0 40 40"
         fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
+        xmlns="http://www.w3.org/2000/svg"
+        :class="{ 'icon-active': themeStore.currentTheme === option.value }"
+      >
+        <!-- LIGHT: sun -->
+        <template v-if="option.value === themeStore.THEMES.LIGHT">
+          <circle class="sun" cx="20" cy="20" r="7" stroke-width="2" />
+          <path
+            class="sun"
+            d="M20 8V5"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="sun"
+            d="M20 35V32"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="sun"
+            d="M8 20H5"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="sun"
+            d="M35 20H32"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="sun"
+            d="M11.5 11.5L9.3 9.3"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="sun"
+            d="M30.7 30.7L28.5 28.5"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="sun"
+            d="M11.5 28.5L9.3 30.7"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="sun"
+            d="M30.7 9.3L28.5 11.5"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </template>
 
-    <!-- Glow ring -->
-  </button>
+        <!-- DARK: moon -->
+        <path
+          v-else-if="option.value === themeStore.THEMES.DARK"
+          class="moon"
+          d="M35 21.32A15 15 0 1 1 18.68 5 11.67 11.67 0 0 0 35 21.32Z"
+          stroke-width="2"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
+
+        <!-- SYSTEM: monitor -->
+        <template v-else>
+          <rect
+            class="monitor"
+            x="7"
+            y="9"
+            width="26"
+            height="17"
+            rx="2"
+            stroke-width="2"
+          />
+          <path
+            class="monitor"
+            d="M20 26V31"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            class="monitor"
+            d="M14 31H26"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </template>
+      </svg>
+    </button>
+  </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { gsap } from 'gsap'
-import { MorphSVGPlugin } from 'gsap/MorphSVGPlugin'
+<script setup>
 import { useThemeStore } from '@/stores/themes'
-
-gsap.registerPlugin(MorphSVGPlugin)
+import { nextTick, onMounted, ref, watch } from 'vue'
 
 const themeStore = useThemeStore()
 
-const props = defineProps<{
-  size?: string
-  width?: string
-  height?: string
-}>()
+const themeOptions = [
+  { value: themeStore.THEMES.LIGHT },
+  { value: themeStore.THEMES.DARK },
+  { value: themeStore.THEMES.SYSTEM },
+]
 
-// ─── SVG paths (viewBox 0 0 24 24) ───────────────────────────────────────────
-
-// Icon from Material Line Icons by Vjacheslav Trushkin
-// https://github.com/cyberalien/line-md/blob/master/license.txt
-const MOON_PATH =
-  'M7 6 C7 12.08 11.92 17 18 17 C18.53 17 19.05 16.96 19.56 16.89 C17.95 19.36 15.17 21 12 21 C7.03 21 3 16.97 3 12 C3 8.83 4.64 6.05 7.11 4.44 C7.04 4.95 7 5.47 7 6 Z'
-
-// Icon from Tabler Icons by Paweł Kuna
-// https://github.com/tabler/tabler-icons/blob/master/LICENSE
-const SUN_PATH =
-  'M14.828 14.828a4 4 0 1 0-5.656-5.656a4 4 0 0 0 5.656 5.656m-8.485 2.829l-1.414 1.414M6.343 6.343L4.929 4.929m12.728 1.414l1.414-1.414m-1.414 12.728l1.414 1.414M4 12H2m10-8V2m8 10h2m-10 8v2'
-
-// ─── Refs ─────────────────────────────────────────────────────────────────────
-
-const svgRef = ref<SVGSVGElement | null>(null)
-const morphRef = ref<SVGPathElement | null>(null)
-const overlayRef = ref<HTMLDivElement | null>(null)
-
-// computed — всегда синхронизирован со стором после перезагрузки
-const currentPath = computed(() => (themeStore.isDark() ? MOON_PATH : SUN_PATH))
-
-// ─── Animation ───────────────────────────────────────────────────────────────
-
-let isAnimating = false
-
-// Читает CSS-переменную напрямую с :root или .dark-theme
-// Временно переключаем класс на documentElement, читаем, возвращаем обратно
-function getTargetCssVar(varName: string, targetIsDark: boolean): string {
-  const root = document.documentElement
-  const currentlyDark = root.classList.contains('dark-theme')
-
-  // Если целевое состояние совпадает с текущим — читаем напрямую
-  if (targetIsDark === currentlyDark) {
-    return getComputedStyle(root).getPropertyValue(varName).trim()
-  }
-
-  // Иначе — временно переключаем класс, читаем, возвращаем
-  if (targetIsDark) root.classList.add('dark-theme')
-  else root.classList.remove('dark-theme')
-
-  const value = getComputedStyle(root).getPropertyValue(varName).trim()
-
-  if (targetIsDark) root.classList.remove('dark-theme')
-  else root.classList.add('dark-theme')
-
-  return value
-}
-
-function toggle(e: MouseEvent) {
-  if (isAnimating) return
-  isAnimating = true
-
-  const toLight = themeStore.isDark() // dark → light
-
-  const x = e.clientX
-  const y = e.clientY
-  const maxR = Math.hypot(
-    Math.max(x, window.innerWidth - x),
-    Math.max(y, window.innerHeight - y)
-  )
-
-  // Читаем --background целевой темы ДО любых изменений
-  const targetBg = getTargetCssVar('--background', !toLight)
-
-  const el = overlayRef.value!
-  const next = toLight ? themeStore.THEMES.LIGHT : themeStore.THEMES.DARK
-
-  const tl = gsap.timeline({
-    onComplete: () => {
-      isAnimating = false
-    },
-  })
-
-  // 1. Иконка: сжатие + вращение
-  tl.to(svgRef.value, {
-    scale: 0.8,
-    rotation: toLight ? 180 : -180,
-    duration: 0.2,
-    ease: 'power2.in',
-    transformOrigin: '50% 50%',
-  })
-
-  // 2. Морфинг формы
-  tl.to(
-    morphRef.value,
-    {
-      morphSVG: toLight ? SUN_PATH : MOON_PATH,
-      duration: 0.4,
-      ease: 'power3.inOut',
-    },
-    '<0.05'
-  )
-
-  // 3. Возврат масштаба + завершение вращения
-  tl.to(
-    svgRef.value,
-    {
-      scale: 1,
-      rotation: toLight ? 360 : -360,
-      duration: 0.38,
-      ease: 'back.out(1.8)',
-      transformOrigin: '50% 50%',
-    },
-    '<0.15'
-  )
-
-  // 4. Overlay раскрывается от точки клика (тема ещё не применена)
-  tl.call(() => {
-    gsap.set(el, {
-      clipPath: `circle(0px at ${x}px ${y}px)`,
-      backgroundColor: targetBg,
-      display: 'block',
-    })
-  })
-
-  tl.to(el, {
-    clipPath: `circle(${maxR}px at ${x}px ${y}px)`,
-    duration: 0.3,
-    ease: 'power2.inOut',
-  })
-
-  // 5. В середине заливки — применяем тему (страница меняется под overlay)
-  tl.call(
-    () => {
-      themeStore.setTheme(next)
-    },
-    [],
-    '<0.3 '
-  ) // на 50% длительности предыдущего tween
-
-  // 6. Overlay схлопывается, открывая уже новую тему
-  tl.to(el, {
-    clipPath: `circle(0px at ${x}px ${y}px)`,
-    duration: 0.4,
-    ease: 'power2.inOut',
-    onComplete: () => {
-      gsap.set(el, { display: 'none' })
-    },
-  })
-}
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
-
-onMounted(() => {
-  const dark = themeStore.isDark()
-
-  gsap.set(svgRef.value, { scale: 1, rotation: 0, transformOrigin: '50% 50%' })
-  gsap.set(overlayRef.value, { display: 'none' })
+// Скользящий фон под активной кнопкой — измеряем реальную позицию/ширину
+// кнопки (а не считаем по индексу), чтобы не зависеть от gap/padding.
+const btnRefs = ref([])
+const indicatorStyle = ref({
+  width: '0px',
+  transform: 'translateX(0px)',
+  opacity: 0,
 })
+
+function updateIndicator() {
+  const activeIndex = themeOptions.findIndex(
+    (option) => option.value === themeStore.currentTheme
+  )
+  const btn = btnRefs.value[activeIndex]
+  if (!btn) return
+
+  indicatorStyle.value = {
+    width: `${btn.offsetWidth}px`,
+    height: `${btn.offsetHeight}px`,
+    transform: `translateX(${btn.offsetLeft}px)`,
+    opacity: 1,
+  }
+}
+
+watch(
+  () => themeStore.currentTheme,
+  () => nextTick(updateIndicator)
+)
+onMounted(() => nextTick(updateIndicator))
 </script>
 
 <style scoped>
-/* Overlay для заливки экрана */
-.theme-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  display: none;
-  will-change: clip-path;
-}
-
-.toggle-btn {
-  --icon-size: 1rem;
-  --width: calc(var(--padding-secondary) * 2 + var(--icon-size));
-  --height: calc(var(--padding-secondary) * 2 + var(--icon-size));
-
+.toggle-theme {
   position: relative;
-  width: var(--width);
-  height: var(--height);
-  aspect-ratio: 1 / 1;
-  border-radius: var(--border-radius);
-  border: 0.1rem solid var(--border-color);
-  background: var(--foreground);
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 15px;
+  background: var(--background);
+  padding: 5px;
+}
+.toggle-theme__indicator {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  transition:
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.toggle-theme__btn {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--padding-secondary) / 2);
-  overflow: visible;
-  outline: none;
-  transition:
-    background 0.3s,
-    border-color 0.2s;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
 }
 
-.toggle-btn:hover {
-  background: var(--background);
+.icon-active > .sun {
+  stroke: var(--on-accent);
+}
+.icon-active > .moon {
+  stroke: var(--on-accent);
+}
+.icon-active > .monitor {
+  stroke: var(--on-accent);
 }
 
-.icon-svg {
-  width: var(--icon-size);
-  height: var(--icon-size);
-  color: var(--accent);
-  display: block;
-  will-change: transform;
+.sun {
+  stroke: var(--text);
+  fill: none;
 }
-
-.morph-shape {
-  transition: none;
+.moon {
+  stroke: var(--text);
+  fill: none;
+}
+.monitor {
+  stroke: var(--text);
+  fill: none;
 }
 </style>
