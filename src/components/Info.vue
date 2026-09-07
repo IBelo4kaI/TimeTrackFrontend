@@ -29,7 +29,7 @@ const {
   infoType: String, // inline / block
   infoIconClass: String,
   infoIconStyle: {
-    default: "accent",
+    default: 'accent',
   },
   infoInverse: {
     default: false,
@@ -37,7 +37,7 @@ const {
   infoProfile: String,
   infoTitle: String,
   infoContent: String,
-});
+})
 </script>
 
 <style scoped>
@@ -45,8 +45,8 @@ const {
 .default {
   display: inline-grid;
   grid-template-areas:
-    "icon title"
-    "icon content";
+    'icon title'
+    'icon content';
   column-gap: 0.3571rem;
 }
 .block {
@@ -56,8 +56,8 @@ const {
 }
 .without-icon {
   grid-template-areas:
-    "title"
-    "content";
+    'title'
+    'content';
 }
 /* ------- */
 
@@ -92,19 +92,19 @@ const {
 
 /* type title */
 .type-title .title {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 .type-title .content {
-  font-size: 0.72rem;
+  font-size: 0.725rem;
   font-weight: 400;
 }
 
 /* type profile */
 .type-profile {
   grid-template-areas:
-    "profile title"
-    "profile content";
+    'profile title'
+    'profile content';
 }
 .type-profile .profile {
   grid-area: profile;

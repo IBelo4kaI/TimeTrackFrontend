@@ -35,16 +35,16 @@
         progress-variant="success"
       />
       <CardStatistics
-        icon="fa-regular fa-tree-palm"
-        icon-variant="warn"
-        label="Отпуск"
-        :rows="vacationRows"
-      />
-      <CardStatistics
         icon="fa-regular fa-notes-medical"
         icon-variant="destructive"
         :value="formatStats(workerStore.sickDaysThisYear)"
         label="Больничные в этом году"
+      />
+      <CardStatistics
+        icon="fa-regular fa-tree-palm"
+        icon-variant="warn"
+        label="Отпуск"
+        :rows="vacationRows"
       />
     </div>
 
@@ -73,12 +73,20 @@
           Заявок нет
         </div>
         <ul v-else class="requests-list">
-          <li v-for="item in workerStore.recentRequests" :key="`${item.kind}-${item.id}`">
+          <li
+            v-for="item in workerStore.recentRequests"
+            :key="`${item.kind}-${item.id}`"
+          >
             <component
               :is="item.kind === 'vacation' ? 'RouterLink' : 'div'"
               v-bind="
                 item.kind === 'vacation'
-                  ? { to: { name: 'vacation-application', params: { id: item.id } } }
+                  ? {
+                      to: {
+                        name: 'vacation-application',
+                        params: { id: item.id },
+                      },
+                    }
                   : {}
               "
               class="request-row"
@@ -102,8 +110,13 @@
               >
                 {{ getVacationStatusMeta(item.status)?.text ?? item.status }}
               </Badge>
-              <Badge v-else :type="item.status === 'official' ? 'success' : 'muted'">
-                {{ item.status === 'official' ? 'Официальный' : 'Неофициальный' }}
+              <Badge
+                v-else
+                :type="item.status === 'official' ? 'success' : 'muted'"
+              >
+                {{
+                  item.status === 'official' ? 'Официальный' : 'Неофициальный'
+                }}
               </Badge>
             </component>
           </li>
@@ -139,7 +152,10 @@ const directory = computed(() => workerStore.directoryEntry)
 const percent = (num, all) => (all > 0 ? Math.abs((num / all) * 100) : 0)
 
 const hoursProgress = computed(() =>
-  percent(workerStore.monthStats.hours.totalHours, workerStore.monthStats.hours.standardHours)
+  percent(
+    workerStore.monthStats.hours.totalHours,
+    workerStore.monthStats.hours.standardHours
+  )
 )
 
 const daysProgress = computed(() =>
@@ -224,13 +240,13 @@ const vacationRows = computed(() => [
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14.29rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
   gap: calc(var(--padding-secondary) / 2);
 }
 
 .secondary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(25rem, 1fr));
   gap: calc(var(--padding-secondary) / 2);
 }
 

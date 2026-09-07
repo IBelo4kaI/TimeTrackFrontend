@@ -21,6 +21,36 @@ export const uploadVacationFile = async (vacationId, file) => {
   }
 }
 
+// Считает totalVacationDays с учётом праздничных дней (см. GetCalendarEventsByDate
+// + affects_vacation на бэке) — не просто end-start+1.
+export const calculateVacationDays = async (startDate, endDate) => {
+  try {
+    const response = await timeTrackApi.get('/vacation/calculate', {
+      params: { startDate, endDate },
+    })
+
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при расчёте дней отпуска:', error)
+    throw error
+  }
+}
+
+// Обратная задача: по дате начала и желаемому числу дней подбирает дату
+// окончания, раздвигая период на праздничные дни (см. calculate выше).
+export const calculateVacationEndDate = async (startDate, days) => {
+  try {
+    const response = await timeTrackApi.get('/vacation/calculate-end', {
+      params: { startDate, days },
+    })
+
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при расчёте даты окончания отпуска:', error)
+    throw error
+  }
+}
+
 export const getVacationStats = async (year, userId) => {
   try {
     const response = await timeTrackApi.get(`/vacation/stats/${userId}/${year}`)

@@ -1,6 +1,11 @@
 <template>
   <div class="news-bell" ref="wrapperRef">
-    <button type="button" class="bell-btn" v-tooltip="'Новости'" @click="toggleOpen">
+    <button
+      type="button"
+      class="bell-btn"
+      v-tooltip="'Новости'"
+      @click="toggleOpen"
+    >
       <i class="fa-regular fa-bullhorn"></i>
       <span v-if="store.unreadCount > 0" class="bell-badge">
         {{ store.unreadCount > 99 ? '99+' : store.unreadCount }}
@@ -24,7 +29,9 @@
           <div v-for="item in store.items" :key="item.id" class="news-item">
             <span class="news-item__title">{{ item.title }}</span>
             <span class="news-item__body">{{ item.body }}</span>
-            <span class="news-item__time">{{ formatDateTime(item.createdAt) }}</span>
+            <span class="news-item__time">
+              {{ formatDateTime(item.createdAt) }}
+            </span>
           </div>
         </div>
       </div>
@@ -85,13 +92,13 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.57rem;
-  height: 2.57rem;
+  width: 40px;
+  height: 40px;
   background: none;
   border: none;
   border-radius: var(--border-radius);
   color: var(--muted-text);
-  font-size: 1.14rem;
+  font-size: 1.2rem;
   cursor: pointer;
   transition:
     background 0.15s ease,

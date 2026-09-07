@@ -52,7 +52,9 @@
             <div class="notification-item__body">
               <span class="notification-item__title">{{ item.title }}</span>
               <span class="notification-item__message">{{ item.message }}</span>
-              <span class="notification-item__time">{{ formatDateTime(item.createdAt) }}</span>
+              <span class="notification-item__time">
+                {{ formatDateTime(item.createdAt) }}
+              </span>
             </div>
             <button
               type="button"
@@ -145,13 +147,13 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.57rem;
-  height: 2.57rem;
+  width: 40px;
+  height: 40px;
   background: none;
   border: none;
   border-radius: var(--border-radius);
   color: var(--muted-text);
-  font-size: 1.14rem;
+  font-size: 1.2rem;
   cursor: pointer;
   transition:
     background 0.15s ease,

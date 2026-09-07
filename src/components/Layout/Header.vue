@@ -51,7 +51,7 @@ const emit = defineEmits(['toggle-sidebar'])
   align-items: center;
   gap: 0.36rem;
   justify-content: space-between;
-  padding: 0.36rem 0.71rem;
+  padding: 10px;
   background: var(--foreground);
   border-bottom: 0.0714rem solid var(--border-color);
   height: var(--header-height);

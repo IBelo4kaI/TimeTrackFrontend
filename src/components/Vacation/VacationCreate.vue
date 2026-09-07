@@ -71,16 +71,41 @@
       />
     </div>
 
-    <div class="field-wrapper">
-      <InputUi
-        v-model="formData.endDate"
-        type="date"
-        label="Дата окончания"
-        :required="true"
-        :disabled="isLoading"
-        :error="errors.endDate"
-        @input="errors.endDate = null"
-      />
+    <div class="end-mode-group">
+      <Tabs :tabs="endModeTabs" v-model="endMode" type="line" />
+
+      <div class="end-mode-panel">
+        <div class="field-wrapper" v-if="endMode === 'date'">
+          <InputUi
+            v-model="formData.endDate"
+            type="date"
+            label="Дата окончания"
+            :required="true"
+            :disabled="isLoading"
+            :error="errors.endDate"
+            @input="errors.endDate = null"
+          />
+        </div>
+
+        <div class="field-wrapper" v-else>
+          <InputUi
+            v-model="daysInput"
+            type="number"
+            label="Количество дней отпуска"
+            :required="true"
+            :disabled="isLoading"
+            :error="errors.endDate"
+            @input="errors.endDate = null"
+          />
+        </div>
+
+        <div class="days-count" v-if="endMode === 'date' && daysCount !== null">
+          Продолжительность: {{ formatStats(daysCount) }}
+        </div>
+        <div class="days-count" v-else-if="endMode === 'days' && formData.endDate">
+          Дата окончания: {{ new Date(formData.endDate).toLocaleDateString('ru-RU') }}
+        </div>
+      </div>
     </div>
 
     <div class="field-wrapper">
@@ -102,17 +127,23 @@
 </template>
 
 <script setup>
-import { reactive, computed, onMounted, ref } from 'vue'
+import { reactive, computed, onMounted, ref, watch } from 'vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
 import SelectUI from '@/components/SelectUI.vue'
+import Tabs from '@/components/Tabs.vue'
 import { useUserStore } from '@/stores/user'
 import { useVacationStore } from '@/stores/vacation'
 import { useNotificationStore } from '@/stores/notification'
-import { createVacation } from '@/services/vacation.api'
+import {
+  calculateVacationDays,
+  calculateVacationEndDate,
+  createVacation,
+} from '@/services/vacation.api'
 import { getActiveVacationTypes } from '@/services/vacationTypes.api'
 import { existsFreeVacation, startDateBeforeEnd } from '@/utils/modal.utils'
 import { getUserFullName } from '@/utils/user.utils'
+import { formatStats } from '@/utils/vacation.utils'
 
 const emit = defineEmits(['success'])
 
@@ -179,6 +210,63 @@ const statusOptions = [
   { value: 'approved', label: 'Утверждено' },
 ]
 
+// Дата окончания задаётся либо явно, либо через количество дней — во втором
+// случае бэк сам подбирает дату (GET /vacation/calculate-end), раздвигая
+// период на праздничные дни, и мы просто подставляем её в formData.endDate.
+const endMode = ref('date')
+const daysInput = ref('')
+
+const endModeTabs = [
+  { id: 'date', label: 'Дата окончания' },
+  { id: 'days', label: 'Количество дней' },
+]
+
+// Считаем на бэке (GET /vacation/calculate), а не локально: праздничные дни
+// внутри периода не входят в totalVacationDays (см. affects_vacation у
+// calendar_events), простым end-start+1 это не посчитать.
+const daysCount = ref(null)
+
+watch(
+  () => [formData.startDate, formData.endDate, endMode.value],
+  async ([start, end, mode]) => {
+    if (mode !== 'date') return
+    if (!start || !end || new Date(end) < new Date(start)) {
+      daysCount.value = null
+      return
+    }
+
+    try {
+      const result = await calculateVacationDays(start, end)
+      daysCount.value = result?.totalVacationDays ?? null
+    } catch {
+      daysCount.value = null
+    }
+  }
+)
+
+watch(
+  () => [formData.startDate, daysInput.value, endMode.value],
+  async ([start, days, mode]) => {
+    if (mode !== 'days' || !start || !days || Number(days) < 1) return
+
+    try {
+      const result = await calculateVacationEndDate(start, Number(days))
+      if (result?.endDate) {
+        // ISO-строка с бэка ("2025-08-15T00:00:00Z") → формат <input type="date">
+        formData.endDate = result.endDate.slice(0, 10)
+      }
+    } catch {
+      // не критично — при сабмите сработает валидация на пустую/старую дату
+    }
+  }
+)
+
+// При переключении режима старое значение из другого режима не должно
+// мешать валидации того, в который перешли.
+watch(endMode, () => {
+  errors.endDate = null
+})
+
 const checkDateValidator = startDateBeforeEnd('startDate', 'endDate')
 const checkFreeVacation = existsFreeVacation(vacationStore)
 
@@ -211,8 +299,14 @@ const validate = () => {
     if (errors.startDate) valid = false
   }
 
-  if (!formData.endDate) {
-    errors.endDate = 'Поле обязательно'
+  if (endMode.value === 'days' && (!daysInput.value || Number(daysInput.value) < 1)) {
+    errors.endDate = 'Укажите количество дней'
+    valid = false
+  } else if (!formData.endDate) {
+    errors.endDate =
+      endMode.value === 'days'
+        ? 'Идёт расчёт даты окончания, подождите'
+        : 'Поле обязательно'
     valid = false
   } else {
     const dateErr = checkDateValidator(formData.endDate, formData)
@@ -306,6 +400,28 @@ const handleSubmit = async () => {
 .error-message {
   font-size: 0.86rem;
   color: var(--destructive);
+}
+
+.days-count {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+/* Таб + панель под ним — один визуальный блок: без зазора между ними и без
+   скругления в месте стыка, чтобы панель читалась как продолжение таба. */
+.end-mode-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.end-mode-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.71rem;
+  background: var(--background);
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  padding: var(--padding-secondary);
 }
 
 .form-actions {

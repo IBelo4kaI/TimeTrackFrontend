@@ -20,7 +20,7 @@
   --border-radius: 0.7rem;
   --border-color: #f0f0f0;
   --sidebar-width: 15rem;
-  --header-height: 4.5rem;
+  --header-height: 60px;
   --padding-primary: 1.45rem;
   --padding-secondary: 1rem;
   --gap-primary: 0.71rem;
@@ -73,7 +73,7 @@ html {
   font-size: 14px;
 }
 
-@media (max-width: 1680px) {
+/*@media (max-width: 1680px) {
   html {
     font-size: 12px;
   }
@@ -83,9 +83,9 @@ html {
   html {
     font-size: 10px;
   }
-}
+}*/
 
-@media (max-width: 768px) {
+/*@media (max-width: 768px) {
   html {
     font-size: 12px;
   }
@@ -93,9 +93,9 @@ html {
   #__vue-devtools-container__ {
     display: none !important;
   }
-}
+}*/
 
-@media (max-width: 348px) {
+/*@media (max-width: 348px) {
   html {
     font-size: 10px;
   }
@@ -103,7 +103,7 @@ html {
   #__vue-devtools-container__ {
     display: none !important;
   }
-}
+}*/
 
 body {
   color: var(--text);
@@ -112,8 +112,8 @@ body {
   font-size: 1rem;
 }
 
-@media print {
+/*@media print {
   #__vue-devtools-container__ {
     display: none !important;
   }
-}
+}*/

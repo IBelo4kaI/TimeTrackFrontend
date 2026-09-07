@@ -82,7 +82,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.313rem;
   height: var(--header-height);
-  padding: 0.625rem;
+  padding: 10px;
   border-bottom: 0.07rem solid var(--border-color);
 }
 
