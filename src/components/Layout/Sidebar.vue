@@ -43,8 +43,6 @@ function closeSidebar() {
   z-index: 100;
 }
 
-
-
 .sidebar-nav {
   display: flex;
   flex-direction: column;

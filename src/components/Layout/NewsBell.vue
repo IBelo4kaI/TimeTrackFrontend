@@ -92,8 +92,8 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 2.857rem;
+  height: 2.857rem;
   background: none;
   border: none;
   border-radius: var(--border-radius);
