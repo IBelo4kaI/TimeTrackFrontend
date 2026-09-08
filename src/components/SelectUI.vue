@@ -5,7 +5,7 @@
       class="custom-select"
       :class="[`custom-select--${variant}`]"
       ref="selectRef"
-      :style="computedWidth ? { width: computedWidth + 'px' } : {}"
+      :style="fullWidth ? { width: '100%' } : computedWidth ? { width: computedWidth + 'px' } : {}"
     >
       <div
         class="select-trigger"
@@ -169,6 +169,14 @@ const props = defineProps({
   label: {
     type: String,
     default: '',
+  },
+  // По умолчанию ширина авто-подбирается под текст самого длинного option
+  // (computedWidth) — это специально для компактных фильтров/пикеров.
+  // fullWidth отключает это и растягивает на 100% родителя, для форм, где
+  // селект должен вести себя как обычное поле ввода.
+  fullWidth: {
+    type: Boolean,
+    default: false,
   },
 })
 

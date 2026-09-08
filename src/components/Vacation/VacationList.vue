@@ -2,30 +2,53 @@
   <div class="vacation-list">
     <div class="vacation-list__controls">
       <template v-if="isAdmin">
-        <Tabs :tabs="targets" v-model="vacationStore.target" type="line" />
+        <Tabs
+          :tabs="targets"
+          v-model="vacationStore.target"
+          type="line"
+          class="target-tabs"
+        />
       </template>
-      <Tabs
-        :tabs="filters"
-        v-model="vacationStore.filter"
-        type="line"
-        v-if="!isMobile"
-      />
+
+      <template v-if="!isMobile">
+        <Tabs :tabs="filters" v-model="vacationStore.filter" type="line" />
+        <SelectUI
+          variant="line"
+          align="center"
+          :options="years"
+          v-model="vacationStore.selectedYear"
+        />
+      </template>
+
+      <button
+        v-else
+        type="button"
+        class="filter-trigger"
+        @click="filtersOpen = true"
+        aria-label="Фильтры"
+      >
+        <i class="fa-regular fa-filter"></i>
+      </button>
+    </div>
+
+    <!-- Фильтры на мобилке — выезжающая панель, как боковое меню, вместо
+    попыток впихнуть все селекты в одну строку с табами. -->
+    <MobileFilterDrawer v-model="filtersOpen">
       <SelectUI
-        v-if="isMobile"
-        :variant="isMobile ? '' : 'line'"
-        align="center"
+        label="Статус"
+        full-width
         value-key="id"
         label-key="label"
         :options="filters"
         v-model="vacationStore.filter"
       />
       <SelectUI
-        :variant="isMobile ? '' : 'line'"
-        align="center"
+        label="Год"
+        full-width
         :options="years"
         v-model="vacationStore.selectedYear"
       />
-    </div>
+    </MobileFilterDrawer>
     <table class="vacation-list__items">
       <tbody>
         <template
@@ -60,18 +83,21 @@
 
 <script setup>
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
 import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user.js'
 import { useVacationStore } from '@/stores/vacation'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import VacationItem from './VacationItem.vue'
 
 const vacationStore = useVacationStore()
 const userStore = useUserStore()
 const { isMobile } = storeToRefs(useThemeStore())
+
+const filtersOpen = ref(false)
 
 // vacation.all:read теперь сужен до админов/руководителей (виджет "отпуска
 // коллег" использует отдельное узкое vacation_calendar:read, см.
@@ -160,20 +186,37 @@ const years = [
   color: var(--muted-text);
 }
 
-@media (max-width: 768px) {
-  .vacation-list {
-  }
+.filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background);
+  color: var(--text);
+  font-size: 1.14rem;
+  cursor: pointer;
+}
 
+@media (max-width: 768px) {
   .vacation-list__controls {
-    flex-wrap: wrap;
+    align-items: center;
     padding-bottom: var(--gap-primary);
     gap: var(--gap-primary);
+    border-bottom: none;
   }
 
-  .vacation-list__items {
+  .target-tabs {
+    flex: 1;
+    min-width: 0;
   }
 
-  .vacation-item__empty {
+  .target-tabs :deep(.tabs-item) {
+    flex: 1;
+    justify-content: center;
   }
 }
 </style>

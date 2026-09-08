@@ -89,6 +89,10 @@ function vacationBarStyle(vacation) {
   flex: 1;
   position: relative;
   height: 3rem;
+  background: var(--foreground);
+  /* Не даём абсолютно спозиционированным барам внутри случайно всплыть выше
+     sticky-колонок слева (см. VacationEmployee.vue/VacationHeader.vue). */
+  isolation: isolate;
 }
 
 .vacation-track__grid-line {

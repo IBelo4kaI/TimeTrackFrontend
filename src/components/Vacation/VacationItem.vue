@@ -411,4 +411,75 @@ const typeBadgeStyle = computed(() => {
   flex-wrap: wrap;
   padding: 0 0 var(--padding-secondary) 2rem;
 }
+
+/* Табличная раскладка (tr/td) не умещается на узком экране — на мобилке
+   каждая заявка превращается в отдельную карточку, ячейки складываются
+   вертикально вместо колонок. */
+@media (max-width: 768px) {
+  .vacation-item__extra {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Грид вместо колонки: 1-3 ячейки (статус/содержимое/дата создания)
+     складываются в левый столбец, 4-я (действия) занимает всю высоту
+     карточки справа — кнопки в ней стоят друг под другом. */
+  .vacation-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 0.36rem 0.71rem;
+    border: 0.07rem solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.71rem;
+    margin-bottom: 0.57rem;
+  }
+
+  .vacation-item td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .vacation-item td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .vacation-item td:nth-child(3) {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .vacation-item td:nth-child(4) {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .vacation-item td,
+  .vacation-item__extra td {
+    display: block;
+    width: auto;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .vacation-item__actions {
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .vacation-item__dates {
+    font-size: 1rem;
+  }
+
+  .vacation-item__extra {
+    gap: 0.5rem;
+    border: 0.07rem solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.71rem;
+    margin-bottom: 0.57rem;
+  }
+
+  .extra__container {
+    padding: 0;
+    gap: 0.5rem;
+  }
+}
 </style>

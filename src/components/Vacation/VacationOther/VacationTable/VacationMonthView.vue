@@ -76,6 +76,10 @@ function isVacationEnd(date) {
 .vacation-group__employee-days {
   flex: 1;
   display: flex;
+  background: var(--foreground);
+  /* Не даём абсолютно спозиционированным ячейкам внутри случайно всплыть
+     выше sticky-колонок слева (см. VacationEmployee.vue/VacationHeader.vue). */
+  isolation: isolate;
 }
 
 .vacation-group__employee-day {

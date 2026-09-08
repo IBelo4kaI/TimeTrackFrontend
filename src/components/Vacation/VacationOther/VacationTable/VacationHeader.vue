@@ -1,6 +1,6 @@
 <template>
   <div class="vacation-table__header">
-    <div class="vacation-table__header-title">Сотрудник</div>
+    <div class="vacation-table__header-title" ref="titleEl">Сотрудник</div>
 
     <!-- Count vacation column (both views) -->
     <div class="vacation-table__header-count-vacation">Исп. / Утв. (д)</div>
@@ -9,7 +9,7 @@
     <div class="vacation-table__header-dates">Даты</div>
 
     <!-- Year view header -->
-    <div v-if="isYearView" class="vacation-table__header-months">
+    <div v-if="isYearView" class="vacation-table__header-months" ref="gridEl">
       <div
         class="vacation-table__header-month"
         v-for="(month, i) in months"
@@ -21,7 +21,7 @@
     </div>
 
     <!-- Month view header -->
-    <div v-else class="vacation-table__header-days">
+    <div v-else class="vacation-table__header-days" ref="gridEl">
       <div
         class="vacation-table__header-day"
         :class="{
@@ -38,13 +38,20 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   formatMonth,
   isWeekend,
   daysInMonth,
   diffDays,
 } from './vacationUtils.js'
+
+// Границы для VacationTable.vue: по ним считаем, докрутили ли до конца
+// колонки "Даты" (см. .vacation-table__header-title/.vacation-table__header-days
+// ниже и updateCompact() в VacationTable.vue).
+const titleEl = ref(null)
+const gridEl = ref(null)
+defineExpose({ titleEl, gridEl })
 
 const props = defineProps({
   isYearView: {
@@ -94,6 +101,25 @@ function monthWidthPercent(monthDate) {
   font-size: 0.875rem;
   font-weight: 600;
   border-right: 0.07rem solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+  .vacation-table__header-title {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--foreground);
+    /* Safari иначе не перерисовывает фон закреплённого элемента при скролле
+       (мерцает/пропадает) — форсируем отдельный composite-слой. */
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* Текстовые даты дублируют то, что и так видно по цветным полосам в
+     гриде — на мобилке убираем, чтобы меньше скроллить по горизонтали. */
+  .vacation-table__header-dates {
+    display: none;
+  }
 }
 
 /* Year view header */

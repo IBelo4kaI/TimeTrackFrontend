@@ -1,12 +1,26 @@
 <template>
   <div class="vacation-group__employee">
     <div class="vacation-group__employee-info">
-      <div class="employee-avatar">
-        {{ getInitials(employee.full_name) }}
-      </div>
-      <div class="employee-meta">
-        <div class="employee-name">{{ employee.full_name }}</div>
-        <div class="employee-position">{{ employee.position }}</div>
+      <!-- Сама колонка (сверху) — фиксированной ширины всегда, наравне с
+      шапкой: она в обычном потоке, и если бы сама сужалась, всё, что после
+      неё в строке, сдвигалось бы влево, а шапка (её мы специально не трогаем
+      — по ней меряем свёрнутость, см. VacationTable.vue) — нет, и колонки
+      с днями/месяцами разъезжались бы. Сжимается только фон-обёртка внутри
+      неё — на раскладку снаружи это не влияет, только "открывает" то, что
+      уже физически проскроллило под sticky-колонкой. -->
+      <div
+        class="employee-info-bg"
+        :class="{ 'employee-info-bg--compact': compact }"
+      >
+        <div class="employee-avatar">
+          {{ getInitials(employee.full_name) }}
+        </div>
+        <Transition name="employee-meta">
+          <div class="employee-meta" v-show="!compact">
+            <div class="employee-name">{{ employee.full_name }}</div>
+            <div class="employee-position">{{ employee.position }}</div>
+          </div>
+        </Transition>
       </div>
     </div>
 
@@ -57,6 +71,13 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  // true, когда столбец "Сотрудник" на скролле доехал до конца столбца
+  // "Даты" (см. updateCompact() в VacationTable.vue) — прячем ФИО/должность,
+  // оставляем только инициалы в аватарке.
+  compact: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const countAll = () => {
@@ -92,15 +113,59 @@ const countApproved = () => {
   border-bottom: none;
 }
 
+/* Фиксированная ширина всегда — как у шапки (.vacation-table__header-title).
+   Сама колонка в обычном потоке, и если бы она сужалась, всё, что после неё
+   в строке (счётчик, диаграмма), сдвигалось бы влево, а шапка (её нарочно не
+   трогаем — по ней меряем свёрнутость, см. VacationTable.vue) — нет, и
+   колонки с днями/месяцами разъезжались бы. */
 .vacation-group__employee-info {
   width: 15rem;
   min-width: 15rem;
+  flex-shrink: 0;
+}
+
+/* Фон/паддинг/бордер — на внутренней обёртке: она может сжиматься сама по
+   себе, не трогая ширину внешней колонки и раскладку строки. Бордер тоже
+   здесь, а не снаружи — иначе при сжатии он остался бы висеть на границе
+   полных 15rem, оторвавшись от реально видимого (уже суженного) фона. */
+.employee-info-bg {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  height: 100%;
+  width: 100%;
+  /* Не gap — .employee-meta сама анимирует свой отступ (margin-left) вместе
+     с шириной при сворачивании, gap так не умеет (не обнуляется вместе с
+     шириной нулевого элемента). */
   padding: 0.75rem;
   border-right: 0.07rem solid var(--border-color);
-  flex-shrink: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .vacation-group__employee-info {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+
+  .employee-info-bg {
+    background: var(--foreground);
+    transform: translateZ(0);
+    will-change: transform;
+    transition: width 0.2s ease;
+  }
+
+  /* Ширина сжатого состояния — ровно под аватарку с паддингами
+     (0.75rem + 2rem + 0.75rem), остальное становится прозрачным и
+     открывает диаграмму, уже проскроллившую под sticky-колонкой. */
+  .employee-info-bg--compact {
+    width: 3.5rem;
+  }
+
+  .employee-dates-col {
+    display: none;
+  }
 }
 
 .employee-avatar {
@@ -132,8 +197,28 @@ const countApproved = () => {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .employee-meta {
   min-width: 0;
+  max-width: 9rem;
+  margin-left: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.employee-meta-enter-active,
+.employee-meta-leave-active {
+  transition:
+    opacity 0.2s ease,
+    max-width 0.2s ease,
+    margin-left 0.2s ease;
+}
+
+.employee-meta-enter-from,
+.employee-meta-leave-to {
+  opacity: 0;
+  max-width: 0;
+  margin-left: 0;
 }
 
 .employee-count-vacation {

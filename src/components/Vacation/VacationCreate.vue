@@ -15,6 +15,7 @@
           placeholder="Не выбрано"
           :disabled="isLoading"
           :error="errors.userId != null"
+          full-width
           style="width: 100%"
         />
         <span v-if="errors.userId" class="error-message">
@@ -34,6 +35,7 @@
           value-key="value"
           placeholder="Не выбрано"
           :disabled="isLoading"
+          full-width
           style="width: 100%"
         />
       </div>
@@ -52,6 +54,7 @@
         placeholder="Не выбрано"
         :disabled="isLoading || vacationTypeOptions.length === 0"
         :error="errors.vacationTypeId != null"
+        full-width
         style="width: 100%"
       />
       <span v-if="errors.vacationTypeId" class="error-message">
@@ -428,5 +431,13 @@ const handleSubmit = async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 0.57rem;
+}
+
+@media (max-width: 768px) {
+  .vacation-form {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
 }
 </style>
