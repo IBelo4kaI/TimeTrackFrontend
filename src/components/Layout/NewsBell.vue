@@ -216,4 +216,15 @@ onBeforeUnmount(() => {
   opacity: 0;
   transform: translateY(-4px);
 }
+
+@media (max-width: 768px) {
+  .news-panel {
+    position: fixed;
+    top: calc(var(--header-height) + 0.5rem);
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    max-height: calc(100vh - var(--header-height) - 1.5rem);
+  }
+}
 </style>

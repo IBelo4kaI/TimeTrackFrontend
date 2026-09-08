@@ -66,6 +66,12 @@ const emit = defineEmits(['toggle-sidebar'])
   align-items: center;
 }
 
+@media (max-width: 768px) {
+  .header-theme {
+    display: none;
+  }
+}
+
 .header-profile {
   cursor: pointer;
 }

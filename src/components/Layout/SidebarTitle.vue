@@ -39,7 +39,7 @@
     <!-- Кнопка закрытия внутри сайдбара (мобилка) -->
     <button
       class="sidebar-close-btn"
-      @click="closeSidebar"
+      @click="emit('close')"
       aria-label="Закрыть меню"
     >
       <i class="fa-light fa-xmark" />
@@ -48,6 +48,8 @@
 </template>
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+
+const emit = defineEmits(['close'])
 
 const hourDeg = ref(0)
 const minuteDeg = ref(0)

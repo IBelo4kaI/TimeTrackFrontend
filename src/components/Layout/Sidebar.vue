@@ -1,6 +1,6 @@
 <template>
   <div class="sidebar">
-    <SidebarTitle />
+    <SidebarTitle @close="closeSidebar" />
     <div class="sidebar-nav">
       <NavItem
         v-for="item in routesNavigation"
@@ -13,6 +13,12 @@
         @click="closeSidebar"
       />
     </div>
+
+    <!-- Переключатель темы — на десктопе живёт в шапке, сюда переезжает
+    только на мобилке (см. media query ниже), без JS-детекта ширины. -->
+    <div class="sidebar-theme">
+      <ToggleTheme />
+    </div>
   </div>
 </template>
 
@@ -21,6 +27,7 @@ import { routesNavigation } from '@/router'
 import { useChatStore } from '@/stores/chat'
 import Info from '../Info.vue'
 import NavItem from '../NavItem.vue'
+import ToggleTheme from '../ToggleTheme.vue'
 import SidebarTitle from './SidebarTitle.vue'
 
 const chatStore = useChatStore()
@@ -37,6 +44,8 @@ function closeSidebar() {
   position: fixed;
   top: 0;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
   width: var(--sidebar-width);
   background: var(--foreground);
   border-right: 0.07rem solid var(--border-color);
@@ -48,6 +57,13 @@ function closeSidebar() {
   flex-direction: column;
   gap: 0.36rem;
   padding: var(--padding-primary) 0.71rem;
+}
+
+.sidebar-theme {
+  display: none;
+  margin-top: auto;
+  padding: 0.71rem;
+  border-top: 0.07rem solid var(--border-color);
 }
 
 @media (max-width: 768px) {
@@ -66,6 +82,11 @@ function closeSidebar() {
 
   .container.sidebar-open .sidebar {
     transform: translateX(0);
+  }
+
+  .sidebar-theme {
+    display: flex;
+    justify-content: center;
   }
 }
 
