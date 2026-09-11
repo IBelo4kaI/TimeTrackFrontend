@@ -2,9 +2,9 @@
   <div class="container">
     <div class="container-row" v-if="submenuStore.activeTab == 'receipt'">
       <ReceiptList />
-      <ReceiptCreate v-if="!isMobile" />
+      <!-- <ReceiptCreate v-if="!isMobile" /> -->
     </div>
-    <ReceiptCreate v-else-if="submenuStore.activeTab == 'create'" />
+    <ReceiptScan v-else-if="submenuStore.activeTab == 'create'"></ReceiptScan>
   </div>
 </template>
 
@@ -15,25 +15,20 @@ import { useThemeStore } from '@/stores/themes'
 import { useReceiptStore } from '@/stores/receipt'
 import { storeToRefs } from 'pinia'
 import { onMounted, watch } from 'vue'
-import ReceiptCreate from '@/components/Receipt/ReceiptCreate.vue'
 import ReceiptList from '@/components/Receipt/ReceiptList.vue'
+import ReceiptScan from '@/components/Receipt/ReceiptScan.vue'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Чеки', 'Учёт расходов по чекам')
 
 const { isMobile } = storeToRefs(useThemeStore())
 
-// как у vacation (pages/vacation/Vacation.vue): на мобилке форма создания
-// не помещается рядом со списком — отдельная вкладка; на десктопе бок о бок
-function buildSubmenuItems() {
-  const items = [{ id: 'receipt', label: 'Чеки' }]
-  if (isMobile.value) items.push({ id: 'create', label: 'Добавить' })
-  return items
-}
-
 // Сброс вкладок при уходе со страницы делает router.beforeEach (router/index.js)
 const submenuStore = useSubmenuStore()
-submenuStore.setItems(buildSubmenuItems())
+submenuStore.setItems([
+  { id: 'receipt', label: 'Чеки' },
+  { id: 'create', label: 'Добавить' },
+])
 submenuStore.setActiveTab('receipt')
 
 watch(isMobile, () => {
