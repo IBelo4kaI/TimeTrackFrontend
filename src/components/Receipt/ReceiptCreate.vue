@@ -696,17 +696,15 @@ const getReceiptByQr = async (rawQr) => {
     throw new Error('QR-код пустой')
   }
 
+  // Используем FormData вместо JSON
+  const formData = new FormData()
+  formData.append('token', PROVERKACHEKA_TOKEN)
+  formData.append('qrraw', qrraw)
+
   const response = await fetch(PROVERKACHEKA_URL, {
     method: 'POST',
-
-    headers: {
-      'Content-Type': 'application/json',
-    },
-
-    body: JSON.stringify({
-      token: PROVERKACHEKA_TOKEN,
-      qrraw,
-    }),
+    // Не указываем 'Content-Type', браузер подставит multipart/form-data автоматически
+    body: formData,
   })
 
   let data
@@ -719,7 +717,7 @@ const getReceiptByQr = async (rawQr) => {
     )
   }
 
-  if (!response.ok) {
+  if (!response.ok || data?.code === 0) {
     throw new Error(
       data?.message || `Ошибка сервиса проверки чека (${response.status})`
     )
