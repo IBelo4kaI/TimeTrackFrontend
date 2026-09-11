@@ -7,6 +7,8 @@ import WorkerPage from '@/pages/workers/WorkerPage.vue'
 import CalendarPage from '@/pages/calendar/Index.vue'
 import ReportPage from '@/pages/report/Index.vue'
 import VacationPage from '@/pages/vacation/Vacation.vue'
+import ReceiptPage from '@/pages/receipt/Index.vue'
+import ReceiptViewPage from '@/pages/receipt/Receipt.vue'
 import SickLeavePage from '@/pages/sick_leave/Index.vue'
 import DocumentPage from '@/pages/document/Document.vue'
 import SettingsPage from '@/pages/settings/Index.vue'
@@ -24,7 +26,6 @@ export const routesNavigation = {
       icon: 'fa-light fa-house',
       entity: 'calendar',
       action: 'read',
-      onMobile: true,
     },
   },
   calendar: {
@@ -36,7 +37,6 @@ export const routesNavigation = {
       icon: 'fa-light fa-calendar',
       entity: 'calendar',
       action: 'read',
-      onMobile: true,
     },
   },
   report: {
@@ -58,6 +58,17 @@ export const routesNavigation = {
       title: 'Отпуск',
       icon: 'fa-light fa-tree-palm',
       entity: 'vacation',
+      action: 'read',
+    },
+  },
+  receipts: {
+    path: '/receipts',
+    name: 'receipts',
+    component: ReceiptPage,
+    meta: {
+      title: 'Чеки',
+      icon: 'fa-light fa-receipt',
+      entity: 'receipts',
       action: 'read',
     },
   },
@@ -126,6 +137,7 @@ router.addRoute(routesNavigation.dashboard)
 router.addRoute(routesNavigation.calendar)
 router.addRoute(routesNavigation.report)
 router.addRoute(routesNavigation.vacation)
+router.addRoute(routesNavigation.receipts)
 router.addRoute(routesNavigation.sickLeave)
 router.addRoute(routesNavigation.docs)
 router.addRoute(routesNavigation.chats)
@@ -148,6 +160,13 @@ router.addRoute({
     action: 'read',
     layout: 'full',
   },
+})
+
+router.addRoute({
+  path: '/receipts/:id',
+  name: 'receipt-view',
+  component: ReceiptViewPage,
+  meta: { title: 'Чек', entity: 'receipts', action: 'read' },
 })
 
 router.addRoute({
