@@ -11,11 +11,11 @@
       </template>
 
       <template v-if="!isMobile">
-        <SelectUI
+        <MonthYearSelect
           variant="line"
           align="center"
-          :options="years"
-          v-model="receiptStore.selectedYear"
+          v-model:month="receiptStore.selectedMonth"
+          v-model:year="receiptStore.selectedYear"
         />
       </template>
 
@@ -36,11 +36,11 @@
     </div>
 
     <MobileFilterDrawer v-model="filtersOpen">
-      <SelectUI
-        label="Год"
+      <MonthYearSelect
+        label="Месяц и год"
         full-width
-        :options="years"
-        v-model="receiptStore.selectedYear"
+        v-model:month="receiptStore.selectedMonth"
+        v-model:year="receiptStore.selectedYear"
       />
     </MobileFilterDrawer>
 
@@ -77,7 +77,7 @@
 <script setup>
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
-import SelectUI from '@/components/SelectUI.vue'
+import MonthYearSelect from '@/components/MonthYearSelect.vue'
 import Tabs from '@/components/Tabs.vue'
 import { useReceiptStore } from '@/stores/receipt'
 import { useThemeStore } from '@/stores/themes.js'
@@ -102,11 +102,6 @@ const targets = [
   { id: 'all', label: 'Все чеки' },
 ]
 
-const years = [
-  receiptStore.selectedYear - 1,
-  receiptStore.selectedYear,
-  receiptStore.selectedYear + 1,
-]
 </script>
 
 <style scoped>
@@ -130,7 +125,6 @@ const years = [
   align-items: flex-end;
   gap: 2rem;
   border-bottom: 0.07rem solid var(--border-color);
-  padding-bottom: var(--padding-secondary);
 }
 
 .receipt-list__total {

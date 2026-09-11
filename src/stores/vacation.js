@@ -3,6 +3,7 @@ import {
   getVacationsByYear,
   getVacationStats,
 } from '@/services/vacation.api'
+import { parseDate } from '@/utils/date.utils'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useUserStore } from './user'
@@ -15,6 +16,8 @@ const createEmptyStats = () => ({
 
 export const useVacationStore = defineStore('vacation', () => {
   const selectedYear = ref(new Date().getFullYear())
+  // null = весь год, иначе 1-12 (как selectedMonth в stores/receipt.js)
+  const selectedMonth = ref(new Date().getMonth() + 1)
   const filter = ref('all')
   const target = ref('my')
 
@@ -25,9 +28,23 @@ export const useVacationStore = defineStore('vacation', () => {
   const userStore = useUserStore()
 
   const filterVacations = computed(() => {
-    return vacations.value.filter(
-      (i) => filter.value == 'all' || i.status == filter.value
-    )
+    return vacations.value.filter((i) => {
+      if (filter.value != 'all' && i.status != filter.value) return false
+
+      // Отпуск — это диапазон [startDate, endDate], а не одна дата, поэтому
+      // "попадает в месяц" значит "пересекается с выбранным месяцем", а не
+      // "начинается в нём" (иначе пропадали бы отпуска, переходящие через
+      // границу месяца).
+      if (selectedMonth.value) {
+        const start = parseDate(i.startDate)
+        const end = parseDate(i.endDate)
+        const monthStart = new Date(selectedYear.value, selectedMonth.value - 1, 1)
+        const monthEnd = new Date(selectedYear.value, selectedMonth.value, 0)
+        if (end < monthStart || start > monthEnd) return false
+      }
+
+      return true
+    })
   })
 
   const fetchVacations = async () => {
@@ -74,6 +91,7 @@ export const useVacationStore = defineStore('vacation', () => {
   return {
     // state
     selectedYear,
+    selectedMonth,
     vacations,
     vacationStats,
     isLoading,

@@ -1,36 +1,73 @@
 <template>
-  <div class="scan-page">
-    <!-- ================== Сканирование QR ================== -->
-    <div class="scan-block">
-      <div class="scan-block__actions">
-        <ButtonUI
-          type="muted"
-          icon="fa-regular fa-image"
-          :disabled="isScanningImage || isCheckingReceipt || cameraOpen"
-          @click="qrFileInput.click()"
-        >
-          Сканировать по фото
-        </ButtonUI>
+  <!-- ================== Сканирование QR ================== -->
+  <div class="scan-actions">
+    <ButtonUI
+      type="muted"
+      icon="fa-regular fa-image"
+      :disabled="isScanningImage || isCheckingReceipt || cameraOpen"
+      @click="qrFileInput.click()"
+    >
+      Сканировать по фото
+    </ButtonUI>
 
-        <ButtonUI
-          type="muted"
-          icon="fa-regular fa-camera"
-          :disabled="isScanningImage || isCheckingReceipt || cameraOpen"
-          @click="openCameraScanner"
-        >
-          Сканировать камерой
-        </ButtonUI>
+    <ButtonUI
+      type="muted"
+      icon="fa-regular fa-camera"
+      :disabled="isScanningImage || isCheckingReceipt || cameraOpen"
+      @click="openCameraScanner"
+    >
+      Сканировать камерой
+    </ButtonUI>
 
-        <input
-          ref="qrFileInput"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style="display: none"
-          @change="onQrFileSelected"
-        />
+    <input
+      ref="qrFileInput"
+      type="file"
+      accept="image/*"
+      capture="environment"
+      style="display: none"
+      @change="onQrFileSelected"
+    />
+  </div>
+
+  <!-- ================== Камера ================== -->
+  <!-- Не внутри .scan-page — это полноэкранный fixed-оверлей, ему видимость
+       карточки ниже не нужна. -->
+  <div v-if="cameraOpen" class="qr-camera">
+    <div class="qr-camera__back" @click="closeCameraScanner"></div>
+
+    <div class="qr-camera__container">
+      <div class="qr-camera__header">
+        <span>
+          {{
+            isCheckingReceipt
+              ? 'Получаем данные чека...'
+              : 'Наведите камеру на QR-код чека'
+          }}
+        </span>
+
+        <i
+          class="fa-regular fa-xmark qr-camera__close"
+          @click="closeCameraScanner"
+        ></i>
       </div>
 
+      <video ref="qrVideo" class="qr-camera__video" playsinline></video>
+
+      <div v-if="isCheckingReceipt" class="qr-camera__loading">
+        <i class="fa-regular fa-spinner fa-spin"></i>
+        Проверяем чек...
+      </div>
+
+      <div v-if="cameraError" class="qr-camera__error">
+        {{ cameraError }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Карточка ниже нужна, только когда есть что показать — статус
+       сканирования, превью фото или разобранный чек. -->
+  <div v-if="hasScanContent" class="scan-page">
+    <div class="scan-block">
       <div v-if="isScanningImage" class="scan-block__status">
         <i class="fa-regular fa-spinner fa-spin"></i>
         Получаем данные чека...
@@ -58,39 +95,6 @@
           >
             <i class="fa-regular fa-xmark"></i>
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================== Камера ================== -->
-    <div v-if="cameraOpen" class="qr-camera">
-      <div class="qr-camera__back" @click="closeCameraScanner"></div>
-
-      <div class="qr-camera__container">
-        <div class="qr-camera__header">
-          <span>
-            {{
-              isCheckingReceipt
-                ? 'Получаем данные чека...'
-                : 'Наведите камеру на QR-код чека'
-            }}
-          </span>
-
-          <i
-            class="fa-regular fa-xmark qr-camera__close"
-            @click="closeCameraScanner"
-          ></i>
-        </div>
-
-        <video ref="qrVideo" class="qr-camera__video" playsinline></video>
-
-        <div v-if="isCheckingReceipt" class="qr-camera__loading">
-          <i class="fa-regular fa-spinner fa-spin"></i>
-          Проверяем чек...
-        </div>
-
-        <div v-if="cameraError" class="qr-camera__error">
-          {{ cameraError }}
         </div>
       </div>
     </div>
@@ -236,6 +240,16 @@ const isCheckingReceipt = ref(false)
 const receiptData = ref(null)
 const isAdding = ref(false)
 const addError = ref('')
+
+// Карточка ниже (.scan-page) нужна, только пока есть что показать — иначе
+// это пустой блок с рамкой до первого скана.
+const hasScanContent = computed(
+  () =>
+    isScanningImage.value ||
+    isCheckingReceipt.value ||
+    !!scannedPhotoUrl.value ||
+    !!receiptData.value
+)
 
 // Нормализация под показ — сырой ответ сервиса на разных чеках называет
 // поля по-разному (см. комментарий у mapExternalReceipt в receiptCheck.utils.js),
@@ -495,10 +509,17 @@ onBeforeUnmount(() => {
   gap: 0.57rem;
 }
 
-.scan-block__actions {
+/* Отдельный блок, не часть .scan-page — стоит своей карточкой над ней,
+   как .scan-page стоит своей карточкой относительно .receipt-list. */
+.scan-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.57rem;
+
+  padding: var(--padding-secondary);
+  background: var(--foreground);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
 }
 
 .scan-block__status {

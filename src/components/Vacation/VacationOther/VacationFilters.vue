@@ -18,16 +18,10 @@
         :options="statusOptions"
       />
 
-      <SelectUI
-        v-model="store.filters.month"
-        @change="store.updateFilters({ month: store.filters.month })"
-        :options="monthOptions"
-      />
-
-      <SelectUI
-        v-model="store.filters.year"
-        @change="store.updateFilters({ year: store.filters.year })"
-        :options="yearOptions"
+      <MonthYearSelect
+        :allow-all-months="false"
+        v-model:month="store.filters.month"
+        v-model:year="store.filters.year"
       />
 
       <ButtonUI v-if="activeCount" @click="store.resetFilters">Сбросить</ButtonUI>
@@ -62,20 +56,12 @@
         :options="statusOptions"
       />
 
-      <SelectUI
-        label="Месяц"
+      <MonthYearSelect
+        label="Месяц и год"
         full-width
-        v-model="store.filters.month"
-        @change="store.updateFilters({ month: store.filters.month })"
-        :options="monthOptions"
-      />
-
-      <SelectUI
-        label="Год"
-        full-width
-        v-model="store.filters.year"
-        @change="store.updateFilters({ year: store.filters.year })"
-        :options="yearOptions"
+        :allow-all-months="false"
+        v-model:month="store.filters.month"
+        v-model:year="store.filters.year"
       />
 
       <ButtonUI v-if="activeCount" type="muted" @click="store.resetFilters">
@@ -89,9 +75,9 @@
 <script setup>
 import ButtonUI from '@/components/ButtonUI.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
+import MonthYearSelect from '@/components/MonthYearSelect.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
-import { MONTH_NAMES } from '@/constants/calendar.constants'
 import { useThemeStore } from '@/stores/themes'
 import { useUserStore } from '@/stores/user'
 import { useVacationOther } from '@/stores/vacationOther'
@@ -133,16 +119,6 @@ const statusOptions = [
   { label: 'Отклоненные', value: 'rejected' },
 ]
 
-const monthOptions = [
-  ...MONTH_NAMES.map((v, i) => {
-    return { label: v, value: i + 1 }
-  }),
-]
-
-const yearOptions = computed(() => {
-  const date = new Date()
-  return [date.getFullYear() - 1, date.getFullYear(), date.getFullYear() + 1]
-})
 </script>
 
 <style scoped>

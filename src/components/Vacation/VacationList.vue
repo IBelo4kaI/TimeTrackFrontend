@@ -12,11 +12,11 @@
 
       <template v-if="!isMobile">
         <Tabs :tabs="filters" v-model="vacationStore.filter" type="line" />
-        <SelectUI
+        <MonthYearSelect
           variant="line"
           align="center"
-          :options="years"
-          v-model="vacationStore.selectedYear"
+          v-model:month="vacationStore.selectedMonth"
+          v-model:year="vacationStore.selectedYear"
         />
       </template>
 
@@ -42,11 +42,11 @@
         :options="filters"
         v-model="vacationStore.filter"
       />
-      <SelectUI
-        label="Год"
+      <MonthYearSelect
+        label="Месяц и год"
         full-width
-        :options="years"
-        v-model="vacationStore.selectedYear"
+        v-model:month="vacationStore.selectedMonth"
+        v-model:year="vacationStore.selectedYear"
       />
     </MobileFilterDrawer>
     <table class="vacation-list__items">
@@ -84,6 +84,7 @@
 <script setup>
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
+import MonthYearSelect from '@/components/MonthYearSelect.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
 import { useThemeStore } from '@/stores/themes.js'
@@ -144,11 +145,6 @@ const filters = [
   },
 ]
 
-const years = [
-  vacationStore.selectedYear - 1,
-  vacationStore.selectedYear,
-  vacationStore.selectedYear + 1,
-]
 </script>
 
 <style scoped>

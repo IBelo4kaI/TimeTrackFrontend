@@ -13,7 +13,7 @@ export const useReceiptStore = defineStore('receipt', () => {
   // бэк отдаёт чеки без фильтра по дате — год/месяц фильтруем на фронте
   // (см. filterReceipts), в отличие от vacation, где год уходит в запрос.
   const selectedYear = ref(new Date().getFullYear())
-  const selectedMonth = ref(null) // null = весь год, иначе 1-12
+  const selectedMonth = ref(new Date().getMonth() + 1) // null = весь год, иначе 1-12
   const target = ref('my')
 
   const receipts = ref([])
