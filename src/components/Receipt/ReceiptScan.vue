@@ -429,6 +429,7 @@ import {
   mapExternalReceipt,
   parseExternalDate,
 } from '@/utils/receiptCheck.utils'
+import { playSuccessSound } from '@/utils/sound.utils'
 
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useFilePreviewStore } from '@/stores/filePreview'
@@ -466,6 +467,10 @@ const isCheckingReceipt = ref(false)
 const pendingReceipts = ref([])
 
 function addPending(data, extra = {}) {
+  // Единая точка успеха для всех трёх способов (фото/камера/вручную) —
+  // отсюда звук, а не по отдельности на каждый вызов.
+  playSuccessSound()
+
   const item = {
     id: crypto.randomUUID(),
     data,
@@ -477,7 +482,12 @@ function addPending(data, extra = {}) {
     addError: '',
   }
   pendingReceipts.value.push(item)
-  return item
+  // Возвращаем ссылку из самого реактивного массива, а не "сырой" item —
+  // иначе openAttachPhoto(item, ...) держит объект ДО того, как Vue обернул
+  // его в reactive-прокси при пуше, и последующие item.photoFile = ...
+  // в onItemPhotoSelected идут мимо прокси: Vue не видит изменение и не
+  // перерисовывает карточку (превью/чекбокс так и не появляются).
+  return pendingReceipts.value[pendingReceipts.value.length - 1]
 }
 
 function removePending(item) {
