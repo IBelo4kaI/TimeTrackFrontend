@@ -1,22 +1,26 @@
 <template>
   <!-- ================== Сканирование QR ================== -->
   <div class="scan-actions">
+    <!-- Камера — самый быстрый способ (не нужно сначала фотографировать и
+         сохранять снимок), поэтому первая в списке и акцентного цвета, а
+         не серая, как остальные два — по умолчанию это глазами читается
+         как рекомендуемый вариант. -->
+    <ButtonUI
+      type="accent"
+      icon="fa-regular fa-camera"
+      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
+      @click="openCameraScanner"
+    >
+      <span>Сканировать камерой</span>
+    </ButtonUI>
+
     <ButtonUI
       type="muted"
       icon="fa-regular fa-image"
       :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
       @click="qrFileInput.click()"
     >
-      Сканировать по фото
-    </ButtonUI>
-
-    <ButtonUI
-      type="muted"
-      icon="fa-regular fa-camera"
-      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
-      @click="openCameraScanner"
-    >
-      Сканировать камерой
+      <span>Сканировать по фото</span>
     </ButtonUI>
 
     <ButtonUI
@@ -25,7 +29,7 @@
       :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
       @click="manualMode = true"
     >
-      Ввести вручную
+      <span>Ввести вручную</span>
     </ButtonUI>
 
     <!-- Без capture — иначе на большинстве мобильных браузеров пикер
@@ -1450,14 +1454,23 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  /* Кнопки способа сканирования — в столбец на всю ширину, легче попасть
-     пальцем, чем в обтекающий ряд из трёх кнопок. */
+  /* Квадратные кнопки-иконки в ряд вместо трёх подписанных кнопок, которые
+     на узком экране либо переносятся вразнобой, либо занимают весь экран
+     по высоте в столбик — подписи прячем, оставляем только иконки. */
   .scan-actions {
-    flex-direction: column;
+    justify-content: center;
   }
 
   .scan-actions > button {
-    width: 100%;
+    width: 4.5rem;
+    height: 4.5rem;
+    justify-content: center;
+    padding: 0;
+    font-size: 1.3rem;
+  }
+
+  .scan-actions > button span {
+    display: none;
   }
 
   /* "Место расчётов"/"Адрес" и т.п. — значение может быть длинным (особенно
