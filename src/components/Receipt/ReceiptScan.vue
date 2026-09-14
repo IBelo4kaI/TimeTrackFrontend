@@ -430,6 +430,7 @@ import {
   parseExternalDate,
 } from '@/utils/receiptCheck.utils'
 
+import { useConfirmModal } from '@/stores/confirmModal'
 import { useFilePreviewStore } from '@/stores/filePreview'
 import { useReceiptStore } from '@/stores/receipt'
 import { useUserStore } from '@/stores/user'
@@ -439,6 +440,7 @@ QrScanner.WORKER_PATH = QrScannerWorkerPath
 const receiptStore = useReceiptStore()
 const userStore = useUserStore()
 const filePreviewStore = useFilePreviewStore()
+const confirmModalStore = useConfirmModal()
 
 const qrFileInput = ref(null)
 const qrVideo = ref(null)
@@ -682,9 +684,15 @@ const handleQrDetected = async (raw) => {
 
     closeCameraScanner()
 
-    // Данные чека получены — предлагаем сразу сфотографировать сам чек
-    // (новым снимком камеры, а не кадром из видео сканирования QR).
-    openAttachPhoto(item, { camera: true })
+    // Данные чека получены — предлагаем сфотографировать сам чек. Именно
+    // через confirmModal, а не сразу input.click(): на мобильных браузерах
+    // клик по input, вызванный уже ПОСЛЕ await сетевого запроса (checkReceiptByRaw
+    // выше), не считается настоящим пользовательским жестом — камера не
+    // откроется. Клик по "Да" в модалке — свежий жест прямо перед открытием.
+    confirmModalStore.open(
+      () => openAttachPhoto(item, { camera: true }),
+      'Сфотографировать чек?'
+    )
   } catch (error) {
     handleReceiptError(error)
     // Не удалось — даём попробовать ещё раз в той же открытой камере, а не
