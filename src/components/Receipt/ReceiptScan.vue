@@ -505,13 +505,15 @@ function addPending(data, extra = {}) {
     isAdding: false,
     addError: '',
   }
-  pendingReceipts.value.push(item)
+  // unshift, а не push — последний добавленный чек должен быть первым в
+  // списке, а не последним.
+  pendingReceipts.value.unshift(item)
   // Возвращаем ссылку из самого реактивного массива, а не "сырой" item —
   // иначе openAttachPhoto(item, ...) держит объект ДО того, как Vue обернул
   // его в reactive-прокси при пуше, и последующие item.photoFile = ...
   // в onItemPhotoSelected идут мимо прокси: Vue не видит изменение и не
   // перерисовывает карточку (превью/чекбокс так и не появляются).
-  return pendingReceipts.value[pendingReceipts.value.length - 1]
+  return pendingReceipts.value[0]
 }
 
 function removePending(item) {

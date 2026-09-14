@@ -86,3 +86,17 @@ export const deleteReceipt = async (id) => {
     throw error
   }
 }
+
+// Передаёт чек другому сотруднику (требует receipts.all:edit — см.
+// internal/receipt/route.go). Отдаёт обновлённый чек с новым userId.
+export const transferReceipt = async (id, userId) => {
+  try {
+    const response = await timeTrackApi.put(`/receipts/${id}/transfer`, {
+      userId,
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка передачи чека:', error)
+    throw error
+  }
+}

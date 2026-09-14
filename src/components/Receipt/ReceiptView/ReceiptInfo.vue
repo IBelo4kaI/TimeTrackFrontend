@@ -116,9 +116,30 @@
       </span>
     </div>
 
-    <div class="info__admin" v-if="canManage">
+    <div class="info__admin" v-if="canManage || canTransfer">
       <div class="info__admin-title">Управление чеком</div>
-      <div class="info__admin-actions">
+
+      <div class="info__transfer" v-if="canTransfer">
+        <Autocomplete
+          v-model="transferUserId"
+          :options="transferOptions"
+          value-key="id"
+          :label-key="['surname', 'name', 'patronymic']"
+          label-separator=" "
+          placeholder="Выберите сотрудника"
+          :is-show-button="false"
+        />
+        <ButtonUI
+          type="muted-accent"
+          icon="fa-regular fa-right-left"
+          :disabled="!transferUserId || isMutating"
+          @click="onTransfer"
+        >
+          Передать
+        </ButtonUI>
+      </div>
+
+      <div class="info__admin-actions" v-if="canManage">
         <ButtonUI
           type="destructive"
           icon="fa-regular fa-trash-can-xmark"
@@ -133,16 +154,19 @@
 </template>
 
 <script setup>
+import Autocomplete from '@/components/Autocomplete.vue'
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import CardStatistics from '@/components/CardStatistics.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import { transferReceipt } from '@/services/receipt.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
 import { useUserStore } from '@/stores/user'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
+import { playSuccessSound } from '@/utils/sound.utils'
 import {
   formatMoney,
   getOperationTypeLabel,
@@ -228,7 +252,46 @@ const ndsBreakdown = computed(() => {
   return rows
 })
 
+// Зеркалит RequireOwnerOrAll на бэке (internal/receipt/handler.go,
+// TransferReceipt): свой чек можно передать при базовом receipts:edit,
+// чужой — только с receipts.all:edit.
+const canTransfer = computed(() => {
+  if (!props.receipt) return false
+  if (props.receipt.userId === userStore.user?.id) return true
+  return userStore.hasPermission('receipts.all', 'edit')
+})
+
+const transferUserId = ref(null)
+
+// Текущего владельца из списка убираем — "передать" ему же бессмысленно
+// (бэк и так это отклонит, см. ErrSameOwner).
+const transferOptions = computed(() =>
+  userStore.usersAll.filter((u) => u.id !== props.receipt?.userId)
+)
+
 const isMutating = ref(false)
+
+async function onTransfer() {
+  if (!transferUserId.value) return
+
+  isMutating.value = true
+  try {
+    await transferReceipt(props.receipt.id, transferUserId.value)
+    playSuccessSound()
+    notificationStore.addNotification('Чек передан сотруднику', 'success')
+    transferUserId.value = null
+    // Чек больше не принадлежит текущему сотруднику — как и после удаления
+    // (onDelete ниже), уходим со страницы, а не просто обновляем её.
+    router.push({ name: 'receipts' })
+  } catch (error) {
+    notificationStore.addNotification(
+      error?.message || 'Не удалось передать чек',
+      'error'
+    )
+  } finally {
+    isMutating.value = false
+  }
+}
 
 async function onDelete() {
   confirmModalStore.open(async () => {
@@ -396,5 +459,24 @@ async function onDelete() {
   display: flex;
   gap: var(--gap-primary);
   flex-wrap: wrap;
+}
+
+.info__transfer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap-primary);
+  flex-wrap: wrap;
+}
+
+.info__transfer > :first-child {
+  flex: 1;
+  min-width: 14rem;
+}
+
+@media (max-width: 768px) {
+  .info__transfer {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
