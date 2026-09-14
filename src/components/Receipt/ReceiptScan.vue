@@ -8,7 +8,9 @@
     <ButtonUI
       type="accent"
       icon="fa-regular fa-camera"
-      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
+      :disabled="
+        isScanningImage || isCheckingReceipt || cameraOpen || manualMode || isAddingAll
+      "
       @click="openCameraScanner"
     >
       <span>Сканировать камерой</span>
@@ -17,7 +19,9 @@
     <ButtonUI
       type="muted"
       icon="fa-regular fa-image"
-      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
+      :disabled="
+        isScanningImage || isCheckingReceipt || cameraOpen || manualMode || isAddingAll
+      "
       @click="qrFileInput.click()"
     >
       <span>Сканировать по фото</span>
@@ -26,7 +30,9 @@
     <ButtonUI
       type="muted"
       icon="fa-regular fa-keyboard"
-      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
+      :disabled="
+        isScanningImage || isCheckingReceipt || cameraOpen || manualMode || isAddingAll
+      "
       @click="manualMode = true"
     >
       <span>Ввести вручную</span>
@@ -274,6 +280,7 @@
         <button
           type="button"
           class="receipt-result__clear"
+          :disabled="isAddingAll"
           @click="removePending(item)"
           v-tooltip="'Убрать из списка'"
         >
@@ -369,13 +376,18 @@
 
         <div class="scan-block__photo-info">
           <label class="checkbox-label">
-            <input type="checkbox" v-model="item.attachPhoto" />
+            <input
+              type="checkbox"
+              v-model="item.attachPhoto"
+              :disabled="isAddingAll"
+            />
             <span>Прикрепить это фото к чеку</span>
           </label>
 
           <button
             type="button"
             class="scan-block__photo-remove"
+            :disabled="isAddingAll"
             @click="openAttachPhoto(item)"
             v-tooltip="'Заменить фото'"
           >
@@ -388,6 +400,7 @@
         v-else
         type="button"
         class="pending-attach-photo"
+        :disabled="isAddingAll"
         @click="openAttachPhoto(item)"
       >
         <i class="fa-regular fa-image"></i>
@@ -402,7 +415,7 @@
         <div class="receipt-result__actions">
           <ButtonUI
             type="muted"
-            :disabled="item.isAdding"
+            :disabled="item.isAdding || isAddingAll"
             @click="removePending(item)"
           >
             Убрать
@@ -410,7 +423,7 @@
 
           <ButtonUI
             type="accent"
-            :disabled="item.isAdding"
+            :disabled="item.isAdding || isAddingAll"
             @click="addOnePending(item)"
           >
             <i v-if="item.isAdding" class="fa-regular fa-spinner fa-spin"></i>
@@ -456,6 +469,7 @@ import { playSuccessSound } from '@/utils/sound.utils'
 
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useFilePreviewStore } from '@/stores/filePreview'
+import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
 import { useUserStore } from '@/stores/user'
 
@@ -465,6 +479,7 @@ const receiptStore = useReceiptStore()
 const userStore = useUserStore()
 const filePreviewStore = useFilePreviewStore()
 const confirmModalStore = useConfirmModal()
+const notificationStore = useNotificationStore()
 
 const qrFileInput = ref(null)
 const qrVideo = ref(null)
@@ -887,7 +902,9 @@ function clearScannedPhoto() {
 // Сохранение одного чека из очереди — маппинг ответа внешнего API уже
 // сделан в receiptCheck.utils.js. Успех убирает элемент из очереди, ошибка
 // остаётся при нём же (остальные элементы очереди не трогает).
-const addOnePending = async (item) => {
+// silent — при вызове из addAllPending: там свой общий тост/звук на всю
+// группу в конце, дублировать его на каждый чек не нужно.
+const addOnePending = async (item, { silent = false } = {}) => {
   if (item.isAdding) return
 
   if (!userStore.user?.id) {
@@ -915,6 +932,11 @@ const addOnePending = async (item) => {
     }
 
     removePending(item)
+
+    if (!silent) {
+      playSuccessSound()
+      notificationStore.addNotification('Чек добавлен', 'success')
+    }
   } catch (error) {
     console.error('Не удалось добавить чек:', error)
     // Текст с бэка приходит с маленькой буквы (см. errors.New(...) в
@@ -933,13 +955,30 @@ const addAllPending = async () => {
   if (isAddingAll.value) return
 
   isAddingAll.value = true
+  const totalBefore = pendingReceipts.value.length
+
   try {
     for (const item of [...pendingReceipts.value]) {
-      await addOnePending(item)
+      await addOnePending(item, { silent: true })
     }
   } finally {
     isAddingAll.value = false
   }
+
+  // Успешно добавленные убираются из очереди сами (см. addOnePending) —
+  // сколько осталось, столько и упало с ошибкой (текст уже у каждого в
+  // item.addError, тут только общий итог по группе).
+  const failed = pendingReceipts.value.length
+  const added = totalBefore - failed
+  if (added === 0) return
+
+  playSuccessSound()
+  notificationStore.addNotification(
+    failed > 0
+      ? `Добавлено чеков: ${added} из ${totalBefore}, ${failed} с ошибкой`
+      : `Чеки добавлены: ${added}`,
+    failed > 0 ? 'warning' : 'success'
+  )
 }
 
 onBeforeUnmount(() => {
@@ -1436,6 +1475,16 @@ onBeforeUnmount(() => {
 .pending-attach-photo:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* Пока идёт "Добавить все" — эти кнопки блокируются, чтобы не мутировать
+   очередь параллельно с циклом добавления (см. addAllPending). Плоские
+   кнопки без своего disabled-стиля браузер по умолчанию не притушит. */
+.receipt-result__clear:disabled,
+.scan-block__photo-remove:disabled,
+.pending-attach-photo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .receipt-result__footer {
