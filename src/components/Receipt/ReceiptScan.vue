@@ -312,29 +312,48 @@
         </div>
       </div>
 
-      <table v-if="getSummary(item).items.length" class="receipt-result__items">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Наименование</th>
-            <th>Кол-во</th>
-            <th>Цена</th>
-            <th>Сумма</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(row, index) in getSummary(item).items"
-            :key="index"
-          >
-            <td>{{ index + 1 }}</td>
-            <td>{{ row.name }}</td>
-            <td>{{ row.quantity }}</td>
-            <td>{{ formatMoney(row.price) }}</td>
-            <td>{{ formatMoney(row.sum) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <button
+        v-if="getSummary(item).items.length"
+        type="button"
+        class="receipt-result__items-toggle"
+        :class="{ 'receipt-result__items-toggle--open': item.itemsVisible }"
+        @click="item.itemsVisible = !item.itemsVisible"
+      >
+        <i
+          class="fa-regular fa-chevron-right"
+          :class="{ 'receipt-result__items-chevron--open': item.itemsVisible }"
+        ></i>
+        Позиции чека ({{ getSummary(item).items.length }})
+      </button>
+
+      <div
+        v-if="item.itemsVisible && getSummary(item).items.length"
+        class="receipt-result__items-wrap"
+      >
+        <table class="receipt-result__items">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Наименование</th>
+              <th>Кол-во</th>
+              <th>Цена</th>
+              <th>Сумма</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(row, index) in getSummary(item).items"
+              :key="index"
+            >
+              <td>{{ index + 1 }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.quantity }}</td>
+              <td>{{ formatMoney(row.price) }}</td>
+              <td>{{ formatMoney(row.sum) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div class="receipt-result__total">
         <span>Итого</span>
@@ -478,6 +497,7 @@ function addPending(data, extra = {}) {
     photoFile: extra.photoFile ?? null,
     photoUrl: extra.photoFile ? URL.createObjectURL(extra.photoFile) : '',
     attachPhoto: true,
+    itemsVisible: false,
     isAdding: false,
     addError: '',
   }
@@ -1317,6 +1337,48 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
+.receipt-result__items-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.43rem;
+  align-self: flex-start;
+
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted-text);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.receipt-result__items-toggle:hover {
+  color: var(--accent);
+}
+
+.receipt-result__items-toggle--open {
+  color: var(--accent);
+}
+
+.receipt-result__items-toggle i {
+  transition: transform 0.15s ease;
+}
+
+.receipt-result__items-chevron--open {
+  transform: rotate(90deg);
+}
+
+/* Позиции чека могут быть широкими (5 колонок) — на мобильном таблица не
+   лезет в ширину экрана, скроллим саму обёртку, а не всю страницу. */
+.receipt-result__items-wrap {
+  overflow-x: auto;
+
+  padding: 0.5rem 0.71rem;
+  background: var(--background);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
 .receipt-result__items {
   width: 100%;
   border-collapse: collapse;
@@ -1385,5 +1447,54 @@ onBeforeUnmount(() => {
 .receipt-result__error {
   font-size: 0.86rem;
   color: var(--destructive);
+}
+
+@media (max-width: 768px) {
+  /* Кнопки способа сканирования — в столбец на всю ширину, легче попасть
+     пальцем, чем в обтекающий ряд из трёх кнопок. */
+  .scan-actions {
+    flex-direction: column;
+  }
+
+  .scan-actions > button {
+    width: 100%;
+  }
+
+  /* "Место расчётов"/"Адрес" и т.п. — значение может быть длинным (особенно
+     адрес), в одну строку с лейблом на узком экране оно просто сплющится.
+     Переносим значение под лейбл и даём ему нормально переноситься. */
+  .receipt-result__row {
+    flex-direction: column;
+    gap: 0.14rem;
+  }
+
+  .receipt-result__label {
+    font-size: 0.8rem;
+  }
+
+  .scan-block__photo-info {
+    flex-wrap: wrap;
+  }
+
+  .pending-bulk {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pending-bulk > button {
+    width: 100%;
+  }
+
+  /* Кнопки в подвале карточки — поровну на всю ширину, а не жаться друг к
+     другу справа. */
+  .manual-form__actions,
+  .receipt-result__actions {
+    justify-content: stretch;
+  }
+
+  .manual-form__actions > button,
+  .receipt-result__actions > button {
+    flex: 1;
+  }
 }
 </style>
