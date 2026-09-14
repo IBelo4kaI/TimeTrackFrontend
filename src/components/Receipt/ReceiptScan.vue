@@ -640,6 +640,9 @@ const pendingTotal = computed(() =>
 
 const formatDate = (date) => (date ? date.toLocaleString('ru-RU') : '')
 
+const capitalize = (text) =>
+  text ? text.charAt(0).toUpperCase() + text.slice(1) : text
+
 const formatMoney = (value) => {
   if (value === undefined || value === null) {
     return '—'
@@ -888,7 +891,9 @@ const addOnePending = async (item) => {
     removePending(item)
   } catch (error) {
     console.error('Не удалось добавить чек:', error)
-    item.addError = error?.message || 'Не удалось добавить чек'
+    // Текст с бэка приходит с маленькой буквы (см. errors.New(...) в
+    // internal/receipt/service.go) — с большой смотрится как предложение.
+    item.addError = capitalize(error?.message) || 'Не удалось добавить чек'
   } finally {
     item.isAdding = false
   }
