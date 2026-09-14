@@ -13,8 +13,12 @@ export const useReceiptStore = defineStore('receipt', () => {
   // бэк отдаёт чеки без фильтра по дате — год/месяц фильтруем на фронте
   // (см. filterReceipts), в отличие от vacation, где год уходит в запрос.
   const selectedYear = ref(new Date().getFullYear())
-  const selectedMonth = ref(new Date().getMonth() + 1) // null = весь год, иначе 1-12
+  const selectedMonth = ref(null) // null = весь год, иначе 1-12
   const target = ref('my')
+
+  // 'createdAt' — когда чек добавлен в систему, 'ticketDate' — дата на самом
+  // чеке (может сильно отличаться, если чек добавили не сразу).
+  const sortBy = ref('createdAt')
 
   const receipts = ref([])
   const selectedReceipt = ref(null) // карточка с items, см. fetchReceiptById
@@ -23,13 +27,19 @@ export const useReceiptStore = defineStore('receipt', () => {
   const userStore = useUserStore()
 
   const filterReceipts = computed(() => {
-    return receipts.value.filter((r) => {
-      const date = new Date(r.ticketDate)
-      if (date.getFullYear() != selectedYear.value) return false
-      if (selectedMonth.value && date.getMonth() + 1 != selectedMonth.value)
-        return false
-      return true
-    })
+    // Фильтр по месяцу/году смотрит на то же поле, что и сортировка — иначе
+    // выбор "Август" при сортировке "по дате добавления" фильтровал бы по
+    // ticketDate, а не по дате, которую пользователь реально выбирает.
+    return receipts.value
+      .slice() // sort мутирует массив — копия, чтобы не трогать receipts.value
+      .sort((a, b) => new Date(b[sortBy.value]) - new Date(a[sortBy.value]))
+      .filter((r) => {
+        const date = new Date(r[sortBy.value])
+        if (date.getFullYear() != selectedYear.value) return false
+        if (selectedMonth.value && date.getMonth() + 1 != selectedMonth.value)
+          return false
+        return true
+      })
   })
 
   const totalSum = computed(() =>
@@ -89,6 +99,7 @@ export const useReceiptStore = defineStore('receipt', () => {
     // state
     selectedYear,
     selectedMonth,
+    sortBy,
     receipts,
     selectedReceipt,
     isLoading,

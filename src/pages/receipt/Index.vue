@@ -19,7 +19,7 @@ import ReceiptList from '@/components/Receipt/ReceiptList.vue'
 import ReceiptScan from '@/components/Receipt/ReceiptScan.vue'
 
 const titleStore = useHeaderTitleStore()
-titleStore.setTitle('Чеки', 'Учёт расходов по чекам')
+titleStore.setTitle('Чеки', 'Чеки, чеки, чеки')
 
 const { isMobile } = storeToRefs(useThemeStore())
 

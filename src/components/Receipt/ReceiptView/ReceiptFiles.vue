@@ -62,6 +62,7 @@ import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import { uploadReceiptFile } from '@/services/receipt.api'
 import { useConfirmModal } from '@/stores/confirmModal'
+import { useFilePreviewStore } from '@/stores/filePreview'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
@@ -73,6 +74,7 @@ const props = defineProps({
 
 const userStore = useUserStore()
 const confirmModalStore = useConfirmModal()
+const filePreviewStore = useFilePreviewStore()
 const notificationStore = useNotificationStore()
 
 // зеркалит RequireOwnerOrAll в UploadReceiptFile на бэке (см.
@@ -138,20 +140,8 @@ watch(
 onMounted(loadFiles)
 onUnmounted(releasePreviews)
 
-async function onOpen(f) {
-  if (previewUrls[f.id]) {
-    window.open(previewUrls[f.id], '_blank')
-    return
-  }
-
-  try {
-    const blob = await openFile(f.id)
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 10_000)
-  } catch {
-    notificationStore.addNotification('Ошибка при открытии файла', 'error')
-  }
+function onOpen(f) {
+  filePreviewStore.open(f)
 }
 
 async function onFilesSelected(event) {

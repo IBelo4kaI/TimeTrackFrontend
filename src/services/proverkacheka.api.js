@@ -13,16 +13,12 @@ const TOKEN = import.meta.env.VITE_PROVERKACHEKA_TOKEN
 const POLL_DELAY_MS = 2500
 const MAX_ATTEMPTS = 6
 
-const ERROR_MESSAGES = {
-  0: 'Чек не найден — проверьте, что QR-код кассовый и не повреждён',
-  2: 'Данные чека пока не получены, попробуйте ещё раз чуть позже',
-  3: 'Превышено количество запросов к сервису проверки чеков',
-  5: 'Сервис проверки чеков вернул ошибку',
-}
-
+// Сервис путает коды (например, реально существующий чек может прийти с
+// 0 вместо 2/4) — различать причину по code смысла нет, показываем один
+// общий текст; сам code оставляем в ошибке только для отладки в консоли.
 export class ReceiptCheckError extends Error {
   constructor(code) {
-    super(ERROR_MESSAGES[code] ?? 'Не удалось получить данные чека')
+    super('Не удалось получить данные чека')
     this.code = code
   }
 }
@@ -48,6 +44,28 @@ export async function checkReceiptByRaw(qrraw) {
     const params = new URLSearchParams()
     params.append('token', TOKEN)
     params.append('qrraw', qrraw)
+
+    const response = await axios.post(PROVERKACHEKA_URL, params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    })
+    return response.data
+  })
+}
+
+// Ручной ввод (без QR) — "формат запроса 1" из api_documentation.md: набор
+// реквизитов, которые печатаются внизу самого чека (ФН/ФД/ФПД/дата/сумма/
+// тип операции), даже если QR-код нечитаем или его нет вовсе.
+export async function checkReceiptByRequisites({ fn, fd, fp, t, s, n }) {
+  return pollCheck(async () => {
+    const params = new URLSearchParams()
+    params.append('token', TOKEN)
+    params.append('fn', fn)
+    params.append('fd', fd)
+    params.append('fp', fp)
+    params.append('t', t)
+    params.append('s', s)
+    params.append('n', n)
+    params.append('qr', '0')
 
     const response = await axios.post(PROVERKACHEKA_URL, params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

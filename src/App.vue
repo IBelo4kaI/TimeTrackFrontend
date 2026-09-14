@@ -11,12 +11,14 @@
     </RouterView>
     <NotificationContainer />
     <Modal />
+    <FilePreview />
     <WhatsNewModal />
   </template>
 </template>
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
+import FilePreview from './components/FilePreview.vue'
 import LoaderPage from './components/Loader/LoaderPage.vue'
 import Modal from './components/Modal.vue'
 import WhatsNewModal from './components/Layout/WhatsNewModal.vue'

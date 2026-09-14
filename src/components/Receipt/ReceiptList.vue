@@ -17,6 +17,12 @@
           v-model:month="receiptStore.selectedMonth"
           v-model:year="receiptStore.selectedYear"
         />
+        <SelectUI
+          variant="line"
+          align="center"
+          :options="sortOptions"
+          v-model="receiptStore.sortBy"
+        />
       </template>
 
       <button
@@ -41,6 +47,12 @@
         full-width
         v-model:month="receiptStore.selectedMonth"
         v-model:year="receiptStore.selectedYear"
+      />
+      <SelectUI
+        label="Сортировка"
+        full-width
+        :options="sortOptions"
+        v-model="receiptStore.sortBy"
       />
     </MobileFilterDrawer>
 
@@ -78,6 +90,7 @@
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
 import MonthYearSelect from '@/components/MonthYearSelect.vue'
+import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
 import { useReceiptStore } from '@/stores/receipt'
 import { useThemeStore } from '@/stores/themes.js'
@@ -102,6 +115,10 @@ const targets = [
   { id: 'all', label: 'Все чеки' },
 ]
 
+const sortOptions = [
+  { label: 'По дате добавления', value: 'createdAt' },
+  { label: 'По дате чека', value: 'ticketDate' },
+]
 </script>
 
 <style scoped>

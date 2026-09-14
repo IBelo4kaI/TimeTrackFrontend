@@ -4,7 +4,7 @@
     <ButtonUI
       type="muted"
       icon="fa-regular fa-image"
-      :disabled="isScanningImage || isCheckingReceipt || cameraOpen"
+      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
       @click="qrFileInput.click()"
     >
       Сканировать по фото
@@ -13,10 +13,19 @@
     <ButtonUI
       type="muted"
       icon="fa-regular fa-camera"
-      :disabled="isScanningImage || isCheckingReceipt || cameraOpen"
+      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
       @click="openCameraScanner"
     >
       Сканировать камерой
+    </ButtonUI>
+
+    <ButtonUI
+      type="muted"
+      icon="fa-regular fa-keyboard"
+      :disabled="isScanningImage || isCheckingReceipt || cameraOpen || manualMode"
+      @click="manualMode = true"
+    >
+      Ввести вручную
     </ButtonUI>
 
     <input
@@ -24,6 +33,7 @@
       type="file"
       accept="image/*"
       capture="environment"
+      multiple
       style="display: none"
       @change="onQrFileSelected"
     />
@@ -65,12 +75,28 @@
   </div>
 
   <!-- Карточка ниже нужна, только когда есть что показать — статус
-       сканирования, превью фото или разобранный чек. -->
+       сканирования, форма ручного ввода или уже распознанные чеки. -->
   <div v-if="hasScanContent" class="scan-page">
-    <div class="scan-block">
+    <!-- Пустой .scan-block всё равно занимает gap .scan-page между собой и
+         следующей секцией — рендерим, только когда внутри реально есть что
+         показать. -->
+    <div
+      v-if="
+        isScanningImage ||
+        isCheckingReceipt ||
+        scannedPhotoUrl ||
+        scanBatchErrors.length ||
+        scanLimitNotice
+      "
+      class="scan-block"
+    >
       <div v-if="isScanningImage" class="scan-block__status">
         <i class="fa-regular fa-spinner fa-spin"></i>
-        Получаем данные чека...
+        <span v-if="scanBatch.total > 1">
+          Получаем данные чека {{ scanBatch.current }} из
+          {{ scanBatch.total }}...
+        </span>
+        <span v-else>Получаем данные чека...</span>
       </div>
 
       <div v-if="isCheckingReceipt" class="scan-block__status">
@@ -78,14 +104,14 @@
         Получаем данные чека...
       </div>
 
+      <!-- Фото пока идёт распознавание — прикрепить/не прикрепить решаем
+           уже в карточке результата ниже (item.attachPhoto), тут только
+           возможность передумать и убрать фото ДО получения ответа. -->
       <div v-if="scannedPhotoUrl" class="scan-block__photo">
         <img :src="scannedPhotoUrl" alt="Скан чека" />
 
         <div class="scan-block__photo-info">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="attachScannedPhoto" />
-            <span>Прикрепить это фото к чеку</span>
-          </label>
+          <span class="scan-block__photo-label">Фото прикреплено к чеку</span>
 
           <button
             type="button"
@@ -97,59 +123,193 @@
           </button>
         </div>
       </div>
+
+      <div v-if="scanLimitNotice" class="scan-block__notice">
+        {{ scanLimitNotice }}
+      </div>
+
+      <div v-if="scanBatchErrors.length" class="scan-block__batch-errors">
+        <div
+          v-for="err in scanBatchErrors"
+          :key="err.id"
+          class="scan-block__batch-error"
+        >
+          <button
+            v-if="err.url"
+            type="button"
+            class="scan-block__batch-error-thumb"
+            @click="filePreviewStore.open({ url: err.url, originalName: err.file.name, mimeType: err.file.type })"
+            v-tooltip="'Посмотреть фото'"
+          >
+            <img :src="err.url" :alt="err.file.name" />
+          </button>
+
+          <div class="scan-block__batch-error-text">
+            <span class="scan-block__batch-error-name">{{ err.fileName }}</span>
+            <span class="scan-block__batch-error-message">{{ err.message }}</span>
+          </div>
+
+          <button
+            type="button"
+            class="scan-block__photo-remove"
+            @click="dismissBatchError(err)"
+            v-tooltip="'Убрать'"
+          >
+            <i class="fa-regular fa-xmark"></i>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- ================== Результат сканирования ================== -->
-    <div v-if="receiptData" class="receipt-result">
+    <!-- ================== Ввод реквизитов вручную ================== -->
+    <div v-if="manualMode" class="manual-form">
+      <p class="manual-form__hint">
+        Реквизиты обычно печатаются внизу самого чека — сервис найдёт чек по
+        ним так же, как по QR-коду.
+      </p>
+
+      <div class="manual-form__grid">
+        <InputUi
+          v-model="manualFields.fn"
+          label="ФН"
+          placeholder="9280440300770583"
+          :disabled="isCheckingReceipt"
+          required
+        />
+        <InputUi
+          v-model="manualFields.fd"
+          label="ФД"
+          placeholder="33110"
+          :disabled="isCheckingReceipt"
+          required
+        />
+        <InputUi
+          v-model="manualFields.fp"
+          label="ФП"
+          placeholder="4138469556"
+          :disabled="isCheckingReceipt"
+          required
+        />
+        <InputUi
+          v-model="manualFields.datetime"
+          type="datetime-local"
+          label="Дата и время чека"
+          :disabled="isCheckingReceipt"
+          required
+        />
+        <InputUi
+          v-model="manualFields.amount"
+          type="number"
+          label="Сумма чека, ₽"
+          placeholder="419.54"
+          :disabled="isCheckingReceipt"
+          required
+        />
+      </div>
+
+      <div v-if="manualError" class="manual-form__error">
+        {{ manualError }}
+      </div>
+
+      <div class="manual-form__actions">
+        <ButtonUI
+          type="muted"
+          :disabled="isCheckingReceipt"
+          @click="cancelManual"
+        >
+          Отмена
+        </ButtonUI>
+
+        <ButtonUI
+          type="accent"
+          :disabled="isCheckingReceipt"
+          @click="submitManual"
+        >
+          <i v-if="isCheckingReceipt" class="fa-regular fa-spinner fa-spin"></i>
+          Проверить чек
+        </ButtonUI>
+      </div>
+    </div>
+
+    <!-- ================== Очередь распознанных чеков ================== -->
+    <!-- Каждый чек сюда мог попасть любым из трёх способов выше — фото,
+         камера или реквизиты вручную — и добавляются они независимо: можно
+         сохранить по одному сразу, можно накопить несколько и разом. -->
+    <div v-if="pendingReceipts.length > 0" class="pending-bulk">
+      <div class="pending-bulk__info">
+        <span class="pending-bulk__count">
+          Чеков в очереди: {{ pendingReceipts.length }}
+        </span>
+        <span class="pending-bulk__total">
+          Итого: <b>{{ formatMoney(pendingTotal) }}</b>
+        </span>
+      </div>
+
+      <ButtonUI
+        v-if="pendingReceipts.length > 1"
+        type="accent"
+        :disabled="isAddingAll"
+        @click="addAllPending"
+      >
+        <i v-if="isAddingAll" class="fa-regular fa-spinner fa-spin"></i>
+        Добавить все
+      </ButtonUI>
+    </div>
+
+    <div
+      v-for="item in pendingReceipts"
+      :key="item.id"
+      class="receipt-result"
+    >
       <div class="receipt-result__header">
         <h3>Данные чека</h3>
 
         <button
           type="button"
           class="receipt-result__clear"
-          @click="resetReceipt"
-          v-tooltip="'Очистить результат'"
+          @click="removePending(item)"
+          v-tooltip="'Убрать из списка'"
         >
           <i class="fa-regular fa-xmark"></i>
         </button>
       </div>
 
       <div class="receipt-result__summary">
-        <div v-if="receiptSummary.place" class="receipt-result__row">
+        <div v-if="getSummary(item).place" class="receipt-result__row">
           <span class="receipt-result__label">Место расчётов</span>
-          <span>{{ receiptSummary.place }}</span>
+          <span>{{ getSummary(item).place }}</span>
         </div>
 
-        <div v-if="receiptSummary.address" class="receipt-result__row">
+        <div v-if="getSummary(item).address" class="receipt-result__row">
           <span class="receipt-result__label">Адрес</span>
-          <span>{{ receiptSummary.address }}</span>
+          <span>{{ getSummary(item).address }}</span>
         </div>
 
-        <div v-if="receiptSummary.date" class="receipt-result__row">
+        <div v-if="getSummary(item).date" class="receipt-result__row">
           <span class="receipt-result__label">Дата и время</span>
-          <span>{{ formatDate(receiptSummary.date) }}</span>
+          <span>{{ formatDate(getSummary(item).date) }}</span>
         </div>
 
-        <div v-if="receiptSummary.operator" class="receipt-result__row">
+        <div v-if="getSummary(item).operator" class="receipt-result__row">
           <span class="receipt-result__label">Кассир</span>
-          <span>{{ receiptSummary.operator }}</span>
+          <span>{{ getSummary(item).operator }}</span>
         </div>
 
         <div
-          v-if="receiptSummary.fiscalDocumentNumber"
+          v-if="getSummary(item).fiscalDocumentNumber"
           class="receipt-result__row"
         >
           <span class="receipt-result__label">ФД</span>
-          <span>{{ receiptSummary.fiscalDocumentNumber }}</span>
+          <span>{{ getSummary(item).fiscalDocumentNumber }}</span>
         </div>
 
-        <div v-if="receiptSummary.fiscalSign" class="receipt-result__row">
+        <div v-if="getSummary(item).fiscalSign" class="receipt-result__row">
           <span class="receipt-result__label">ФПД</span>
-          <span>{{ receiptSummary.fiscalSign }}</span>
+          <span>{{ getSummary(item).fiscalSign }}</span>
         </div>
       </div>
 
-      <table v-if="receiptItems.length" class="receipt-result__items">
+      <table v-if="getSummary(item).items.length" class="receipt-result__items">
         <thead>
           <tr>
             <th>#</th>
@@ -160,33 +320,55 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) in receiptItems" :key="index">
+          <tr
+            v-for="(row, index) in getSummary(item).items"
+            :key="index"
+          >
             <td>{{ index + 1 }}</td>
-            <td>{{ item.name }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>{{ formatMoney(item.price) }}</td>
-            <td>{{ formatMoney(item.sum) }}</td>
+            <td>{{ row.name }}</td>
+            <td>{{ row.quantity }}</td>
+            <td>{{ formatMoney(row.price) }}</td>
+            <td>{{ formatMoney(row.sum) }}</td>
           </tr>
         </tbody>
       </table>
 
       <div class="receipt-result__total">
         <span>Итого</span>
-        <span>{{ formatMoney(receiptSummary.totalSum) }}</span>
+        <span>{{ formatMoney(getSummary(item).totalSum) }}</span>
+      </div>
+
+      <div v-if="item.photoUrl" class="scan-block__photo">
+        <img :src="item.photoUrl" alt="Скан чека" />
+
+        <div class="scan-block__photo-info">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="item.attachPhoto" />
+            <span>Прикрепить это фото к чеку</span>
+          </label>
+        </div>
       </div>
 
       <div class="receipt-result__footer">
-        <div v-if="addError" class="receipt-result__error">
-          {{ addError }}
+        <div v-if="item.addError" class="receipt-result__error">
+          {{ item.addError }}
         </div>
 
         <div class="receipt-result__actions">
-          <ButtonUI type="muted" :disabled="isAdding" @click="resetReceipt">
-            Отмена
+          <ButtonUI
+            type="muted"
+            :disabled="item.isAdding"
+            @click="removePending(item)"
+          >
+            Убрать
           </ButtonUI>
 
-          <ButtonUI type="accent" :disabled="isAdding" @click="addReceipt">
-            <i v-if="isAdding" class="fa-regular fa-spinner fa-spin"></i>
+          <ButtonUI
+            type="accent"
+            :disabled="item.isAdding"
+            @click="addOnePending(item)"
+          >
+            <i v-if="item.isAdding" class="fa-regular fa-spinner fa-spin"></i>
             Добавить
           </ButtonUI>
         </div>
@@ -197,15 +379,17 @@
 
 <script setup>
 import ButtonUI from '@/components/ButtonUI.vue'
+import InputUi from '@/components/InputUi.vue'
 
 import QrScanner from 'qr-scanner'
 import QrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url'
 
-import { nextTick, ref, computed, onBeforeUnmount } from 'vue'
+import { nextTick, ref, reactive, computed, onBeforeUnmount } from 'vue'
 
 import {
   checkReceiptByRaw,
   checkReceiptByImage,
+  checkReceiptByRequisites,
   ReceiptCheckError,
 } from '@/services/proverkacheka.api'
 import { uploadReceiptFile } from '@/services/receipt.api'
@@ -214,6 +398,7 @@ import {
   parseExternalDate,
 } from '@/utils/receiptCheck.utils'
 
+import { useFilePreviewStore } from '@/stores/filePreview'
 import { useReceiptStore } from '@/stores/receipt'
 import { useUserStore } from '@/stores/user'
 
@@ -221,6 +406,7 @@ QrScanner.WORKER_PATH = QrScannerWorkerPath
 
 const receiptStore = useReceiptStore()
 const userStore = useUserStore()
+const filePreviewStore = useFilePreviewStore()
 
 const qrFileInput = ref(null)
 const qrVideo = ref(null)
@@ -231,15 +417,53 @@ const isScanningImage = ref(false)
 const cameraOpen = ref(false)
 const cameraError = ref('')
 
+// Превью фото, пока идёт распознавание конкретно ЭТОГО скана — как только
+// чек разобран, файл переезжает в свой pending-элемент очереди (см.
+// addPending), а эти refs очищаются под следующий скан.
 const scannedPhotoFile = ref(null)
 const scannedPhotoUrl = ref('')
-const attachScannedPhoto = ref(true)
 
 const isCheckingReceipt = ref(false)
 
-const receiptData = ref(null)
-const isAdding = ref(false)
-const addError = ref('')
+// Очередь распознанных, но ещё не сохранённых чеков. Пополняется любым из
+// трёх способов (фото/камера/вручную) сколько угодно раз подряд — каждый
+// со своей карточкой результата, своим фото (если есть) и своей ошибкой
+// сохранения, независимо от остальных элементов очереди.
+const pendingReceipts = ref([])
+
+function addPending(data, extra = {}) {
+  pendingReceipts.value.push({
+    id: crypto.randomUUID(),
+    data,
+    rawQr: extra.raw ?? null,
+    photoFile: extra.photoFile ?? null,
+    photoUrl: extra.photoFile ? URL.createObjectURL(extra.photoFile) : '',
+    attachPhoto: true,
+    isAdding: false,
+    addError: '',
+  })
+}
+
+function removePending(item) {
+  if (item.photoUrl) URL.revokeObjectURL(item.photoUrl)
+  pendingReceipts.value = pendingReceipts.value.filter((r) => r.id !== item.id)
+}
+
+// Ручной ввод реквизитов (без QR) — см. checkReceiptByRequisites.
+const manualMode = ref(false)
+const manualError = ref('')
+
+// Ручной ввод — только для обычных покупок (расход/возврат вручную не
+// заводим), поэтому тип операции не выбирается, а всегда "Приход".
+const MANUAL_OPERATION_TYPE = 1
+
+const manualFields = reactive({
+  fn: '',
+  fd: '',
+  fp: '',
+  datetime: '',
+  amount: '',
+})
 
 // Карточка ниже (.scan-page) нужна, только пока есть что показать — иначе
 // это пустой блок с рамкой до первого скана.
@@ -248,16 +472,77 @@ const hasScanContent = computed(
     isScanningImage.value ||
     isCheckingReceipt.value ||
     !!scannedPhotoUrl.value ||
-    !!receiptData.value
+    manualMode.value ||
+    pendingReceipts.value.length > 0 ||
+    scanBatchErrors.value.length > 0 ||
+    !!scanLimitNotice.value
 )
+
+function resetManualFields() {
+  manualFields.fn = ''
+  manualFields.fd = ''
+  manualFields.fp = ''
+  manualFields.datetime = ''
+  manualFields.amount = ''
+  manualError.value = ''
+}
+
+const cancelManual = () => {
+  manualMode.value = false
+  resetManualFields()
+}
+
+// input[type=datetime-local] отдаёт "2026-09-14T20:28" — компактный формат
+// ФФД (как в самом QR, см. §2.5 api_documentation.md) те же цифры без "-"/":".
+const toFfdCompact = (value) => value.replace(/[-:]/g, '')
+
+const submitManual = async () => {
+  if (isCheckingReceipt.value) return
+
+  if (
+    !manualFields.fn.trim() ||
+    !manualFields.fd.trim() ||
+    !manualFields.fp.trim() ||
+    !manualFields.datetime ||
+    !manualFields.amount
+  ) {
+    manualError.value = 'Заполните все поля'
+    return
+  }
+
+  isCheckingReceipt.value = true
+  manualError.value = ''
+
+  try {
+    const data = await checkReceiptByRequisites({
+      fn: manualFields.fn.trim(),
+      fd: manualFields.fd.trim(),
+      fp: manualFields.fp.trim(),
+      t: toFfdCompact(manualFields.datetime),
+      s: Number(manualFields.amount).toFixed(2),
+      n: MANUAL_OPERATION_TYPE,
+    })
+
+    addPending(data)
+    manualMode.value = false
+    resetManualFields()
+  } catch (error) {
+    console.error('Ошибка при получении данных чека по реквизитам:', error)
+    manualError.value =
+      error instanceof ReceiptCheckError
+        ? error.message
+        : error?.message || 'Не удалось получить данные чека'
+  } finally {
+    isCheckingReceipt.value = false
+  }
+}
 
 // Нормализация под показ — сырой ответ сервиса на разных чеках называет
 // поля по-разному (см. комментарий у mapExternalReceipt в receiptCheck.utils.js),
 // поэтому здесь тоже проверяем оба варианта, а не только документированный.
-const receiptSummary = computed(() => {
-  const data = receiptData.value
-  if (!data) return {}
-
+// Не computed — вызывается по одному на каждый элемент очереди в шаблоне.
+function getSummary(item) {
+  const data = item.data
   return {
     place: data.retailPlace ?? data.user ?? null,
     address: data.retailPlaceAddress ?? data.retailPlaceAddres ?? null,
@@ -268,8 +553,16 @@ const receiptSummary = computed(() => {
     totalSum: data.totalSum,
     items: data.items ?? [],
   }
-})
-const receiptItems = computed(() => receiptSummary.value.items)
+}
+
+// Общая сумма всех чеков в очереди (ещё не сохранённых) — totalSum уже в
+// копейках, как и everywhere в проекте (см. formatMoney).
+const pendingTotal = computed(() =>
+  pendingReceipts.value.reduce(
+    (sum, item) => sum + (item.data.totalSum ?? 0),
+    0
+  )
+)
 
 const formatDate = (date) => (date ? date.toLocaleString('ru-RU') : '')
 
@@ -282,19 +575,6 @@ const formatMoney = (value) => {
     style: 'currency',
     currency: 'RUB',
   })
-}
-
-const resetReceipt = () => {
-  receiptData.value = null
-  addError.value = ''
-}
-
-// Общий обработчик успешного результата (что от камеры, что от фото)
-const lastRawQr = ref(null)
-
-const handleReceiptData = (data, extra = {}) => {
-  receiptData.value = data
-  lastRawQr.value = extra.raw ?? null
 }
 
 const handleReceiptError = (error) => {
@@ -325,17 +605,25 @@ const handleQrDetected = async (raw) => {
     return
   }
 
+  // Останавливаем камеру СРАЗУ на первом же найденном QR, а не после ответа
+  // API — иначе видео продолжает сканироваться всё время запроса/поллинга
+  // (см. pollCheck) и тот же QR может засечься повторно, давая дубль чека.
+  cameraScanner?.stop()
+
   isCheckingReceipt.value = true
   cameraError.value = ''
 
   try {
     const data = await checkReceiptByRaw(qrraw)
 
-    handleReceiptData(data, { raw: qrraw })
+    addPending(data, { raw: qrraw })
 
     closeCameraScanner()
   } catch (error) {
     handleReceiptError(error)
+    // Не удалось — даём попробовать ещё раз в той же открытой камере, а не
+    // заставляем закрывать/открывать её заново.
+    await cameraScanner?.start()
   } finally {
     isCheckingReceipt.value = false
   }
@@ -343,33 +631,78 @@ const handleQrDetected = async (raw) => {
 
 /*
  * ============================================================
- * Сканирование по фото — файл целиком шлём на сторонний API
+ * Сканирование по фото — можно выбрать сразу несколько, каждое фото — один
+ * чек, обрабатываем строго по одному (не параллельно — сторонний сервис
+ * сам ограничивает частоту запросов, см. code:3 в proverkacheka.api.js)
  * ============================================================
  */
+const MAX_SCAN_PHOTOS = 10
+
+const scanBatch = reactive({ current: 0, total: 0 })
+const scanLimitNotice = ref('')
+
+// Фото, по которым не удалось получить данные чека (сервис не нашёл чек,
+// лимит запросов и т.п.) — держим сам файл и его превью, чтобы можно было
+// посмотреть, какое именно фото не распозналось (см. FilePreview.vue).
+const scanBatchErrors = ref([])
+
+function dismissBatchError(err) {
+  URL.revokeObjectURL(err.url)
+  scanBatchErrors.value = scanBatchErrors.value.filter((e) => e.id !== err.id)
+}
+
+function clearBatchErrors() {
+  scanBatchErrors.value.forEach((err) => URL.revokeObjectURL(err.url))
+  scanBatchErrors.value = []
+}
+
 const onQrFileSelected = async (event) => {
-  const file = event.target.files?.[0]
+  const files = Array.from(event.target.files ?? [])
   event.target.value = ''
 
-  if (!file || isCheckingReceipt.value) {
+  if (!files.length || isCheckingReceipt.value) {
     return
   }
 
-  clearScannedPhoto()
-
-  scannedPhotoFile.value = file
-  scannedPhotoUrl.value = URL.createObjectURL(file)
+  const selected = files.slice(0, MAX_SCAN_PHOTOS)
+  clearBatchErrors()
+  scanLimitNotice.value =
+    files.length > MAX_SCAN_PHOTOS
+      ? `Можно загрузить не больше ${MAX_SCAN_PHOTOS} фото за раз — обработаны первые ${MAX_SCAN_PHOTOS}.`
+      : ''
 
   isScanningImage.value = true
+  scanBatch.total = selected.length
+  scanBatch.current = 0
 
-  try {
-    const data = await checkReceiptByImage(file)
+  for (const file of selected) {
+    scanBatch.current += 1
 
-    handleReceiptData(data)
-  } catch (error) {
-    handleReceiptError(error)
-  } finally {
-    isScanningImage.value = false
+    clearScannedPhoto()
+    scannedPhotoFile.value = file
+    scannedPhotoUrl.value = URL.createObjectURL(file)
+
+    try {
+      const data = await checkReceiptByImage(file)
+      addPending(data, { photoFile: file })
+    } catch (error) {
+      console.error('Ошибка при получении данных чека:', error)
+      const message =
+        error instanceof ReceiptCheckError
+          ? error.message
+          : error?.message || 'Не удалось получить данные чека'
+      scanBatchErrors.value.push({
+        id: crypto.randomUUID(),
+        file,
+        fileName: file.name,
+        message,
+        url: URL.createObjectURL(file),
+      })
+    }
   }
+
+  clearScannedPhoto()
+  isScanningImage.value = false
 }
 
 /*
@@ -438,51 +771,69 @@ function clearScannedPhoto() {
   scannedPhotoUrl.value = ''
 }
 
-// Добавление чека — маппинг ответа внешнего API уже сделан в receiptCheck.utils.js
-const addReceipt = async () => {
-  if (!receiptData.value || isAdding.value) {
-    return
-  }
+// Сохранение одного чека из очереди — маппинг ответа внешнего API уже
+// сделан в receiptCheck.utils.js. Успех убирает элемент из очереди, ошибка
+// остаётся при нём же (остальные элементы очереди не трогает).
+const addOnePending = async (item) => {
+  if (item.isAdding) return
 
   if (!userStore.user?.id) {
-    addError.value = 'Не удалось определить текущего пользователя'
+    item.addError = 'Не удалось определить текущего пользователя'
     return
   }
 
-  isAdding.value = true
-  addError.value = ''
+  item.isAdding = true
+  item.addError = ''
 
   try {
     const payload = {
       userId: userStore.user.id,
-      ...mapExternalReceipt(receiptData.value, lastRawQr.value),
+      ...mapExternalReceipt(item.data, item.rawQr),
     }
 
     const created = await receiptStore.addReceipt(payload)
 
-    // Фото прикрепляем автоматически (чекбокс позволяет отказаться) — есть
-    // только при скане по фото, у камеры своего файла нет.
-    if (attachScannedPhoto.value && scannedPhotoFile.value) {
+    if (item.attachPhoto && item.photoFile) {
       try {
-        await uploadReceiptFile(created.id, scannedPhotoFile.value)
+        await uploadReceiptFile(created.id, item.photoFile)
       } catch (error) {
         console.error('Чек создан, но не удалось прикрепить фото:', error)
       }
     }
 
-    resetReceipt()
-    clearScannedPhoto()
+    removePending(item)
   } catch (error) {
     console.error('Не удалось добавить чек:', error)
-    addError.value = error?.message || 'Не удалось добавить чек'
+    item.addError = error?.message || 'Не удалось добавить чек'
   } finally {
-    isAdding.value = false
+    item.isAdding = false
+  }
+}
+
+// Добавление всех чеков очереди разом — по одному, чтобы ошибка на одном
+// чеке не мешала сохранить остальные (упавший просто остаётся в очереди).
+const isAddingAll = ref(false)
+
+const addAllPending = async () => {
+  if (isAddingAll.value) return
+
+  isAddingAll.value = true
+  try {
+    for (const item of [...pendingReceipts.value]) {
+      await addOnePending(item)
+    }
+  } finally {
+    isAddingAll.value = false
   }
 }
 
 onBeforeUnmount(() => {
   closeCameraScanner()
   clearScannedPhoto()
+  pendingReceipts.value.forEach((item) => {
+    if (item.photoUrl) URL.revokeObjectURL(item.photoUrl)
+  })
+  clearBatchErrors()
 })
 </script>
 
@@ -557,6 +908,11 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.scan-block__photo-label {
+  font-size: 0.93rem;
+  color: var(--muted-text);
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -580,6 +936,66 @@ onBeforeUnmount(() => {
 }
 
 .scan-block__photo-remove:hover {
+  color: var(--destructive);
+}
+
+.scan-block__notice {
+  font-size: 0.86rem;
+  color: var(--muted-text);
+}
+
+.scan-block__batch-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.43rem;
+}
+
+.scan-block__batch-error {
+  display: flex;
+  align-items: center;
+  gap: 0.71rem;
+
+  padding: 0.5rem;
+  background: var(--background);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.scan-block__batch-error-thumb {
+  flex-shrink: 0;
+  width: 2.8rem;
+  height: 2.8rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.scan-block__batch-error-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-block__batch-error-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.14rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.scan-block__batch-error-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-block__batch-error-message {
+  font-size: 0.8rem;
   color: var(--destructive);
 }
 
@@ -687,16 +1103,87 @@ onBeforeUnmount(() => {
   }
 }
 
+/* ================== Ручной ввод реквизитов ================== */
+
+.manual-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.86rem;
+}
+
+.manual-form__hint {
+  font-size: 0.86rem;
+  color: var(--muted-text);
+}
+
+.manual-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.86rem;
+}
+
+@media (max-width: 768px) {
+  .manual-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.manual-form__error {
+  font-size: 0.86rem;
+  color: var(--destructive);
+}
+
+.manual-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.57rem;
+}
+
+/* ================== Очередь чеков ================== */
+
+.pending-bulk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.86rem;
+
+  padding: 0.71rem 0.86rem;
+  background: var(--background);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.pending-bulk__info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.29rem 0.86rem;
+}
+
+.pending-bulk__count {
+  font-size: 0.93rem;
+  font-weight: 600;
+}
+
+.pending-bulk__total {
+  font-size: 0.93rem;
+  color: var(--muted-text);
+}
+
 /* ================== Receipt result ================== */
-/* Не отдельная карточка (было бы "рамка в рамке" внутри .scan-page) — а
-   секция страницы, отделённая линией сверху, как .receipt-list__controls
-   отделяет шапку списка от таблицы. */
+/* Секция очереди, не отдельная вложенная карточка — фон/рамку задаёт
+   .scan-page, здесь только внутренние отступы между блоками. */
 
 .receipt-result {
   display: flex;
   flex-direction: column;
   gap: 0.86rem;
+}
 
+/* Разделитель только МЕЖДУ карточками очереди, не над самой первой (её
+   соседи выше — .scan-block/.manual-form/.pending-bulk, тоже <div>, так что
+   :first-of-type тут не сработал бы). */
+.receipt-result + .receipt-result {
   padding-top: var(--padding-secondary);
   border-top: 0.07rem solid var(--border-color);
 }
