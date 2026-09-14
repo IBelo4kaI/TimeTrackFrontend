@@ -349,8 +349,27 @@
             <input type="checkbox" v-model="item.attachPhoto" />
             <span>Прикрепить это фото к чеку</span>
           </label>
+
+          <button
+            type="button"
+            class="scan-block__photo-remove"
+            @click="openAttachPhoto(item)"
+            v-tooltip="'Заменить фото'"
+          >
+            <i class="fa-regular fa-arrows-rotate"></i>
+          </button>
         </div>
       </div>
+
+      <button
+        v-else
+        type="button"
+        class="pending-attach-photo"
+        @click="openAttachPhoto(item)"
+      >
+        <i class="fa-regular fa-image"></i>
+        Прикрепить фото к чеку
+      </button>
 
       <div class="receipt-result__footer">
         <div v-if="item.addError" class="receipt-result__error">
@@ -377,6 +396,16 @@
         </div>
       </div>
     </div>
+
+    <!-- Общий скрытый input для "Прикрепить/заменить фото" у любого элемента
+         очереди — какой именно, определяет attachPhotoTarget. -->
+    <input
+      ref="itemPhotoInput"
+      type="file"
+      accept="image/*"
+      style="display: none"
+      @change="onItemPhotoSelected"
+    />
   </div>
 </template>
 
@@ -435,7 +464,7 @@ const isCheckingReceipt = ref(false)
 const pendingReceipts = ref([])
 
 function addPending(data, extra = {}) {
-  pendingReceipts.value.push({
+  const item = {
     id: crypto.randomUUID(),
     data,
     rawQr: extra.raw ?? null,
@@ -444,12 +473,42 @@ function addPending(data, extra = {}) {
     attachPhoto: true,
     isAdding: false,
     addError: '',
-  })
+  }
+  pendingReceipts.value.push(item)
+  return item
 }
 
 function removePending(item) {
   if (item.photoUrl) URL.revokeObjectURL(item.photoUrl)
   pendingReceipts.value = pendingReceipts.value.filter((r) => r.id !== item.id)
+}
+
+// Прикрепить/заменить фото прямо в очереди — не важно, каким способом чек
+// туда попал (даже если камерой и снимок кадра не удался, или вручную).
+const itemPhotoInput = ref(null)
+let attachPhotoTarget = null
+
+function openAttachPhoto(item, { camera = false } = {}) {
+  attachPhotoTarget = item
+  if (itemPhotoInput.value) {
+    if (camera) itemPhotoInput.value.setAttribute('capture', 'environment')
+    else itemPhotoInput.value.removeAttribute('capture')
+  }
+  itemPhotoInput.value?.click()
+}
+
+function onItemPhotoSelected(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+
+  const item = attachPhotoTarget
+  attachPhotoTarget = null
+  if (!file || !item) return
+
+  if (item.photoUrl) URL.revokeObjectURL(item.photoUrl)
+  item.photoFile = file
+  item.photoUrl = URL.createObjectURL(file)
+  item.attachPhoto = true
 }
 
 // Ручной ввод реквизитов (без QR) — см. checkReceiptByRequisites.
@@ -619,9 +678,13 @@ const handleQrDetected = async (raw) => {
   try {
     const data = await checkReceiptByRaw(qrraw)
 
-    addPending(data, { raw: qrraw })
+    const item = addPending(data, { raw: qrraw })
 
     closeCameraScanner()
+
+    // Данные чека получены — предлагаем сразу сфотографировать сам чек
+    // (новым снимком камеры, а не кадром из видео сканирования QR).
+    openAttachPhoto(item, { camera: true })
   } catch (error) {
     handleReceiptError(error)
     // Не удалось — даём попробовать ещё раз в той же открытой камере, а не
@@ -1262,6 +1325,26 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   font-weight: 600;
+}
+
+.pending-attach-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+
+  padding: 0.5rem 0.71rem;
+  background: none;
+  border: 0.07rem dashed var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--muted-text);
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.pending-attach-photo:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .receipt-result__footer {
