@@ -35,9 +35,19 @@
         <i class="fa-regular fa-filter"></i>
       </button>
 
-      <div class="receipt-list__total" v-if="!isMobile">
-        Итого:
-        <b>{{ formatMoney(receiptStore.totalSum) }}</b>
+      <div class="receipt-list__end">
+        <div class="receipt-list__total" v-if="!isMobile">
+          Итого:
+          <b>{{ formatMoney(receiptStore.totalSum) }}</b>
+        </div>
+
+        <ButtonUI
+          type="accent"
+          icon="fa-regular fa-plus"
+          @click="router.push({ name: 'receipt-create' })"
+        >
+          Добавить
+        </ButtonUI>
       </div>
     </div>
 
@@ -87,6 +97,7 @@
 </template>
 
 <script setup>
+import ButtonUI from '@/components/ButtonUI.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
 import MonthYearSelect from '@/components/MonthYearSelect.vue'
@@ -98,10 +109,12 @@ import { useUserStore } from '@/stores/user.js'
 import { formatMoney } from '@/utils/receipt.utils'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import ReceiptItem from './ReceiptItem.vue'
 
 const receiptStore = useReceiptStore()
 const userStore = useUserStore()
+const router = useRouter()
 const { isMobile } = storeToRefs(useThemeStore())
 
 const filtersOpen = ref(false)
@@ -144,8 +157,14 @@ const sortOptions = [
   border-bottom: 0.07rem solid var(--border-color);
 }
 
-.receipt-list__total {
+.receipt-list__end {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-primary);
   margin-left: auto;
+}
+
+.receipt-list__total {
   color: var(--muted-text);
 }
 
@@ -179,9 +198,14 @@ const sortOptions = [
 @media (max-width: 768px) {
   .receipt-list__controls {
     align-items: center;
+    flex-wrap: wrap;
     padding-bottom: var(--gap-primary);
     gap: var(--gap-primary);
     border-bottom: none;
+  }
+
+  .receipt-list__end {
+    margin-left: 0;
   }
 
   .target-tabs {

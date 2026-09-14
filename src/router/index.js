@@ -8,6 +8,7 @@ import CalendarPage from '@/pages/calendar/Index.vue'
 import ReportPage from '@/pages/report/Index.vue'
 import VacationPage from '@/pages/vacation/Vacation.vue'
 import ReceiptPage from '@/pages/receipt/Index.vue'
+import ReceiptAddPage from '@/pages/receipt/ReceiptAdd.vue'
 import ReceiptViewPage from '@/pages/receipt/Receipt.vue'
 import SickLeavePage from '@/pages/sick_leave/Index.vue'
 import DocumentPage from '@/pages/document/Document.vue'
@@ -160,6 +161,13 @@ router.addRoute({
     action: 'read',
     layout: 'full',
   },
+})
+
+router.addRoute({
+  path: '/receipts/create',
+  name: 'receipt-create',
+  component: ReceiptAddPage,
+  meta: { title: 'Добавить чек', entity: 'receipts', action: 'create' },
 })
 
 router.addRoute({
