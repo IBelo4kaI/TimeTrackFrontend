@@ -28,11 +28,14 @@
       Ввести вручную
     </ButtonUI>
 
+    <!-- Без capture — иначе на большинстве мобильных браузеров пикер
+         пропускает галерею и сразу открывает камеру (для живой съёмки уже
+         есть отдельная кнопка выше), а тут нужен выбор существующих фото,
+         в том числе нескольких сразу. -->
     <input
       ref="qrFileInput"
       type="file"
       accept="image/*"
-      capture="environment"
       multiple
       style="display: none"
       @change="onQrFileSelected"
