@@ -329,7 +329,9 @@ watch(
 }
 
 .receipt-paper__brand-name {
-  font-size: 1.35rem;
+  /* em, не rem — должно масштабироваться вместе с font-size чека
+     (уменьшается для печати, см. @media print ниже) */
+  font-size: 1.57em;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -346,7 +348,7 @@ watch(
 
 .receipt-paper__label {
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.91em;
   color: var(--paper-muted);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -387,7 +389,7 @@ watch(
 
 .receipt-paper__items-head {
   color: var(--paper-muted);
-  font-size: 0.78rem;
+  font-size: 0.91em;
   padding-bottom: 0.36rem;
   border-bottom: 0.07rem dashed var(--paper-line);
   margin-bottom: 0.5rem;
@@ -399,7 +401,7 @@ watch(
 
 .receipt-paper__item-nds {
   color: var(--paper-muted);
-  font-size: 0.78rem;
+  font-size: 0.91em;
   margin-top: 0.15rem;
 }
 
@@ -413,7 +415,7 @@ watch(
 .receipt-paper__total {
   display: flex;
   justify-content: space-between;
-  font-size: 1.14rem;
+  font-size: 1.33em;
   font-weight: 700;
 }
 
@@ -436,10 +438,29 @@ watch(
 
 @media print {
   .receipt-paper {
+    /* НЕ 100% — иначе чек растягивается на всю ширину печатной страницы
+       (A4). Ширина сильно меньше, чем на экране (28.75rem) — реальная
+       кассовая лента узкая (~58мм) */
     filter: none;
-    max-width: 100%;
+    max-width: 220px;
     margin: 0;
     animation: none;
+  }
+
+  .receipt-paper__body {
+    font-size: 0.5rem;
+    padding: 0.6rem;
+  }
+
+  .receipt-paper__qr img {
+    width: 5.5rem;
+    height: 5.5rem;
+  }
+
+  .receipt-paper__items-head,
+  .receipt-paper__item-row {
+    grid-template-columns: 1fr 2.2rem 1.6rem 2.4rem;
+    gap: 0.25rem;
   }
 }
 </style>
