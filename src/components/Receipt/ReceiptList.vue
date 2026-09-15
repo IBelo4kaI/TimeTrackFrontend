@@ -1,55 +1,101 @@
 <template>
   <div class="receipt-list">
-    <div class="receipt-list__controls">
-      <template v-if="isAdmin">
-        <Tabs
-          :tabs="targets"
-          v-model="receiptStore.target"
-          type="line"
-          class="target-tabs"
-        />
-      </template>
+    <AppTable
+      :headers="headers"
+      :rows="rows"
+      row-key="id"
+      :loading="receiptStore.isLoading"
+      empty-text="Чеки не найдены"
+    >
+      <template #toolbar>
+        <template v-if="isAdmin">
+          <Tabs
+            :tabs="targets"
+            v-model="receiptStore.target"
+            type="line"
+            class="target-tabs"
+          />
+        </template>
 
-      <template v-if="!isMobile">
-        <MonthYearSelect
-          variant="line"
-          align="center"
-          v-model:month="receiptStore.selectedMonth"
-          v-model:year="receiptStore.selectedYear"
-        />
-        <SelectUI
-          variant="line"
-          align="center"
-          :options="sortOptions"
-          v-model="receiptStore.sortBy"
-        />
-      </template>
+        <template v-if="!isMobile">
+          <MonthYearSelect
+            align="center"
+            v-model:month="receiptStore.selectedMonth"
+            v-model:year="receiptStore.selectedYear"
+          />
+          <SelectUI
+            align="center"
+            :options="sortOptions"
+            v-model="receiptStore.sortBy"
+          />
+        </template>
 
-      <button
-        v-else
-        type="button"
-        class="filter-trigger"
-        @click="filtersOpen = true"
-        aria-label="Фильтры"
-      >
-        <i class="fa-regular fa-filter"></i>
-      </button>
-
-      <div class="receipt-list__end">
-        <div class="receipt-list__total" v-if="!isMobile">
-          Итого:
-          <b>{{ formatMoney(receiptStore.totalSum) }}</b>
-        </div>
-
-        <ButtonUI
-          type="accent"
-          icon="fa-regular fa-plus"
-          @click="router.push({ name: 'receipt-create' })"
+        <button
+          v-else
+          type="button"
+          class="filter-trigger"
+          @click="filtersOpen = true"
+          aria-label="Фильтры"
         >
-          Добавить
-        </ButtonUI>
-      </div>
-    </div>
+          <i class="fa-regular fa-filter"></i>
+        </button>
+
+        <div class="receipt-list__end">
+          <div class="receipt-list__total" v-if="!isMobile">
+            Итого:
+            <b>{{ formatMoney(receiptStore.totalSum) }}</b>
+          </div>
+
+          <ButtonUI
+            type="accent"
+            icon="fa-regular fa-plus"
+            @click="router.push({ name: 'receipt-create' })"
+          >
+            Добавить
+          </ButtonUI>
+        </div>
+      </template>
+
+      <template #cell-operationType="{ value }">
+        <Badge type="muted">{{ getOperationTypeLabel(value) }}</Badge>
+      </template>
+
+      <template #cell-totalSum="{ value }">
+        <Badge type="muted">{{ formatMoney(value) }}</Badge>
+      </template>
+
+      <template #actions="{ row }">
+        <div class="row-actions">
+          <ButtonUI
+            type="muted-accent"
+            icon="fa-regular fa-arrow-up-right-from-square"
+            v-tooltip="'Открыть чек'"
+            @click="onOpen(row)"
+          />
+          <template v-if="canManageRow(row)">
+            <ButtonUI
+              type="muted-accent"
+              icon="fa-regular fa-file-import"
+              v-tooltip="'Прикрепить фото/скан чека'"
+              @click="triggerFileInput(row.id)"
+            />
+            <input
+              :ref="(el) => setFileInputRef(row.id, el)"
+              type="file"
+              accept="image/*,.pdf"
+              style="display: none"
+              @change="(e) => onFileSelected(row.id, e)"
+            />
+            <ButtonUI
+              type="destructive"
+              icon="fa-regular fa-trash-can-xmark"
+              v-tooltip="'Удалить чек'"
+              @click="onDelete(row)"
+            />
+          </template>
+        </div>
+      </template>
+    </AppTable>
 
     <MobileFilterDrawer v-model="filtersOpen">
       <MonthYearSelect
@@ -65,55 +111,38 @@
         v-model="receiptStore.sortBy"
       />
     </MobileFilterDrawer>
-
-    <table class="receipt-list__items">
-      <tbody>
-        <template
-          v-if="
-            !receiptStore.isLoading && receiptStore.filterReceipts.length > 0
-          "
-          v-for="item in receiptStore.filterReceipts"
-          :key="item.id"
-        >
-          <ReceiptItem :item="item" :is-admin="receiptStore.target == 'all'" />
-        </template>
-        <template v-else-if="!receiptStore.isLoading">
-          <tr>
-            <td class="receipt-item__empty">
-              <span>Чеки не найдены</span>
-            </td>
-          </tr>
-        </template>
-        <template v-else>
-          <tr>
-            <td class="receipt-item__empty">
-              <LoaderTitle />
-            </td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
   </div>
 </template>
 
 <script setup>
+import AppTable from '@/components/AppTable.vue'
+import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
-import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
 import MonthYearSelect from '@/components/MonthYearSelect.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
+import { uploadReceiptFile } from '@/services/receipt.api'
+import { useConfirmModal } from '@/stores/confirmModal'
+import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
 import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user.js'
-import { formatMoney } from '@/utils/receipt.utils'
+import { getDateNamed } from '@/utils/calendar.utils'
+import { parseDate } from '@/utils/date.utils'
+import {
+  formatMoney,
+  getOperationTypeLabel,
+  nullString,
+} from '@/utils/receipt.utils'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import ReceiptItem from './ReceiptItem.vue'
 
 const receiptStore = useReceiptStore()
 const userStore = useUserStore()
+const notificationStore = useNotificationStore()
+const confirmModalStore = useConfirmModal()
 const router = useRouter()
 const { isMobile } = storeToRefs(useThemeStore())
 
@@ -132,6 +161,104 @@ const sortOptions = [
   { label: 'По дате добавления', value: 'createdAt' },
   { label: 'По дате чека', value: 'ticketDate' },
 ]
+
+const headers = computed(() => {
+  const cols = [{ valueKey: 'operationType', title: 'Тип' }]
+  if (receiptStore.target == 'all') {
+    cols.push({ valueKey: 'userName', title: 'Сотрудник' })
+  }
+  cols.push(
+    { valueKey: 'sellerDisplay', title: 'Продавец' },
+    {
+      valueKey: 'ticketDate',
+      title: 'Дата чека',
+      format: (v) =>
+        v ? `${getDateNamed(parseDate(v))} ${parseDate(v).getFullYear()}` : '—',
+    },
+    { valueKey: 'totalSum', title: 'Сумма' },
+    {
+      valueKey: 'createdAt',
+      title: 'Добавлен',
+      format: (v) => (v ? parseDate(v).toLocaleDateString() : '—'),
+    }
+  )
+  return cols
+})
+
+const rows = computed(() =>
+  receiptStore.filterReceipts.map((item) => ({
+    ...item,
+    sellerDisplay: nullString(item.sellerName) || `ИНН ${item.sellerInn}`,
+    userName:
+      receiptStore.target == 'all' ? getUserFullName(item.userId) : null,
+  }))
+)
+
+// ФИО пользователя по id из уже загруженного списка сотрудников
+// (userStore.usersAll), см. VacationList.vue
+function getUserFullName(userId) {
+  if (!userId || !userStore.usersAll) return null
+  const user = userStore.usersAll.find((u) => u.id == userId)
+  if (!user) return null
+  return [user.surname, user.name, user.patronymic].filter(Boolean).join(' ')
+}
+
+// свой чек всегда можно удалить/дополнить, чужой — только с
+// receipts.all:delete/edit (зеркалит RequireOwnerOrAll на бэке)
+function canManageRow(row) {
+  if (receiptStore.target == 'all')
+    return (
+      userStore.hasPermission('receipts.all', 'delete') ||
+      userStore.hasPermission('receipts.all', 'edit')
+    )
+  return true
+}
+
+function onOpen(row) {
+  router.push({ name: 'receipt-view', params: { id: row.id } })
+}
+
+function onDelete(row) {
+  confirmModalStore.open(async () => {
+    await receiptStore.removeReceipt(row.id)
+    notificationStore.addNotification('Чек удалён', 'success')
+  }, 'Вы действительно хотите удалить чек?')
+}
+
+const fileInputs = new Map()
+
+function setFileInputRef(id, el) {
+  if (el) fileInputs.set(id, el)
+  else fileInputs.delete(id)
+}
+
+function triggerFileInput(id) {
+  fileInputs.get(id)?.click()
+}
+
+async function onFileSelected(id, event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  if (file.size > maxSize) {
+    notificationStore.addNotification(
+      'Файл слишком большой. Максимальный размер: 10MB',
+      'error'
+    )
+    event.target.value = ''
+    return
+  }
+
+  try {
+    await uploadReceiptFile(id, file)
+    notificationStore.addNotification('Файл прикреплён', 'success')
+  } catch {
+    notificationStore.addNotification('Ошибка при загрузке файла', 'error')
+  }
+
+  event.target.value = ''
+}
 </script>
 
 <style scoped>
@@ -141,20 +268,14 @@ const sortOptions = [
   display: flex;
   flex-direction: column;
 
-  background: var(--foreground);
-  border-radius: var(--border-radius);
-  border: 0.07rem solid var(--border-color);
-
-  padding: var(--padding-secondary);
-
   height: 100%;
 }
 
-.receipt-list__controls {
-  display: flex;
+/* toolbar-слот AppTable уже даёт flex-wrap/gap/бордер — донастраиваем только
+   вертикальное выравнивание под line-style селекты */
+:deep(.table-toolbar) {
   align-items: flex-end;
   gap: 2rem;
-  border-bottom: 0.07rem solid var(--border-color);
 }
 
 .receipt-list__end {
@@ -168,16 +289,10 @@ const sortOptions = [
   color: var(--muted-text);
 }
 
-.receipt-list__items {
-  border-collapse: collapse;
-}
-
-.receipt-item__empty {
-  padding: var(--padding-secondary);
-  font-size: 1.3rem;
-  font-weight: 700;
-  text-align: center;
-  color: var(--muted-text);
+.row-actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
 }
 
 .filter-trigger {
@@ -196,12 +311,9 @@ const sortOptions = [
 }
 
 @media (max-width: 768px) {
-  .receipt-list__controls {
+  :deep(.table-toolbar) {
     align-items: center;
-    flex-wrap: wrap;
-    padding-bottom: var(--gap-primary);
     gap: var(--gap-primary);
-    border-bottom: none;
   }
 
   .receipt-list__end {

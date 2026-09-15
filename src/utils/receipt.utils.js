@@ -38,3 +38,20 @@ export const getOperationTypeLabel = (type) =>
 
 export const getTaxationTypeLabel = (type) =>
   type == null ? null : (TAXATION_TYPE_LABELS[type] ?? `Тип ${type}`)
+
+// Код ставки НДС по позиции чека (ФФД, тег 1199) — 1-6 по официальной
+// спецификации; 11 подтверждён эмпирически (несколько реальных чеков) как
+// новая ставка 22%, появившаяся в 2026 году в отдельной структуре
+// amountsReceiptNds, а не в старых плоских nds20/nds10.
+export const NDS_RATE_LABELS = {
+  1: '20%',
+  2: '10%',
+  3: '20/120',
+  4: '10/110',
+  5: '0%',
+  6: 'без НДС',
+  11: '22%',
+}
+
+export const getNdsRateLabel = (code) =>
+  code == null ? null : (NDS_RATE_LABELS[code] ?? `ставка (код ${code})`)

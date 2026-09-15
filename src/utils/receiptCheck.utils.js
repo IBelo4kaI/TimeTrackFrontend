@@ -48,6 +48,18 @@ export function parseExternalDate(value) {
 // двух местах — дата приходит как dateTime, а не ticketDate, и адрес как
 // retailPlaceAddress без опечатки — поэтому ниже проверяем оба варианта
 // имени, а не только документированный.
+// amountsReceiptNds.amountsNds — список {nds: код, ndsSum}, которым сервис
+// отдаёт суммы по ставкам, не покрытым старыми плоскими полями
+// nds20/nds10/nds0/ndsNo. Пока единственный встреченный на реальных чеках
+// код — 11 (ставка 22%, введённая в 2026 году, см. getNdsRateLabel в
+// receipt.utils.js).
+function sumNdsByCode(json, code) {
+  const list = json.amountsReceiptNds?.amountsNds ?? []
+  return list
+    .filter((row) => row.nds === code)
+    .reduce((sum, row) => sum + (row.ndsSum ?? 0), 0)
+}
+
 export function mapExternalReceipt(json, rawQr) {
   return {
     // fiscalDriveNumber/fiscalDocumentNumber/fiscalSign/requestNumber/userInn
@@ -59,7 +71,10 @@ export function mapExternalReceipt(json, rawQr) {
     ticketDate: parseExternalDate(json.ticketDate ?? json.dateTime),
     totalSum: json.totalSum,
     sellerInn: String(json.userInn ?? '').trim(),
-    sellerName: json.retailPlace ?? json.user ?? null,
+    // user — организация/ИП-продавец, retailPlace — конкретная точка продаж
+    // ("место расчётов", напр. "ТЦ 1357") — раньше retailPlace ошибочно
+    // стоял первым приоритетом, и продавцом показывался не тот
+    sellerName: json.user ?? json.retailPlace ?? null,
     operationType: json.operationType,
     retailPlaceAddress:
       String(json.retailPlaceAddress ?? json.retailPlaceAddres ?? '').trim() ||
@@ -68,19 +83,33 @@ export function mapExternalReceipt(json, rawQr) {
       json.requestNumber != null ? String(json.requestNumber) : null,
     cashTotalSum: json.cashTotalSum,
     ecashTotalSum: json.ecashTotalSum,
-    taxationType: json.taxationType,
+    // на реальных ответах поле называется appliedTaxationType, а не
+    // задокументированное taxationType — из-за этого СНО раньше не
+    // сохранялась вообще (всегда уходила как null)
+    taxationType: json.appliedTaxationType ?? json.taxationType,
     // nds18 — историческое имя поля во внешнем API, по факту это ставка
     // 20% (см. тот же комментарий в 022_add_receipts.sql на бэке)
     nds20: json.nds20 ?? json.nds18 ?? 0,
     nds10: json.nds10 ?? json.nds ?? 0,
     nds0: json.nds0 ?? 0,
     ndsNo: json.ndsNo ?? 0,
+    nds22: sumNdsByCode(json, 11),
+
+    shiftNumber: json.shiftNumber ?? null,
+    kktRegId: String(json.kktRegId ?? '').trim() || null,
+    fiscalDocumentFormatVer: json.fiscalDocumentFormatVer ?? null,
+    machineNumber: json.machineNumber ?? null,
+    retailPlace: String(json.retailPlace ?? '').trim() || null,
+    operator: String(json.operator ?? '').trim() || null,
+    prepaidSum: json.prepaidSum ?? null,
+
     rawQr,
     items: (json.items ?? []).map((i) => ({
       name: i.name,
       price: i.price,
       quantity: i.quantity,
       sum: i.sum,
+      ndsCode: i.nds ?? null,
     })),
   }
 }

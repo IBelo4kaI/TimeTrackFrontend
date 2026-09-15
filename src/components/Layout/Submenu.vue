@@ -15,4 +15,10 @@ const store = useSubmenuStore()
   background: var(--foreground);
   border-bottom: 0.07rem solid var(--border-color);
 }
+
+@media print {
+  .submenu {
+    display: none !important;
+  }
+}
 </style>

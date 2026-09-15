@@ -112,4 +112,10 @@ onMounted(load)
 .back-link:hover {
   color: var(--accent);
 }
+
+@media print {
+  .back-row {
+    display: none !important;
+  }
+}
 </style>
