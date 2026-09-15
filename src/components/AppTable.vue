@@ -128,6 +128,7 @@
                   <td
                      v-for="header in headers"
                      :key="headerKey(header.valueKey)"
+                     :data-label="header.title"
                      :class="[
                         'td',
                         header.align ? `align-${header.align}` : 'align-left',
@@ -560,5 +561,92 @@ function handleRowClick(row: Record<string, unknown>, index: number) {
    background: transparent;
    cursor: default;
    color: var(--muted-text);
+}
+
+/* ─── Mobile: строки таблицы становятся карточками label/value ─── */
+@media (max-width: 768px) {
+   .table-toolbar {
+      padding: var(--padding-secondary);
+   }
+
+   .table-scroll {
+      overflow-x: visible;
+      padding: var(--padding-secondary);
+   }
+
+   .table,
+   thead,
+   tbody,
+   tr,
+   td {
+      display: block;
+      width: 100%;
+   }
+
+   thead {
+      display: none;
+   }
+
+   .tr {
+      border: 0.07rem solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 0 var(--padding-secondary);
+   }
+
+   .tr + .tr {
+      margin-top: var(--gap-primary);
+   }
+
+   .tr:last-child {
+      border-bottom: 0.07rem solid var(--border-color);
+   }
+
+   .td {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--gap-primary);
+      padding: 0.71rem 0;
+      border-bottom: 0.07rem dashed var(--border-color);
+      text-align: right;
+   }
+
+   .td:last-child {
+      border-bottom: none;
+   }
+
+   .td::before {
+      content: attr(data-label);
+      flex-shrink: 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted-text);
+      text-align: left;
+   }
+
+   .cell-value {
+      text-align: right;
+   }
+
+   .actions-cell {
+      width: 100%;
+      white-space: normal;
+      justify-content: flex-end;
+      padding-right: 0;
+   }
+
+   .actions-cell::before {
+      content: none;
+   }
+
+   .state-cell {
+      display: block;
+      text-align: center;
+      padding: 2rem var(--padding-secondary);
+   }
+
+   .state-cell::before {
+      content: none;
+   }
 }
 </style>
