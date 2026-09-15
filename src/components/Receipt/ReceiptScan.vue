@@ -84,6 +84,11 @@
       <div v-if="cameraError" class="qr-camera__error">
         {{ cameraError }}
       </div>
+
+      <label class="qr-camera__continuous">
+        <input type="checkbox" v-model="continuousScan" />
+        Сканировать чеки подряд, не закрывая камеру
+      </label>
     </div>
   </div>
 
@@ -471,7 +476,9 @@ import { useConfirmModal } from '@/stores/confirmModal'
 import { useFilePreviewStore } from '@/stores/filePreview'
 import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
+import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user'
+import { storeToRefs } from 'pinia'
 
 QrScanner.WORKER_PATH = QrScannerWorkerPath
 
@@ -480,6 +487,7 @@ const userStore = useUserStore()
 const filePreviewStore = useFilePreviewStore()
 const confirmModalStore = useConfirmModal()
 const notificationStore = useNotificationStore()
+const { isMobile } = storeToRefs(useThemeStore())
 
 const qrFileInput = ref(null)
 const qrVideo = ref(null)
@@ -489,6 +497,11 @@ let cameraScanner = null
 const isScanningImage = ref(false)
 const cameraOpen = ref(false)
 const cameraError = ref('')
+
+// Сканировать чеки подряд, не закрывая камеру после каждого — камера
+// перезапускается сама в handleQrDetected, как только предыдущий чек
+// обработан (isCheckingReceipt защищает от повторного срабатывания раньше)
+const continuousScan = ref(false)
 
 // Превью фото, пока идёт распознавание конкретно ЭТОГО скана — как только
 // чек разобран, файл переезжает в свой pending-элемент очереди (см.
@@ -736,17 +749,30 @@ const handleQrDetected = async (raw) => {
 
     const item = addPending(data, { raw: qrraw })
 
+    if (continuousScan.value) {
+      // Не закрываем камеру — сразу готовы к следующему чеку. Предложение
+      // сфотографировать чек в этом режиме мешало бы (модалка перекрывает
+      // камеру и останавливает поток сканирования), поэтому пропускаем его.
+      await cameraScanner?.start()
+      return
+    }
+
     closeCameraScanner()
 
-    // Данные чека получены — предлагаем сфотографировать сам чек. Именно
-    // через confirmModal, а не сразу input.click(): на мобильных браузерах
-    // клик по input, вызванный уже ПОСЛЕ await сетевого запроса (checkReceiptByRaw
-    // выше), не считается настоящим пользовательским жестом — камера не
-    // откроется. Клик по "Да" в модалке — свежий жест прямо перед открытием.
-    confirmModalStore.open(
-      () => openAttachPhoto(item, { camera: true }),
-      'Сфотографировать чек?'
-    )
+    // Данные чека получены — предлагаем сфотографировать сам чек. Только на
+    // мобильных: там это осмысленно (телефон и так под рукой, можно сразу
+    // сделать фото самого чека) и обязательно через confirmModal, а не сразу
+    // input.click() — на мобильных браузерах клик по input, вызванный уже
+    // ПОСЛЕ await сетевого запроса (checkReceiptByRaw выше), не считается
+    // настоящим пользовательским жестом, камера не откроется. Клик по "Да"
+    // в модалке — свежий жест прямо перед открытием. На десктопе камеры нет
+    // и предложение не нужно.
+    if (isMobile.value) {
+      confirmModalStore.open(
+        () => openAttachPhoto(item, { camera: true }),
+        'Сфотографировать чек?'
+      )
+    }
   } catch (error) {
     handleReceiptError(error)
     // Не удалось — даём попробовать ещё раз в той же открытой камере, а не
@@ -1246,6 +1272,20 @@ onBeforeUnmount(() => {
 .qr-camera__error {
   font-size: 0.86rem;
   color: var(--destructive);
+}
+
+.qr-camera__continuous {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  color: var(--muted-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.qr-camera__continuous input {
+  cursor: pointer;
 }
 
 @keyframes scanModalIn {
