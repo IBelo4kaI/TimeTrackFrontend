@@ -9,7 +9,11 @@
       type="accent"
       icon="fa-regular fa-camera"
       :disabled="
-        isScanningImage || isCheckingReceipt || cameraOpen || manualMode || isAddingAll
+        isScanningImage ||
+        isCheckingReceipt ||
+        cameraOpen ||
+        manualMode ||
+        isAddingAll
       "
       @click="openCameraScanner"
     >
@@ -20,7 +24,11 @@
       type="muted"
       icon="fa-regular fa-image"
       :disabled="
-        isScanningImage || isCheckingReceipt || cameraOpen || manualMode || isAddingAll
+        isScanningImage ||
+        isCheckingReceipt ||
+        cameraOpen ||
+        manualMode ||
+        isAddingAll
       "
       @click="qrFileInput.click()"
     >
@@ -31,7 +39,11 @@
       type="muted"
       icon="fa-regular fa-keyboard"
       :disabled="
-        isScanningImage || isCheckingReceipt || cameraOpen || manualMode || isAddingAll
+        isScanningImage ||
+        isCheckingReceipt ||
+        cameraOpen ||
+        manualMode ||
+        isAddingAll
       "
       @click="manualMode = true"
     >
@@ -64,7 +76,9 @@
           {{
             isCheckingReceipt
               ? 'Получаем данные чека...'
-              : 'Наведите камеру на QR-код чека'
+              : scanCooldown
+                ? 'Чек добавлен — уберите его из кадра'
+                : 'Наведите камеру на QR-код чека'
           }}
         </span>
 
@@ -74,11 +88,18 @@
         ></i>
       </div>
 
-      <video ref="qrVideo" class="qr-camera__video" playsinline></video>
+      <div class="qr-camera__video-wrap">
+        <video ref="qrVideo" class="qr-camera__video" playsinline></video>
 
-      <div v-if="isCheckingReceipt" class="qr-camera__loading">
-        <i class="fa-regular fa-spinner fa-spin"></i>
-        Проверяем чек...
+        <div v-if="isCheckingReceipt" class="qr-camera__video-overlay">
+          <i class="fa-regular fa-spinner fa-spin"></i>
+          Проверяем чек...
+        </div>
+
+        <div v-else-if="scanCooldown" class="qr-camera__video-overlay">
+          <i class="fa-regular fa-spinner fa-spin"></i>
+          Чек добавлен — уберите его из кадра
+        </div>
       </div>
 
       <div v-if="cameraError" class="qr-camera__error">
@@ -156,7 +177,13 @@
             v-if="err.url"
             type="button"
             class="scan-block__batch-error-thumb"
-            @click="filePreviewStore.open({ url: err.url, originalName: err.file.name, mimeType: err.file.type })"
+            @click="
+              filePreviewStore.open({
+                url: err.url,
+                originalName: err.file.name,
+                mimeType: err.file.type,
+              })
+            "
             v-tooltip="'Посмотреть фото'"
           >
             <img :src="err.url" :alt="err.file.name" />
@@ -164,7 +191,9 @@
 
           <div class="scan-block__batch-error-text">
             <span class="scan-block__batch-error-name">{{ err.fileName }}</span>
-            <span class="scan-block__batch-error-message">{{ err.message }}</span>
+            <span class="scan-block__batch-error-message">
+              {{ err.message }}
+            </span>
           </div>
 
           <button
@@ -182,8 +211,8 @@
     <!-- ================== Ввод реквизитов вручную ================== -->
     <div v-if="manualMode" class="manual-form">
       <p class="manual-form__hint">
-        Реквизиты обычно печатаются внизу самого чека — сервис найдёт чек по
-        ним так же, как по QR-коду.
+        Реквизиты обычно печатаются внизу самого чека — сервис найдёт чек по ним
+        так же, как по QR-коду.
       </p>
 
       <div class="manual-form__grid">
@@ -259,7 +288,8 @@
           Чеков в очереди: {{ pendingReceipts.length }}
         </span>
         <span class="pending-bulk__total">
-          Итого: <b>{{ formatMoney(pendingTotal) }}</b>
+          Итого:
+          <b>{{ formatMoney(pendingTotal) }}</b>
         </span>
       </div>
 
@@ -274,11 +304,7 @@
       </ButtonUI>
     </div>
 
-    <div
-      v-for="item in pendingReceipts"
-      :key="item.id"
-      class="receipt-result"
-    >
+    <div v-for="item in pendingReceipts" :key="item.id" class="receipt-result">
       <div class="receipt-result__header">
         <h3>Данные чека</h3>
 
@@ -357,10 +383,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="(row, index) in getSummary(item).items"
-              :key="index"
-            >
+            <tr v-for="(row, index) in getSummary(item).items" :key="index">
               <td>{{ index + 1 }}</td>
               <td>{{ row.name }}</td>
               <td>{{ row.quantity }}</td>
@@ -502,6 +525,15 @@ const cameraError = ref('')
 // перезапускается сама в handleQrDetected, как только предыдущий чек
 // обработан (isCheckingReceipt защищает от повторного срабатывания раньше)
 const continuousScan = ref(false)
+
+// Пауза перед перезапуском камеры в continuousScan — тот же QR физически
+// ещё в кадре сразу после успешного добавления (пользователь не успел
+// убрать чек), и камера мгновенно ловит его повторно, создавая дубль в
+// очереди на добавление (backend-проверка на дубликат срабатывает только
+// при реальном сохранении чека, не при добавлении в очередь). Даём
+// пользователю время убрать чек из кадра, прежде чем снова слушать камеру.
+const SCAN_COOLDOWN_MS = 1500
+const scanCooldown = ref(false)
 
 // Превью фото, пока идёт распознавание конкретно ЭТОГО скана — как только
 // чек разобран, файл переезжает в свой pending-элемент очереди (см.
@@ -753,7 +785,13 @@ const handleQrDetected = async (raw) => {
       // Не закрываем камеру — сразу готовы к следующему чеку. Предложение
       // сфотографировать чек в этом режиме мешало бы (модалка перекрывает
       // камеру и останавливает поток сканирования), поэтому пропускаем его.
-      await cameraScanner?.start()
+      // Перед перезапуском — пауза (см. SCAN_COOLDOWN_MS), иначе камера
+      // мгновенно ловит тот же ещё не убранный из кадра QR повторно.
+      isCheckingReceipt.value = false
+      scanCooldown.value = true
+      await new Promise((resolve) => setTimeout(resolve, SCAN_COOLDOWN_MS))
+      scanCooldown.value = false
+      if (cameraOpen.value) await cameraScanner?.start()
       return
     }
 
@@ -911,6 +949,7 @@ const openCameraScanner = async () => {
 
 const closeCameraScanner = () => {
   cameraOpen.value = false
+  scanCooldown.value = false
 
   if (cameraScanner) {
     cameraScanner.stop()
@@ -1248,6 +1287,10 @@ onBeforeUnmount(() => {
   color: var(--accent);
 }
 
+.qr-camera__video-wrap {
+  position: relative;
+}
+
 .qr-camera__video {
   width: 100%;
   max-height: 20rem;
@@ -1259,14 +1302,23 @@ onBeforeUnmount(() => {
   object-fit: cover;
 }
 
-.qr-camera__loading {
+.qr-camera__video-overlay {
+  position: absolute;
+  inset: 0;
+
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.57rem;
+  text-align: center;
+  padding: 1rem;
 
   font-size: 0.93rem;
-  color: var(--muted-text);
+  font-weight: 600;
+  color: #fff;
+
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: var(--border-radius);
 }
 
 .qr-camera__error {
