@@ -16,6 +16,7 @@ import SettingsPage from '@/pages/settings/Index.vue'
 import VacationApplicationPage from '@/pages/document/VacationApplication.vue'
 import VacationFileViewerPage from '@/pages/document/VacationFileViewer.vue'
 import ChatPage from '@/pages/chat/Index.vue'
+import PrintPage from '@/pages/print/Print.vue'
 
 export const routesNavigation = {
   dashboard: {
@@ -175,6 +176,22 @@ router.addRoute({
   name: 'receipt-view',
   component: ReceiptViewPage,
   meta: { title: 'Чек', entity: 'receipts', action: 'read' },
+})
+
+// Универсальная страница печати — сегодня только чеки (см. PRINT_REGISTRY
+// в Print.vue), :type задел под другие типы документов в будущем.
+router.addRoute({
+  path: '/print/:type',
+  name: 'print',
+  component: PrintPage,
+  meta: {
+    title: 'Печать',
+    // Печать пока доступна только админам (receipts.all), не всем
+    // сотрудникам — см. isAdmin в ReceiptList.vue/ReceiptInfo.vue
+    entity: 'receipts.all',
+    action: 'read',
+    layout: 'full',
+  },
 })
 
 router.addRoute({

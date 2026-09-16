@@ -6,6 +6,8 @@
       row-key="id"
       :loading="receiptStore.isLoading"
       empty-text="Чеки не найдены"
+      :selectable="isAdmin"
+      v-model:selected-rows="selectedIds"
     >
       <template #toolbar>
         <template v-if="isAdmin">
@@ -47,6 +49,16 @@
           </div>
 
           <ButtonUI
+            v-if="isAdmin"
+            type="muted"
+            icon="fa-regular fa-print"
+            :disabled="!selectedIds.length"
+            @click="onPrintSelected"
+          >
+            Печать{{ selectedIds.length ? ` (${selectedIds.length})` : '' }}
+          </ButtonUI>
+
+          <ButtonUI
             type="accent"
             icon="fa-regular fa-plus"
             @click="router.push({ name: 'receipt-create' })"
@@ -56,8 +68,15 @@
         </div>
       </template>
 
-      <template #cell-operationType="{ value }">
-        <Badge type="muted">{{ getOperationTypeLabel(value) }}</Badge>
+      <template #cell-operationType="{ value, row }">
+        <Badge
+          type="muted"
+          class="operation-type-badge"
+          v-tooltip="'Открыть чек'"
+          @click="onOpen(row)"
+        >
+          {{ getOperationTypeLabel(value) }}
+        </Badge>
       </template>
 
       <template #cell-totalSum="{ value }">
@@ -142,7 +161,7 @@ import {
   nullString,
 } from '@/utils/receipt.utils'
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const receiptStore = useReceiptStore()
@@ -153,6 +172,28 @@ const router = useRouter()
 const { isMobile } = storeToRefs(useThemeStore())
 
 const filtersOpen = ref(false)
+
+const selectedIds = ref([])
+
+// Выбор завязан на конкретный набор строк (id) — при смене вкладки
+// "Мои чеки"/"Все чеки" или фильтра список строк меняется целиком, старый
+// выбор теряет смысл
+watch(
+  () => [receiptStore.target, receiptStore.selectedMonth, receiptStore.selectedYear],
+  () => {
+    selectedIds.value = []
+  }
+)
+
+function onPrintSelected() {
+  if (!selectedIds.value.length) return
+  const url = router.resolve({
+    name: 'print',
+    params: { type: 'receipt' },
+    query: { ids: selectedIds.value.join(',') },
+  }).href
+  window.open(url, '_blank')
+}
 
 // как у vacation.all:read (см. комментарий в VacationList.vue) — вкладка
 // "Все чеки" для бухгалтерии/руководителей
@@ -276,6 +317,15 @@ async function onFileSelected(id, event) {
   flex-direction: column;
 
   height: 100%;
+}
+
+.operation-type-badge {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.operation-type-badge:hover {
+  opacity: 0.75;
 }
 
 /* toolbar-слот AppTable уже даёт flex-wrap/gap/бордер — донастраиваем только

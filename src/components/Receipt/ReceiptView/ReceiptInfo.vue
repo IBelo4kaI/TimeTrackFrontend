@@ -121,7 +121,12 @@
         >
           Скачать чек
         </ButtonUI>
-        <ButtonUI type="muted" icon="fa-regular fa-print" @click="onPrint">
+        <ButtonUI
+          v-if="isAdmin"
+          type="muted"
+          icon="fa-regular fa-print"
+          @click="onPrint"
+        >
           Печать
         </ButtonUI>
       </div>
@@ -296,7 +301,14 @@ async function onDownload() {
 }
 
 function onPrint() {
-  window.print()
+  // Отдельная безchrome-страница печати (см. router/index.js, Print.vue) —
+  // открываем в новой вкладке, чтобы не терять текущую страницу чека.
+  const url = router.resolve({
+    name: 'print',
+    params: { type: 'receipt' },
+    query: { ids: props.receipt.id },
+  }).href
+  window.open(url, '_blank')
 }
 
 const employee = computed(() =>
@@ -593,16 +605,6 @@ async function onDelete() {
 
   .info__actions {
     flex-direction: column;
-  }
-}
-
-@media print {
-  .info__panel {
-    display: none !important;
-  }
-
-  .info-layout {
-    display: block;
   }
 }
 </style>

@@ -1,5 +1,9 @@
 <template>
-  <div class="receipt-paper" ref="paperRef">
+  <div
+    class="receipt-paper"
+    :class="{ 'receipt-paper--compact': compact }"
+    ref="paperRef"
+  >
     <div class="receipt-paper__zigzag receipt-paper__zigzag--top"></div>
 
     <div class="receipt-paper__body">
@@ -149,6 +153,10 @@ import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   receipt: { type: Object, required: true },
+  // Печатный размер (узкая лента, мелкий шрифт) вне @media print — нужен,
+  // чтобы страница печати (Print.vue) могла показать превью "как будет на
+  // бумаге" прямо на экране, а не только реально при печати
+  compact: { type: Boolean, default: false },
 })
 
 const paperRef = ref(null)
@@ -436,29 +444,57 @@ watch(
   }
 }
 
+/* Печатный размер — узкая лента, мелкий шрифт. Задан классом (не только
+   через @media print), чтобы Print.vue мог показать превью с тем же
+   размером прямо на экране, а не только при реальной печати. */
+.receipt-paper--compact {
+  /* НЕ 100% — иначе чек растягивается на всю ширину печатной страницы
+     (A4). Ширина сильно меньше, чем на экране (28.75rem) — реальная
+     кассовая лента узкая (~58мм) */
+  filter: none;
+  max-width: 220px;
+  margin: 0;
+  animation: none;
+}
+
+.receipt-paper--compact .receipt-paper__body {
+  font-size: 0.5rem;
+  padding: 0.6rem;
+}
+
+.receipt-paper--compact .receipt-paper__qr img {
+  width: 5.5rem;
+  height: 5.5rem;
+}
+
+.receipt-paper--compact .receipt-paper__items-head,
+.receipt-paper--compact .receipt-paper__item-row {
+  grid-template-columns: 1fr 2.2rem 1.6rem 2.4rem;
+  gap: 0.25rem;
+}
+
+/* На случай печати мимо Print.vue (например, Ctrl+P прямо на странице
+   чека) — тот же компактный вид, даже если compact-проп не передали */
 @media print {
-  .receipt-paper {
-    /* НЕ 100% — иначе чек растягивается на всю ширину печатной страницы
-       (A4). Ширина сильно меньше, чем на экране (28.75rem) — реальная
-       кассовая лента узкая (~58мм) */
+  .receipt-paper:not(.receipt-paper--compact) {
     filter: none;
     max-width: 220px;
     margin: 0;
     animation: none;
   }
 
-  .receipt-paper__body {
+  .receipt-paper:not(.receipt-paper--compact) .receipt-paper__body {
     font-size: 0.5rem;
     padding: 0.6rem;
   }
 
-  .receipt-paper__qr img {
+  .receipt-paper:not(.receipt-paper--compact) .receipt-paper__qr img {
     width: 5.5rem;
     height: 5.5rem;
   }
 
-  .receipt-paper__items-head,
-  .receipt-paper__item-row {
+  .receipt-paper:not(.receipt-paper--compact) .receipt-paper__items-head,
+  .receipt-paper:not(.receipt-paper--compact) .receipt-paper__item-row {
     grid-template-columns: 1fr 2.2rem 1.6rem 2.4rem;
     gap: 0.25rem;
   }

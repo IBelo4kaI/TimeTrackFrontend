@@ -8,6 +8,14 @@
          <table class="table">
             <thead>
                <tr>
+                  <th v-if="selectable" class="th select-header">
+                     <input
+                        type="checkbox"
+                        :checked="allSelected"
+                        :indeterminate.prop="someSelected"
+                        @change="toggleSelectAll"
+                     />
+                  </th>
                   <th
                      v-for="header in headers"
                      :key="headerKey(header.valueKey)"
@@ -72,7 +80,11 @@
             <tbody>
                <tr v-if="loading">
                   <td
-                     :colspan="headers.length + ($slots.actions ? 1 : 0)"
+                     :colspan="
+                        headers.length +
+                        ($slots.actions ? 1 : 0) +
+                        (selectable ? 1 : 0)
+                     "
                      class="state-cell"
                   >
                      <div class="loading-state">
@@ -83,7 +95,11 @@
 
                <tr v-else-if="rows.length === 0">
                   <td
-                     :colspan="headers.length + ($slots.actions ? 1 : 0)"
+                     :colspan="
+                        headers.length +
+                        ($slots.actions ? 1 : 0) +
+                        (selectable ? 1 : 0)
+                     "
                      class="state-cell"
                   >
                      <div class="empty-state">
@@ -125,6 +141,13 @@
                   ]"
                   @click="clickable ? handleRowClick(row, rowIndex) : undefined"
                >
+                  <td v-if="selectable" class="td select-cell" @click.stop>
+                     <input
+                        type="checkbox"
+                        :checked="isRowSelected(row, rowIndex)"
+                        @change="toggleRow(row, rowIndex)"
+                     />
+                  </td>
                   <td
                      v-for="header in headers"
                      :key="headerKey(header.valueKey)"
@@ -251,6 +274,12 @@ interface Props {
    // Controlled sort state (managed by parent for server-side sorting)
    sortBy?: string
    sortDir?: 'asc' | 'desc'
+   // Чекбоксы для множественного выбора строк (см. selectedRows) — ключ
+   // строки берётся из rowKey, как и для :key, поэтому для selectable
+   // таблицы rowKey нужен обязательно (иначе выбор "плывёт" при пересчёте
+   // rows между рендерами)
+   selectable?: boolean
+   selectedRows?: (string | number)[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -264,6 +293,8 @@ const props = withDefaults(defineProps<Props>(), {
    total: 0,
    sortBy: '',
    sortDir: 'asc',
+   selectable: false,
+   selectedRows: () => [],
 })
 
 const emit = defineEmits<{
@@ -273,6 +304,7 @@ const emit = defineEmits<{
    'update:sortDir': [sortDir: 'asc' | 'desc']
    /** Удобный single-event для отправки на сервер */
    'sort-change': [state: SortState]
+   'update:selectedRows': [rows: (string | number)[]]
 }>()
 
 const selectedRow = ref<number | null>(null)
@@ -315,6 +347,37 @@ function toggleSort(key: string | string[]) {
    emit('update:sortDir', newDir)
    emit('sort-change', { sortBy: keyStr, sortDir: newDir })
    emit('update:currentPage', 1) // сбрасываем страницу при смене сортировки
+}
+
+function rowKeyValue(row: Record<string, unknown>, rowIndex: number) {
+   return props.rowKey ? (getNestedValue(row, props.rowKey) as string | number) : rowIndex
+}
+
+function isRowSelected(row: Record<string, unknown>, rowIndex: number) {
+   return props.selectedRows.includes(rowKeyValue(row, rowIndex))
+}
+
+function toggleRow(row: Record<string, unknown>, rowIndex: number) {
+   const key = rowKeyValue(row, rowIndex)
+   const next = isRowSelected(row, rowIndex)
+      ? props.selectedRows.filter((k) => k !== key)
+      : [...props.selectedRows, key]
+   emit('update:selectedRows', next)
+}
+
+const allSelected = computed(
+   () => props.rows.length > 0 && props.rows.every((row, i) => isRowSelected(row, i))
+)
+
+const someSelected = computed(
+   () => !allSelected.value && props.rows.some((row, i) => isRowSelected(row, i))
+)
+
+function toggleSelectAll() {
+   emit(
+      'update:selectedRows',
+      allSelected.value ? [] : props.rows.map((row, i) => rowKeyValue(row, i))
+   )
 }
 
 const totalPages = computed(() => Math.ceil(props.total / props.pageSize))
@@ -472,6 +535,18 @@ function handleRowClick(row: Record<string, unknown>, index: number) {
 
 .actions-cell {
    padding-right: var(--padding-primary);
+}
+
+.select-header,
+.select-cell {
+   width: 1px;
+   white-space: nowrap;
+   padding-right: 0;
+}
+
+.select-header input,
+.select-cell input {
+   cursor: pointer;
 }
 
 .state-cell {
@@ -636,6 +711,17 @@ function handleRowClick(row: Record<string, unknown>, index: number) {
    }
 
    .actions-cell::before {
+      content: none;
+   }
+
+   .select-cell {
+      width: 100%;
+      white-space: normal;
+      justify-content: flex-start;
+      padding-right: 0;
+   }
+
+   .select-cell::before {
       content: none;
    }
 
