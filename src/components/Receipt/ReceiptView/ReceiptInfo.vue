@@ -22,7 +22,12 @@
               {{ employeeName }}
             </div>
           </div>
-          <Badge type="success">Завершён</Badge>
+          <div class="info__panel-badges">
+            <Badge :type="receipt.hasPaper ? 'success' : 'muted'">
+              {{ receipt.hasPaper ? 'Бумажный' : 'Электронный' }}
+            </Badge>
+            <Badge type="success">Завершён</Badge>
+          </div>
         </div>
 
         <div class="info__stats">
@@ -429,6 +434,13 @@ async function onDelete() {
   align-items: center;
   justify-content: space-between;
   gap: var(--gap-primary);
+}
+
+.info__panel-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .info__panel-title-column {

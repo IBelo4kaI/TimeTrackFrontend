@@ -399,6 +399,15 @@
         <span>{{ formatMoney(getSummary(item).totalSum) }}</span>
       </div>
 
+      <label class="checkbox-label">
+        <input
+          type="checkbox"
+          v-model="item.hasPaper"
+          :disabled="isAddingAll"
+        />
+        <span>Есть бумажный экземпляр чека</span>
+      </label>
+
       <div v-if="item.photoUrl" class="scan-block__photo">
         <img :src="item.photoUrl" alt="Скан чека" />
 
@@ -561,6 +570,10 @@ function addPending(data, extra = {}) {
     photoFile: extra.photoFile ?? null,
     photoUrl: extra.photoFile ? URL.createObjectURL(extra.photoFile) : '',
     attachPhoto: true,
+    // Проверкачеков этого не знает — отмечает сам сотрудник, есть ли у него
+    // физический бумажный чек (не то же самое, что "фото чека" — фото можно
+    // сделать и с чужого/электронного чека без бумажного оригинала на руках)
+    hasPaper: false,
     itemsVisible: false,
     isAdding: false,
     addError: '',
@@ -984,6 +997,7 @@ const addOnePending = async (item, { silent = false } = {}) => {
     const payload = {
       userId: userStore.user.id,
       ...mapExternalReceipt(item.data, item.rawQr),
+      hasPaper: item.hasPaper,
     }
 
     const created = await receiptStore.addReceipt(payload)

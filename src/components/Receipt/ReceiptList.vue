@@ -64,6 +64,12 @@
         <Badge type="muted">{{ formatMoney(value) }}</Badge>
       </template>
 
+      <template #cell-hasPaper="{ value }">
+        <Badge :type="value ? 'success' : 'muted'">
+          {{ value ? 'Бумажный' : 'Электронный' }}
+        </Badge>
+      </template>
+
       <template #actions="{ row }">
         <div class="row-actions">
           <ButtonUI
@@ -176,6 +182,7 @@ const headers = computed(() => {
         v ? `${getDateNamed(parseDate(v))} ${parseDate(v).getFullYear()}` : '—',
     },
     { valueKey: 'totalSum', title: 'Сумма' },
+    { valueKey: 'hasPaper', title: 'Экземпляр' },
     {
       valueKey: 'createdAt',
       title: 'Добавлен',
