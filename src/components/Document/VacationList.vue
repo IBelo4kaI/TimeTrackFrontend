@@ -6,66 +6,78 @@
     :empty-text="emptyText"
   >
     <template #toolbar>
-      <InputUi
-        v-model="filters.search"
-        label="Поиск"
-        placeholder="Сотрудник или файл"
-        class="filters-search"
+      <template v-if="!isMobile">
+        <InputUi
+          v-model="filters.search"
+          label="Поиск"
+          placeholder="Сотрудник или файл"
+          class="filters-search"
+        >
+          <template #prefix><i class="fa-regular fa-magnifying-glass"></i></template>
+        </InputUi>
+
+        <SelectUI
+          v-model="filters.status"
+          :options="statusOptions"
+          label="Статус"
+          placeholder="Все статусы"
+        />
+        <Autocomplete
+          v-model="filters.ownerId"
+          :options="ownerOptions"
+          label-key="label"
+          value-key="value"
+          :is-show-button="false"
+          label="Сотрудник"
+          placeholder="Все сотрудники"
+          empty-text="Сотрудник не найден"
+          class="filters-person"
+        />
+        <Autocomplete
+          v-model="filters.uploadedById"
+          :options="uploaderOptions"
+          label-key="label"
+          value-key="value"
+          :is-show-button="false"
+          label="Загрузил"
+          placeholder="Все"
+          empty-text="Не найдено"
+          class="filters-person"
+        />
+
+        <InputUi
+          v-model="filters.dateFrom"
+          type="date"
+          label="Период с"
+          class="filters-date"
+        />
+        <InputUi
+          v-model="filters.dateTo"
+          type="date"
+          label="Период по"
+          class="filters-date"
+        />
+
+        <SelectUI align="center" :options="years" v-model="selectedYear" label="Год" />
+
+        <ButtonUI
+          v-if="hasActiveFilters"
+          type="muted"
+          icon="fa-regular fa-filter-slash"
+          v-tooltip="'Сбросить фильтры'"
+          @click="resetFilters"
+        ></ButtonUI>
+      </template>
+
+      <button
+        v-else
+        type="button"
+        class="filter-trigger"
+        @click="filtersOpen = true"
+        aria-label="Фильтры"
       >
-        <template #prefix><i class="fa-regular fa-magnifying-glass"></i></template>
-      </InputUi>
-
-      <SelectUI
-        v-model="filters.status"
-        :options="statusOptions"
-        label="Статус"
-        placeholder="Все статусы"
-      />
-      <Autocomplete
-        v-model="filters.ownerId"
-        :options="ownerOptions"
-        label-key="label"
-        value-key="value"
-        :is-show-button="false"
-        label="Сотрудник"
-        placeholder="Все сотрудники"
-        empty-text="Сотрудник не найден"
-        class="filters-person"
-      />
-      <Autocomplete
-        v-model="filters.uploadedById"
-        :options="uploaderOptions"
-        label-key="label"
-        value-key="value"
-        :is-show-button="false"
-        label="Загрузил"
-        placeholder="Все"
-        empty-text="Не найдено"
-        class="filters-person"
-      />
-
-      <InputUi
-        v-model="filters.dateFrom"
-        type="date"
-        label="Период с"
-        class="filters-date"
-      />
-      <InputUi
-        v-model="filters.dateTo"
-        type="date"
-        label="Период по"
-        class="filters-date"
-      />
-
-      <SelectUI align="center" :options="years" v-model="selectedYear" label="Год" />
-
-      <ButtonUI
-        v-if="hasActiveFilters"
-        type="muted"
-        icon="fa-regular fa-filter-slash"
-        v-tooltip="'Сбросить фильтры'"
-        @click="resetFilters"
-      ></ButtonUI>
+        <i class="fa-regular fa-filter"></i>
+      </button>
     </template>
 
     <template #cell-fileName="{ row }">
@@ -110,21 +122,77 @@
       </div>
     </template>
   </AppTable>
+
+  <MobileFilterDrawer v-model="filtersOpen">
+    <InputUi
+      v-model="filters.search"
+      label="Поиск"
+      placeholder="Сотрудник или файл"
+    >
+      <template #prefix><i class="fa-regular fa-magnifying-glass"></i></template>
+    </InputUi>
+
+    <SelectUI
+      v-model="filters.status"
+      :options="statusOptions"
+      label="Статус"
+      placeholder="Все статусы"
+      full-width
+    />
+    <Autocomplete
+      v-model="filters.ownerId"
+      :options="ownerOptions"
+      label-key="label"
+      value-key="value"
+      :is-show-button="false"
+      label="Сотрудник"
+      placeholder="Все сотрудники"
+      empty-text="Сотрудник не найден"
+    />
+    <Autocomplete
+      v-model="filters.uploadedById"
+      :options="uploaderOptions"
+      label-key="label"
+      value-key="value"
+      :is-show-button="false"
+      label="Загрузил"
+      placeholder="Все"
+      empty-text="Не найдено"
+    />
+
+    <InputUi v-model="filters.dateFrom" type="date" label="Период с" />
+    <InputUi v-model="filters.dateTo" type="date" label="Период по" />
+
+    <SelectUI :options="years" v-model="selectedYear" label="Год" full-width />
+
+    <ButtonUI
+      v-if="hasActiveFilters"
+      type="muted"
+      icon="fa-regular fa-filter-slash"
+      class="reset-filters-btn"
+      @click="resetFilters"
+    >
+      Сбросить фильтры
+    </ButtonUI>
+  </MobileFilterDrawer>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import AppTable from '../AppTable.vue'
 import Autocomplete from '../Autocomplete.vue'
 import Badge from '../Badge.vue'
 import ButtonUI from '../ButtonUI.vue'
 import InputUi from '../InputUi.vue'
+import MobileFilterDrawer from '../MobileFilterDrawer.vue'
 import SelectUI from '../SelectUI.vue'
 import { deleteFile, getEntityTypeFiles } from '@/services/files.api'
 import { getAllUserVacationsByYear } from '@/services/vacation.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
+import { useThemeStore } from '@/stores/themes'
 import { useUserStore } from '@/stores/user'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
@@ -134,6 +202,9 @@ const userStore = useUserStore()
 const notificationStore = useNotificationStore()
 const confirmModalStore = useConfirmModal()
 const router = useRouter()
+const { isMobile } = storeToRefs(useThemeStore())
+
+const filtersOpen = ref(false)
 
 const selectedYear = ref(new Date().getFullYear())
 const years = computed(() => [
@@ -396,5 +467,25 @@ onMounted(load)
 
 .file-link:hover {
   color: var(--accent);
+}
+
+.filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background);
+  color: var(--text);
+  font-size: 1.14rem;
+  cursor: pointer;
+}
+
+.reset-filters-btn {
+  width: 100%;
+  justify-content: center;
 }
 </style>

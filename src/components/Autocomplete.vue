@@ -377,8 +377,7 @@ const scrollActiveIntoView = () => {
     activeIndex.value
   )
   const item = listRef.value?.children[activeIndex.value] as
-    | HTMLElement
-    | undefined
+    HTMLElement | undefined
   item?.scrollIntoView({ block: 'nearest' })
 }
 
@@ -479,7 +478,7 @@ defineExpose({ focus: () => inputRef.value?.focus() })
 
 .input-label {
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 

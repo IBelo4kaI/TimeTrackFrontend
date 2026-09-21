@@ -30,7 +30,77 @@
         :options="orientationOptions"
         v-model="orientation"
       />
-      <SelectUI label="Масштаб" :options="scaleOptions" v-model="scale" />
+      <SelectUI
+        label="Масштаб (предпросмотр)"
+        :options="scaleOptions"
+        v-model="scale"
+      />
+
+      <SelectUI
+        label="Расположение"
+        :options="alignOptions"
+        v-model="horizontalAlign"
+      />
+
+      <div class="print-page__slider">
+        <label>Ширина чека: {{ receiptWidthMm }} мм</label>
+        <input
+          type="range"
+          min="65"
+          max="105"
+          step="1"
+          v-model.number="receiptWidthMm"
+        />
+      </div>
+
+      <div class="print-page__slider">
+        <label>Шрифт чека: {{ receiptFontPt }} пт</label>
+        <input
+          type="range"
+          min="5"
+          max="14"
+          step="0.5"
+          v-model.number="receiptFontPt"
+        />
+      </div>
+
+      <div class="print-page__slider">
+        <label>Поля листа A4: {{ pageMarginMm }} мм</label>
+        <input
+          type="range"
+          min="0"
+          max="25"
+          step="1"
+          v-model.number="pageMarginMm"
+        />
+      </div>
+
+      <div class="print-page__slider">
+        <label>Зазор между чеками: {{ receiptGapMm }} мм</label>
+        <input
+          type="range"
+          min="0"
+          max="15"
+          step="1"
+          v-model.number="receiptGapMm"
+        />
+      </div>
+
+      <div class="print-page__slider">
+        <label>Масштаб чека: {{ receiptScale }}%</label>
+        <input
+          type="range"
+          min="30"
+          max="200"
+          step="5"
+          v-model.number="receiptScale"
+        />
+      </div>
+
+      <label class="print-page__layout-toggle">
+        <input type="checkbox" v-model="cutLines" />
+        Линии отреза
+      </label>
 
       <label v-if="items.length > 1" class="print-page__layout-toggle">
         <input type="checkbox" v-model="printTogether" />
@@ -53,35 +123,23 @@
         <span>Нечего печатать</span>
       </div>
 
-      <div v-else class="print-page__preview">
-        <div
-          v-for="(page, pageIndex) in pages"
-          :key="pageIndex"
-          class="print-page__paper-outer"
-          :style="paperOuterStyle(pageIndex)"
-        >
+      <!-- Разбивку на страницы при печати решает браузер (@page + break-inside/break-before ниже), задаём только ширину -->
+      <div class="print-page__canvas-outer" :style="canvasOuterStyle">
+        <div class="print-page__canvas" :style="canvasStyle">
           <div
-            class="print-page__paper"
-            :style="paperFrameStyle"
-            :ref="(el) => measurePaper(pageIndex, el)"
+            class="print-page__sheets"
+            :class="{
+              'print-page__sheets--together': printTogether,
+              'print-page__sheets--cut': cutLines,
+            }"
+            :style="sheetsAlignStyle"
           >
-            <div
-              class="print-page__sheets"
-              :class="{ 'print-page__sheets--together': printTogether }"
-            >
-              <div
-                v-for="item in page"
-                :key="item.id"
-                class="print-page__sheet"
-                :style="{ zoom: scale + '%' }"
-                :ref="(el) => measureSheet(item, el)"
-              >
-                <component
-                  :is="registryEntry.component"
-                  v-bind="registryEntry.mapProps(item)"
-                  compact
-                />
-              </div>
+            <div v-for="item in items" :key="item.id" class="print-page__sheet">
+              <component
+                :is="registryEntry.component"
+                v-bind="registryEntry.mapProps(item)"
+                compact
+              />
             </div>
           </div>
         </div>
@@ -97,21 +155,10 @@ import SelectUI from '@/components/SelectUI.vue'
 import ReceiptPaper from '@/components/Receipt/ReceiptView/ReceiptPaper.vue'
 import { getReceiptById } from '@/services/receipt.api'
 import { useNotificationStore } from '@/stores/notification'
-import {
-  computed,
-  nextTick,
-  onMounted,
-  onUnmounted,
-  reactive,
-  ref,
-  watch,
-} from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-// Универсальная страница печати (см. meta.layout: 'full' в router/index.js —
-// без сайдбара/шапки, ничего прятать под @media print не нужно). Новый тип
-// документа для печати — новая запись в реестре, остальная страница не
-// меняется.
+// Универсальная страница печати — новый тип документа = новая запись в реестре
 const PRINT_REGISTRY = {
   receipt: {
     fetch: getReceiptById,
@@ -126,8 +173,7 @@ const notificationStore = useNotificationStore()
 
 const registryEntry = computed(() => PRINT_REGISTRY[route.params.type])
 
-// ?ids=1,2,3 — сегодня печатаем всегда по одному чеку, но страница уже
-// поддерживает несколько (нужно для будущей печати выбранных чеков списком)
+// ?ids=1,2,3 — задел под печать нескольких чеков списком
 const ids = computed(() => {
   const raw = route.query.ids
   if (!raw) return []
@@ -140,9 +186,7 @@ const ids = computed(() => {
 const items = ref([])
 const isLoading = ref(false)
 
-// По умолчанию каждый чек на отдельном листе — обычный вид "один документ,
-// одна страница". Несколько узких чеков на одном листе имеет смысл, когда
-// печатают на обычной бумаге, а не на кассовой ленте.
+// По умолчанию каждый чек на отдельном листе
 const printTogether = ref(false)
 
 const orientation = ref('portrait')
@@ -151,134 +195,128 @@ const orientationOptions = [
   { label: 'Альбомная', value: 'landscape' },
 ]
 
+// Масштаб предпросмотра — декоративный, на печать не влияет
 const scale = ref(100)
 const scaleOptions = [50, 75, 100, 125, 150].map((v) => ({
   label: `${v}%`,
   value: v,
 }))
 
-// Реальные высоты отрисованных чеков (px, при текущих compact/zoom) —
-// нужны, чтобы точно посчитать, сколько чеков влезает на лист по высоте.
-// Ширина у компактного чека фиксирована (см. .receipt-paper--compact,
-// 220px), поэтому колонки по ширине считаются делением, а не измерением.
-const sheetHeights = reactive(new Map())
+// --- Настройки раскладки на листе (сохраняются в localStorage) ---
+const LAYOUT_STORAGE_KEY = 'receipt-print-layout-settings'
 
-function measureSheet(item, el) {
-  if (el) sheetHeights.set(item.id, el.offsetHeight)
+const receiptWidthMm = ref(72) // 45–105
+const receiptFontPt = ref(11) // 8–15
+const pageMarginMm = ref(10) // 0–25
+const receiptGapMm = ref(4) // 0–15
+const cutLines = ref(true)
+// В отличие от "Масштаб (предпросмотр)" — этот реально печатается
+const receiptScale = ref(100) // 50–200
+
+const horizontalAlign = ref('left') // 'left' | 'center' | 'right'
+const alignOptions = [
+  { label: 'Слева', value: 'left' },
+  { label: 'По центру', value: 'center' },
+  { label: 'Справа', value: 'right' },
+]
+
+// align-items для flex-режима, text-align для inline-block ("на одном листе")
+const ALIGN_ITEMS_MAP = {
+  left: 'flex-start',
+  center: 'center',
+  right: 'flex-end',
 }
 
-const SHEET_WIDTH = 220 // px, .receipt-paper--compact при масштабе 100%
-const SHEET_GAP = 8 // px, отступы вокруг .print-page__sheet при масштабе 100%
+const sheetsAlignStyle = computed(() => ({
+  alignItems: ALIGN_ITEMS_MAP[horizontalAlign.value],
+  textAlign: horizontalAlign.value,
+}))
 
-// Раскладка по "страницам" превью: каждая — один .print-page__paper.
-// Раздельно — своя страница на чек (уже точно, без измерений — один чек
-// всегда один лист). На одном листе — реальная упаковка по измеренным
-// высотам: колонки считаем делением ширины листа, а перенос на новую
-// страницу — как только накопленная высота строк превышает высоту листа
-// (то же самое правило, что break-inside: avoid у настоящей печати).
-const pages = computed(() => {
-  if (!printTogether.value) {
-    return items.value.map((item) => [item])
+function loadLayoutSettings() {
+  try {
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY)
+    if (!raw) return
+    const saved = JSON.parse(raw)
+    if (typeof saved.receiptWidthMm === 'number')
+      receiptWidthMm.value = saved.receiptWidthMm
+    if (typeof saved.receiptFontPt === 'number')
+      receiptFontPt.value = saved.receiptFontPt
+    if (typeof saved.pageMarginMm === 'number')
+      pageMarginMm.value = saved.pageMarginMm
+    if (typeof saved.receiptGapMm === 'number')
+      receiptGapMm.value = saved.receiptGapMm
+    if (typeof saved.receiptScale === 'number')
+      receiptScale.value = saved.receiptScale
+    if (typeof saved.cutLines === 'boolean') cutLines.value = saved.cutLines
+    if (typeof saved.horizontalAlign === 'string')
+      horizontalAlign.value = saved.horizontalAlign
+  } catch {
+    // localStorage недоступен — остаёмся на значениях по умолчанию
   }
+}
 
-  // zoom реально меняет физический размер чека — при уменьшении масштаба
-  // должно помещаться больше в ряд/на лист, а не столько же, но мельче
-  const zoomFactor = scale.value / 100
-  const sheetWidth = SHEET_WIDTH * zoomFactor
-  const sheetGap = SHEET_GAP * zoomFactor
-
-  const { width: pageWidth, height: pageHeight } = previewPage.value
-  const columns = Math.max(1, Math.floor(pageWidth / (sheetWidth + sheetGap)))
-
-  const result = []
-  let currentPage = []
-  let column = 0
-  let rowHeight = 0
-  let pageHeightUsed = 0
-
-  for (const item of items.value) {
-    // Пока чек ещё не отрисован и не измерен (первый рендер) — считаем
-    // высоту нулевой: всё временно попадёт на один лист, а как только
-    // measureSheet отработает, pages пересчитается по реальным высотам.
-    // offsetHeight уже учитывает zoom сам по себе — досчитывать не нужно.
-    const height = (sheetHeights.get(item.id) ?? 0) + sheetGap
-
-    if (column >= columns) {
-      pageHeightUsed += rowHeight
-      rowHeight = 0
-      column = 0
-
-      if (pageHeight && currentPage.length && pageHeightUsed + height > pageHeight) {
-        result.push(currentPage)
-        currentPage = []
-        pageHeightUsed = 0
-      }
-    }
-
-    currentPage.push(item)
-    rowHeight = Math.max(rowHeight, height)
-    column++
+function saveLayoutSettings() {
+  try {
+    localStorage.setItem(
+      LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        receiptWidthMm: receiptWidthMm.value,
+        receiptFontPt: receiptFontPt.value,
+        pageMarginMm: pageMarginMm.value,
+        receiptGapMm: receiptGapMm.value,
+        receiptScale: receiptScale.value,
+        cutLines: cutLines.value,
+        horizontalAlign: horizontalAlign.value,
+      })
+    )
+  } catch {
+    // некритично — просто не переживёт перезагрузку
   }
+}
 
-  if (currentPage.length) result.push(currentPage)
-  return result
-})
+loadLayoutSettings()
 
-// Точный размер листа A4 для превью (в CSS-пикселях, 1in = 96px — тот же
-// расчёт, которым сам браузер переводит мм в px при вёрстке)
+watch(
+  [
+    receiptWidthMm,
+    receiptFontPt,
+    pageMarginMm,
+    receiptGapMm,
+    receiptScale,
+    cutLines,
+    horizontalAlign,
+  ],
+  saveLayoutSettings
+)
+
+// Ширина листа A4 в px (1in = 96px); высота не нужна — холст растёт свободно
 const MM_TO_PX = 96 / 25.4
 const A4_MM = { width: 210, height: 297 }
 
-const previewPage = computed(() => {
-  const [width, height] =
-    orientation.value === 'landscape'
-      ? [A4_MM.height, A4_MM.width]
-      : [A4_MM.width, A4_MM.height]
-  return { width: width * MM_TO_PX, height: height * MM_TO_PX }
-})
-
-// Вписываем превью в разумную ширину экрана — реальный print этого не
-// видит: transform: scale() применяется только в @media screen ниже
-const PREVIEW_MAX_WIDTH = 640
-
-const previewFitScale = computed(() =>
-  Math.min(1, PREVIEW_MAX_WIDTH / previewPage.value.width)
+const pageWidthPx = computed(
+  () =>
+    (orientation.value === 'landscape' ? A4_MM.height : A4_MM.width) * MM_TO_PX
 )
 
-const paperFrameStyle = computed(() => ({
-  width: `${previewPage.value.width}px`,
-  minHeight: `${previewPage.value.height}px`,
+const previewFitScale = computed(() => scale.value / 100)
+
+const canvasStyle = computed(() => ({
+  width: `${pageWidthPx.value}px`,
+  // padding для превью на экране, при печати поля даёт @page (см. applyPageStyle)
+  padding: `${pageMarginMm.value}mm`,
+  '--receipt-w-mm': `${receiptWidthMm.value}mm`,
+  '--receipt-fs': `${receiptFontPt.value}pt`,
+  '--receipt-gap-mm': `${receiptGapMm.value}mm`,
+  '--receipt-scale': receiptScale.value / 100,
   '--preview-fit-scale': previewFitScale.value,
 }))
 
-// Реальные (неискажённые transform-ом) высоты каждой страницы превью —
-// offsetHeight не учитывает transform: scale(), поэтому даёт ту же высоту,
-// что была бы у .print-page__paper без масштабирования. В альбомной
-// ориентации высота листа сама по себе маленькая (210мм), и контент чека
-// легко превышает её — если тогда считать высоту обёртки по номиналу
-// (297мм), лист не помещается в свою обёртку и наезжает на следующий.
-const pageHeights = reactive(new Map())
+// Резервируем уже смасштабированную ширину — иначе вокруг холста остаётся пустое место его исходного размера
+const canvasOuterStyle = computed(() => ({
+  width: `${pageWidthPx.value * previewFitScale.value}px`,
+}))
 
-function measurePaper(pageIndex, el) {
-  if (el) pageHeights.set(pageIndex, el.offsetHeight)
-}
-
-// Внешняя обёртка — уже нужного (уменьшенного) размера, чтобы вписанный по
-// PREVIEW_MAX_WIDTH лист резервировал в раскладке ровно столько места,
-// сколько занимает визуально, а не полный физический размер (иначе вокруг
-// уменьшенных листов оставалась пустая невидимая область их исходного
-// размера — листы выглядели маленькими и далеко друг от друга)
-function paperOuterStyle(pageIndex) {
-  const fit = previewFitScale.value
-  const height = pageHeights.get(pageIndex) ?? previewPage.value.height
-  return {
-    width: `${previewPage.value.width * fit}px`,
-    height: `${height * fit}px`,
-  }
-}
-
-// @page нельзя надёжно задать из <style scoped> компонента (см. историю
-// правок ReceiptPaper.vue) — управляем настоящим <style> в <head> напрямую.
+// @page нельзя надёжно задать из <style scoped> — управляем <style> в <head> напрямую
 let pageStyleEl = null
 
 function applyPageStyle() {
@@ -287,10 +325,11 @@ function applyPageStyle() {
     pageStyleEl.id = 'print-page-size-style'
     document.head.appendChild(pageStyleEl)
   }
-  pageStyleEl.textContent = `@page { size: A4 ${orientation.value}; margin: 0; }`
+  // margin — не 0: @page применяется на каждом листе отдельно, в отличие от padding. В диалоге печати нужны поля "Обычные", не "Без полей"
+  pageStyleEl.textContent = `@page { size: A4 ${orientation.value}; margin: ${pageMarginMm.value}mm; }`
 }
 
-watch(orientation, applyPageStyle, { immediate: true })
+watch([orientation, pageMarginMm], applyPageStyle, { immediate: true })
 
 onUnmounted(() => {
   pageStyleEl?.remove()
@@ -326,9 +365,7 @@ function onPrint() {
 }
 
 function onClose() {
-  // Открыта через window.open — закроется сама; если открыта напрямую по
-  // ссылке (window.close() браузер тихо проигнорирует), просто уводим
-  // куда-то осмысленное.
+  // window.close() сработает только если открыта через window.open
   window.close()
   router.push({ name: 'receipts' })
 }
@@ -337,15 +374,10 @@ onMounted(async () => {
   await load()
   if (!items.value.length) return
 
-  // Автозапуск — только для одного документа (прежнее поведение кнопки
-  // "Печать" на странице чека). При нескольких сначала даём выбрать
-  // "раздельно/на одном листе" — печатаем только по клику на кнопку.
+  // Автозапуск — только для одного документа, при нескольких сначала настраивают раскладку
   if (items.value.length > 1) return
 
-  // Печатаемый контент (например, QR-коды в ReceiptPaper) рендерится
-  // асинхронно — ждём кадр отрисовки перед автозапуском печати. Кнопка
-  // "Печать" выше остаётся на случай, если браузер заблокирует авто-print
-  // или нужно распечатать повторно.
+  // ждём кадр отрисовки (QR рендерится асинхронно) перед автозапуском печати
   await nextTick()
   setTimeout(() => window.print(), 300)
 })
@@ -414,6 +446,26 @@ onMounted(async () => {
   padding-bottom: 0.86rem;
 }
 
+.print-page__slider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+  min-width: 11rem;
+}
+
+.print-page__slider label {
+  font-size: 0.8rem;
+  color: var(--muted-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.print-page__slider input[type='range'] {
+  width: 100%;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
 .print-page__body {
   flex: 1;
   min-height: 0;
@@ -435,35 +487,19 @@ onMounted(async () => {
   font-size: 2rem;
 }
 
-.print-page__preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--padding-primary);
+.print-page__canvas-outer {
+  margin: 0 auto;
 }
 
-.print-page__paper-outer {
-  flex-shrink: 0;
-}
-
-.print-page__paper {
+.print-page__canvas {
   background: #fff;
   border: 0.07rem solid var(--border-color);
   box-shadow: 0 0.29rem 1.14rem rgba(0, 0, 0, 0.08);
-  padding: var(--padding-secondary);
   box-sizing: border-box;
-  /* pages уже точно рассчитан по измеренным высотам (см. скрипт), лист
-     не должен переполняться — overflow:visible только на случай одного
-     чека выше целого листа (сам по себе, реальная печать тоже не смогла
-     бы разбить его иначе) */
-  overflow: visible;
 }
 
 @media screen {
-  .print-page__paper {
-    /* top left — совпадает с тем, как посчитан размер обёртки
-       (paperOuterStyle): ужатый лист резервирует ровно свой видимый
-       размер, без пустого места вокруг */
+  .print-page__canvas {
     transform: scale(var(--preview-fit-scale, 1));
     transform-origin: top left;
   }
@@ -472,32 +508,40 @@ onMounted(async () => {
 .print-page__sheets {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--padding-primary);
+  /* НЕ center — иначе отступ центрирования маскирует поле страницы */
+  align-items: flex-start;
+  gap: var(--receipt-gap-mm, 4mm);
 }
 
 .print-page__sheet {
-  /* не резать чек по границе страницы — если целиком не влезает в
-     остаток листа, переносится целиком, а не обрывается посередине */
+  /* не резать чек по границе страницы */
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
-/* "Все на одном листе" — flex-wrap для этого плохо годится: если ряд
-   целиком не помещается в остаток страницы, браузеры режут его посередине
-   вместо переноса (именно так чек и обрезался). inline-block вместо flex —
-   элементы текут и переносятся как слова в тексте, у каждого свой
-   break-inside, и лишний просто уходит на следующий лист целиком. */
+/* "Раздельно" — каждый чек с новой страницы, кроме первого */
+.print-page__sheets:not(.print-page__sheets--together)
+  .print-page__sheet
+  + .print-page__sheet {
+  break-before: page;
+  page-break-before: always;
+}
+
+/* inline-block вместо flex-wrap — иначе ряд может обрезаться разрывом страницы */
 .print-page__sheets--together {
   display: block;
-  text-align: center;
+  /* гасит внешние половинки зазора на чеках ниже, чтобы поле было только между ними */
+  margin: 0 calc(var(--receipt-gap-mm, 4mm) / -2);
 }
 
 .print-page__sheets--together .print-page__sheet {
   display: inline-block;
   vertical-align: top;
-  text-align: left;
-  margin: 0 0.25rem 0.5rem;
+  margin: 0 calc(var(--receipt-gap-mm, 4mm) / 2) var(--receipt-gap-mm, 4mm);
+}
+
+.print-page__sheets--cut .print-page__sheet {
+  border: 1px dashed #000;
 }
 
 @media print {
@@ -516,35 +560,18 @@ onMounted(async () => {
     padding: 0;
   }
 
-  .print-page__preview {
-    gap: 0;
-  }
-
-  /* Рамка листа — только для превью на экране; реальный размер страницы
-     задаёт @page (см. applyPageStyle), а не эта коробка */
-  .print-page__paper-outer {
+  /* реальный размер и поля страницы задаёт @page, не этот холст */
+  .print-page__canvas-outer {
     width: auto !important;
-    height: auto !important;
+    margin: 0;
   }
 
-  .print-page__paper {
+  .print-page__canvas {
     background: none;
     border: none;
     box-shadow: none;
-    padding: 0;
     width: auto !important;
-    min-height: auto !important;
-  }
-
-  .print-page__sheets {
-    gap: 0;
-  }
-
-  /* Каждая "страница" превью — с новой страницы печати, кроме самой
-     первой. В режиме "на одном листе" таких страниц и так одна. */
-  .print-page__paper-outer + .print-page__paper-outer {
-    break-before: page;
-    page-break-before: always;
+    padding: 0 !important;
   }
 }
 </style>

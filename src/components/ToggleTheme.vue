@@ -72,17 +72,17 @@ onMounted(() => nextTick(updateIndicator))
   position: relative;
   display: flex;
   align-items: center;
-  height: 40px;
-  gap: 4px;
-  border-radius: 15px;
+  height: 2.857rem;
+  gap: 0.286rem;
+  border-radius: 1.071rem;
   background: var(--background);
-  padding: 5px;
+  padding: 0.357rem;
 }
 .toggle-theme__indicator {
   position: absolute;
-  top: 5px;
+  top: 0.357rem;
   left: 0;
-  border-radius: 10px;
+  border-radius: 0.714rem;
   background: var(--accent);
   transition:
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -90,17 +90,17 @@ onMounted(() => nextTick(updateIndicator))
   pointer-events: none;
 }
 .toggle-theme__btn {
-  height: 30px;
-  width: 30px;
+  height: 2.143rem;
+  width: 2.143rem;
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 10px;
+  border-radius: 0.714rem;
   background: transparent;
-  padding: 5px;
+  padding: 0.357rem;
   cursor: pointer;
   color: var(--text);
   font-size: 1rem;

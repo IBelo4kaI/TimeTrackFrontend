@@ -26,6 +26,7 @@
             v-model:year="receiptStore.selectedYear"
           />
           <SelectUI
+            label=""
             align="center"
             :options="sortOptions"
             v-model="receiptStore.sortBy"

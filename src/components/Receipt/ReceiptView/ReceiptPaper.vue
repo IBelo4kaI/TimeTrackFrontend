@@ -17,6 +17,7 @@
 
       <div class="receipt-paper__divider"></div>
 
+      <!-- Общий grid на шапку + строки (обёртки — display:contents) -->
       <div class="receipt-paper__items" ref="itemsRef">
         <div class="receipt-paper__items-head">
           <span class="col-name">Предмет расчёта</span>
@@ -24,11 +25,7 @@
           <span class="col-qty">Кол-во</span>
           <span class="col-sum">Сумма, ₽</span>
         </div>
-        <div
-          class="receipt-paper__item"
-          v-for="(item, index) in receipt.items"
-          :key="item.id"
-        >
+        <template v-for="(item, index) in receipt.items" :key="item.id">
           <div class="receipt-paper__item-row">
             <span class="col-name">{{ index + 1 }}. {{ item.name }}</span>
             <span class="col-price">{{ formatMoneyPlain(item.price) }}</span>
@@ -38,7 +35,7 @@
           <div class="receipt-paper__item-nds" v-if="getItemNdsLabel(item)">
             НДС {{ getItemNdsLabel(item) }}
           </div>
-        </div>
+        </template>
       </div>
 
       <div class="receipt-paper__divider"></div>
@@ -242,9 +239,7 @@ function formatMoneyPlain(kopecks) {
   })
 }
 
-// Реальный ФНС-формат QR кассового чека (t/s/fn/i/fp/n) — тот же, что
-// печатается на бумажном чеке; используем исходную qr-строку со сканирования,
-// если она сохранена, иначе восстанавливаем по фискальным реквизитам чека.
+// ФНС-формат QR (t/s/fn/i/fp/n) — берём сохранённую строку или собираем сами
 function buildQrPayload(receipt) {
   const raw = nullString(receipt.rawQr)
   if (raw) return raw
@@ -283,9 +278,11 @@ watch(
 </script>
 
 <style scoped>
-/* «Термобумага» — сознательно не привязана к --foreground/тёмной теме:
-   бумажный чек должен выглядеть одинаково в любой теме приложения */
+/* «Термобумага» — не привязана к --foreground/тёмной теме намеренно */
 .receipt-paper {
+  /* сброс, иначе text-align снаружи (Print.vue "Расположение") утекает внутрь */
+  text-align: left;
+
   --paper: #fdfcf8;
   --paper-line: rgba(40, 35, 25, 0.16);
   --paper-text: #33302a;
@@ -337,8 +334,7 @@ watch(
 }
 
 .receipt-paper__brand-name {
-  /* em, не rem — должно масштабироваться вместе с font-size чека
-     (уменьшается для печати, см. @media print ниже) */
+  /* em, не rem — масштабируется вместе с font-size чека */
   font-size: 1.57em;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -388,29 +384,31 @@ watch(
   transition: color 0.2s ease;
 }
 
-.receipt-paper__items-head,
-.receipt-paper__item-row {
+/* общий grid на шапку + строки (обёртки — display: contents) — колонки подстраиваются под самое широкое значение */
+.receipt-paper__items {
   display: grid;
-  grid-template-columns: 1fr 4.3rem 3.2rem 4.6rem;
-  gap: 0.5rem;
+  grid-template-columns: 1fr auto auto auto;
+  column-gap: 0.5rem;
+  row-gap: 0.5rem;
 }
 
-.receipt-paper__items-head {
+.receipt-paper__items-head,
+.receipt-paper__item-row {
+  display: contents;
+}
+
+/* display: contents убирает бокс обёртки — border/padding вешаем на ячейки */
+.receipt-paper__items-head span {
   color: var(--paper-muted);
   font-size: 0.91em;
   padding-bottom: 0.36rem;
   border-bottom: 0.07rem dashed var(--paper-line);
-  margin-bottom: 0.5rem;
-}
-
-.receipt-paper__item + .receipt-paper__item {
-  margin-top: 0.5rem;
 }
 
 .receipt-paper__item-nds {
+  grid-column: 1 / -1;
   color: var(--paper-muted);
   font-size: 0.91em;
-  margin-top: 0.15rem;
 }
 
 .receipt-paper__items .col-qty,
@@ -444,37 +442,33 @@ watch(
   }
 }
 
-/* Печатный размер — узкая лента, мелкий шрифт. Задан классом (не только
-   через @media print), чтобы Print.vue мог показать превью с тем же
-   размером прямо на экране, а не только при реальной печати. */
+/* Печатный размер — задан классом, а не только @media print, чтобы Print.vue мог показать превью на экране */
 .receipt-paper--compact {
-  /* НЕ 100% — иначе чек растягивается на всю ширину печатной страницы
-     (A4). Ширина сильно меньше, чем на экране (28.75rem) — реальная
-     кассовая лента узкая (~58мм) */
+  /* НЕ 100% — иначе растягивается на всю ширину A4; ширина берётся из --receipt-w-mm (Print.vue) */
   filter: none;
-  max-width: 220px;
+  max-width: calc(var(--receipt-w-mm, 220px) * var(--receipt-scale, 1));
   margin: 0;
   animation: none;
 }
 
 .receipt-paper--compact .receipt-paper__body {
-  font-size: 0.5rem;
-  padding: 0.6rem;
+  font-size: calc(var(--receipt-fs, 0.5rem) * var(--receipt-scale, 1));
+  padding: calc(0.6rem * var(--receipt-scale, 1));
+  /* без фона — экономим краску принтера */
+  background: none;
+}
+
+/* зубчатые края — экранное украшение, на печати не нужны */
+.receipt-paper--compact .receipt-paper__zigzag {
+  display: none;
 }
 
 .receipt-paper--compact .receipt-paper__qr img {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: calc(5.5rem * var(--receipt-scale, 1));
+  height: calc(5.5rem * var(--receipt-scale, 1));
 }
 
-.receipt-paper--compact .receipt-paper__items-head,
-.receipt-paper--compact .receipt-paper__item-row {
-  grid-template-columns: 1fr 2.2rem 1.6rem 2.4rem;
-  gap: 0.25rem;
-}
-
-/* На случай печати мимо Print.vue (например, Ctrl+P прямо на странице
-   чека) — тот же компактный вид, даже если compact-проп не передали */
+/* На случай печати мимо Print.vue (Ctrl+P на странице чека) — тот же компактный вид */
 @media print {
   .receipt-paper:not(.receipt-paper--compact) {
     filter: none;
@@ -486,17 +480,16 @@ watch(
   .receipt-paper:not(.receipt-paper--compact) .receipt-paper__body {
     font-size: 0.5rem;
     padding: 0.6rem;
+    background: none;
+  }
+
+  .receipt-paper:not(.receipt-paper--compact) .receipt-paper__zigzag {
+    display: none;
   }
 
   .receipt-paper:not(.receipt-paper--compact) .receipt-paper__qr img {
     width: 5.5rem;
     height: 5.5rem;
-  }
-
-  .receipt-paper:not(.receipt-paper--compact) .receipt-paper__items-head,
-  .receipt-paper:not(.receipt-paper--compact) .receipt-paper__item-row {
-    grid-template-columns: 1fr 2.2rem 1.6rem 2.4rem;
-    gap: 0.25rem;
   }
 }
 </style>
