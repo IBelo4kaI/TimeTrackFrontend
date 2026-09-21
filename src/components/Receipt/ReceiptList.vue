@@ -31,6 +31,17 @@
             :options="sortOptions"
             v-model="receiptStore.sortBy"
           />
+          <Autocomplete
+            v-if="receiptStore.target == 'all'"
+            v-model="receiptStore.employeeId"
+            :options="employeeOptions"
+            label-key="label"
+            value-key="value"
+            :is-show-button="false"
+            placeholder="Все сотрудники"
+            empty-text="Сотрудник не найден"
+            class="filters-employee"
+          />
         </template>
 
         <button
@@ -136,12 +147,24 @@
         :options="sortOptions"
         v-model="receiptStore.sortBy"
       />
+      <Autocomplete
+        v-if="receiptStore.target == 'all'"
+        v-model="receiptStore.employeeId"
+        :options="employeeOptions"
+        label-key="label"
+        value-key="value"
+        :is-show-button="false"
+        label="Сотрудник"
+        placeholder="Все сотрудники"
+        empty-text="Сотрудник не найден"
+      />
     </MobileFilterDrawer>
   </div>
 </template>
 
 <script setup>
 import AppTable from '@/components/AppTable.vue'
+import Autocomplete from '@/components/Autocomplete.vue'
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
@@ -180,7 +203,12 @@ const selectedIds = ref([])
 // "Мои чеки"/"Все чеки" или фильтра список строк меняется целиком, старый
 // выбор теряет смысл
 watch(
-  () => [receiptStore.target, receiptStore.selectedMonth, receiptStore.selectedYear],
+  () => [
+    receiptStore.target,
+    receiptStore.selectedMonth,
+    receiptStore.selectedYear,
+    receiptStore.employeeId,
+  ],
   () => {
     selectedIds.value = []
   }
@@ -242,6 +270,19 @@ const rows = computed(() =>
       receiptStore.target == 'all' ? getUserFullName(item.userId) : null,
   }))
 )
+
+// Список для автокомплита "Сотрудник" — из реально встречающихся в текущей
+// выборке (до фильтра по сотруднику, иначе выбор сузил бы сам себя) людей
+const employeeOptions = computed(() => {
+  const seen = new Map()
+  receiptStore.receipts.forEach((r) => {
+    const name = getUserFullName(r.userId)
+    if (r.userId && name && !seen.has(r.userId)) seen.set(r.userId, name)
+  })
+  return [...seen.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'ru'))
+})
 
 // ФИО пользователя по id из уже загруженного списка сотрудников
 // (userStore.usersAll), см. VacationList.vue
@@ -345,6 +386,10 @@ async function onFileSelected(id, event) {
 
 .receipt-list__total {
   color: var(--muted-text);
+}
+
+.filters-employee {
+  width: 14rem;
 }
 
 .row-actions {

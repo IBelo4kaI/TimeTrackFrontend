@@ -15,6 +15,8 @@ export const useReceiptStore = defineStore('receipt', () => {
   const selectedYear = ref(new Date().getFullYear())
   const selectedMonth = ref(new Date().getMonth() + 1) // null = весь год, иначе 1-12
   const target = ref('my')
+  // Фильтр по сотруднику — имеет смысл только при target == 'all', сбрасывается при смене вкладки
+  const employeeId = ref('')
 
   // 'createdAt' — когда чек добавлен в систему, 'ticketDate' — дата на самом
   // чеке (может сильно отличаться, если чек добавили не сразу).
@@ -38,6 +40,7 @@ export const useReceiptStore = defineStore('receipt', () => {
         if (date.getFullYear() != selectedYear.value) return false
         if (selectedMonth.value && date.getMonth() + 1 != selectedMonth.value)
           return false
+        if (employeeId.value && r.userId != employeeId.value) return false
         return true
       })
   })
@@ -91,6 +94,7 @@ export const useReceiptStore = defineStore('receipt', () => {
   }
 
   watch(target, async () => {
+    employeeId.value = ''
     await fetchReceipts()
     if (target.value == 'all') await userStore.userAllFetch()
   })
@@ -106,6 +110,7 @@ export const useReceiptStore = defineStore('receipt', () => {
     filterReceipts,
     totalSum,
     target,
+    employeeId,
 
     // actions
     fetchReceipts,
