@@ -841,7 +841,7 @@ const handleQrDetected = async (raw) => {
  * сам ограничивает частоту запросов, см. code:3 в proverkacheka.api.js)
  * ============================================================
  */
-const MAX_SCAN_PHOTOS = 10
+const MAX_SCAN_PHOTOS = 50
 
 const scanBatch = reactive({ current: 0, total: 0 })
 const scanLimitNotice = ref('')
