@@ -99,7 +99,7 @@
 
       <label class="print-page__layout-toggle">
         <input type="checkbox" v-model="cutLines" />
-        Линии отреза
+        Границы чеков
       </label>
 
       <label v-if="items.length > 1" class="print-page__layout-toggle">
@@ -187,7 +187,7 @@ const items = ref([])
 const isLoading = ref(false)
 
 // По умолчанию каждый чек на отдельном листе
-const printTogether = ref(false)
+const printTogether = ref(true)
 
 const orientation = ref('portrait')
 const orientationOptions = [
