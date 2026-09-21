@@ -186,7 +186,7 @@ const ids = computed(() => {
 const items = ref([])
 const isLoading = ref(false)
 
-// По умолчанию каждый чек на отдельном листе
+// По умолчанию все чеки на одном листе
 const printTogether = ref(true)
 
 const orientation = ref('portrait')
