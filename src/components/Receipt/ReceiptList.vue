@@ -27,7 +27,6 @@
           />
           <SelectUI
             label=""
-            align="center"
             :options="sortOptions"
             v-model="receiptStore.sortBy"
           />
@@ -44,7 +43,6 @@
           />
           <SelectUI
             label=""
-            align="center"
             :options="categoryFilterOptions"
             v-model="receiptStore.categoryId"
           />
