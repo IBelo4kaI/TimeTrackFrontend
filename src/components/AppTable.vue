@@ -415,7 +415,6 @@ function handleRowClick(row: Record<string, unknown>, index: number) {
    background: var(--foreground);
    border-radius: var(--border-radius);
    border: 1px solid var(--border-color);
-   overflow: hidden;
 }
 
 .table-toolbar {
@@ -430,6 +429,8 @@ function handleRowClick(row: Record<string, unknown>, index: number) {
 .table-scroll {
    width: 100%;
    overflow-x: auto;
+   overflow-y: hidden;
+   border-radius: var(--border-radius);
 }
 
 .table {
