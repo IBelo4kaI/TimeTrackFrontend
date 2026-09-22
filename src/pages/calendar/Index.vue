@@ -5,7 +5,10 @@
       <LegendCalendar />
       <div class="container-row">
         <DayListCalendar />
-        <StatisticsCalendar />
+        <div class="container-column">
+          <StatisticsCalendar />
+          <Birthdays />
+        </div>
       </div>
     </template>
     <template v-else>
@@ -34,6 +37,10 @@
 </template>
 
 <script setup>
+import Birthdays from '@/components/Calendar/Birthdays.vue'
+import DayListCalendar from '@/components/Calendar/DayListCalendar.vue'
+import DayListCalendarMobile from '@/components/Calendar/DayListCalendarMobile.vue'
+import LegendCalendar from '@/components/Calendar/LegendCalendar.vue'
 import StatisticsCalendar from '@/components/Calendar/StatisticsCalendar.vue'
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useCalendarStore } from '@/stores/calendar'
@@ -41,10 +48,6 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import LegendCalendar from '@/components/Calendar/LegendCalendar.vue'
-import DayListCalendar from '@/components/Calendar/DayListCalendar.vue'
-import DayListCalendarMobile from '@/components/Calendar/DayListCalendarMobile.vue'
-import Birthdays from '@/components/Calendar/Birthdays.vue'
 
 const isMobile = computed(() => window.innerWidth <= 768)
 
@@ -92,7 +95,11 @@ onMounted(async () => {
   grid-template-columns: 1fr auto;
   gap: calc(var(--padding-secondary) / 2);
 }
-
+.container-column {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--padding-secondary) / 2);
+}
 .tabs {
   display: flex;
   width: 100%;
