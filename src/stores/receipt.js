@@ -6,6 +6,7 @@ import {
   getReceiptById,
   getReceiptCategories,
   getReceiptsByUser,
+  renameReceiptCategory,
 } from '@/services/receipt.api'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
@@ -125,6 +126,13 @@ export const useReceiptStore = defineStore('receipt', () => {
     return created
   }
 
+  const renameCategory = async (id, name) => {
+    const updated = await renameReceiptCategory(id, name)
+    const item = categories.value.find((c) => c.id == id)
+    if (item) item.name = updated.name
+    categories.value.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  }
+
   watch(target, async () => {
     employeeId.value = ''
     await fetchReceipts()
@@ -157,5 +165,6 @@ export const useReceiptStore = defineStore('receipt', () => {
     fetchCategories,
     getCategoryLabel,
     addCategory,
+    renameCategory,
   }
 })

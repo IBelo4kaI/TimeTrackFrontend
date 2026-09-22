@@ -12,6 +12,15 @@
           {{ value ? 'Системная' : 'Своя' }}
         </Badge>
       </template>
+
+      <template #actions="{ row }">
+        <ButtonUI
+          type="muted"
+          icon="fa-regular fa-pen"
+          v-tooltip="'Переименовать категорию'"
+          @click="openEditCategoryModal(row)"
+        />
+      </template>
     </AppTable>
 
     <AppTable :headers="keywordHeaders" :rows="keywordRows" :loading="isLoadingKeywords" row-key="keyword">
@@ -27,6 +36,28 @@
         </Badge>
       </template>
     </AppTable>
+
+    <AppTable :headers="merchantHeaders" :rows="merchantRows" :loading="isLoadingMerchants" row-key="inn">
+      <template #toolbar>
+        <div class="settings-title">Продавцы</div>
+        <div class="spacer"></div>
+      </template>
+
+      <template #cell-source="{ value }">
+        <Badge :type="value === 'user_override' ? 'success' : 'muted'">
+          {{ sourceLabel(value) }}
+        </Badge>
+      </template>
+
+      <template #actions="{ row }">
+        <ButtonUI
+          type="muted"
+          icon="fa-regular fa-pen"
+          v-tooltip="'Изменить категорию продавца'"
+          @click="openEditMerchantModal(row)"
+        />
+      </template>
+    </AppTable>
   </div>
 </template>
 
@@ -37,10 +68,13 @@ import ButtonUI from '@/components/ButtonUI.vue'
 import {
   createReceiptCategoryKeyword,
   getReceiptCategoryKeywords,
+  getReceiptCategoryMerchants,
+  updateReceiptCategoryMerchant,
 } from '@/services/receipt.api'
 import { useReceiptStore } from '@/stores/receipt'
 import { useUniversalModalStore } from '@/stores/modal'
 import { useNotificationStore } from '@/stores/notification'
+import { nullString } from '@/utils/receipt.utils'
 import { computed, onMounted, ref } from 'vue'
 
 const receiptStore = useReceiptStore()
@@ -49,7 +83,9 @@ const notificationStore = useNotificationStore()
 
 const isLoadingCategories = ref(false)
 const isLoadingKeywords = ref(false)
+const isLoadingMerchants = ref(false)
 const keywords = ref([])
+const merchants = ref([])
 
 const categoryHeaders = [
   { valueKey: 'name', title: 'Название' },
@@ -62,6 +98,12 @@ const keywordHeaders = [
   { valueKey: 'isSystem', title: 'Источник' },
 ]
 
+const merchantHeaders = [
+  { valueKey: 'sellerDisplay', title: 'Продавец' },
+  { valueKey: 'categoryName', title: 'Категория' },
+  { valueKey: 'source', title: 'Откуда' },
+]
+
 const categoryRows = computed(() => receiptStore.categories)
 
 const keywordRows = computed(() =>
@@ -70,6 +112,24 @@ const keywordRows = computed(() =>
     categoryName: receiptStore.getCategoryLabel(k.categoryId) ?? '—',
   }))
 )
+
+const merchantRows = computed(() =>
+  merchants.value.map((m) => ({
+    ...m,
+    sellerDisplay: nullString(m.sellerName) || `ИНН ${m.inn}`,
+    categoryName: receiptStore.getCategoryLabel(m.categoryId) ?? '—',
+  }))
+)
+
+const SOURCE_LABELS = {
+  seed: 'Начальный список',
+  keyword_match: 'Определено автоматически',
+  user_override: 'Изменено вручную',
+}
+
+function sourceLabel(source) {
+  return SOURCE_LABELS[source] ?? source
+}
 
 function errorMessage(err, fallback) {
   return err?.response?.data?.error ?? fallback
@@ -97,6 +157,17 @@ async function loadKeywords() {
   }
 }
 
+async function loadMerchants() {
+  isLoadingMerchants.value = true
+  try {
+    merchants.value = (await getReceiptCategoryMerchants()) ?? []
+  } catch {
+    notificationStore.addNotification('Не удалось загрузить словарь продавцов', 'error')
+  } finally {
+    isLoadingMerchants.value = false
+  }
+}
+
 function openAddCategoryModal() {
   modalStore.open({
     title: 'Новая категория',
@@ -114,6 +185,35 @@ function openAddCategoryModal() {
         throw err
       }
       notificationStore.addNotification('Категория добавлена', 'success')
+    },
+  })
+}
+
+function openEditCategoryModal(category) {
+  modalStore.open({
+    title: 'Переименовать категорию',
+    submitButtonText: 'Сохранить',
+    submittingText: 'Сохранение...',
+    fields: [
+      {
+        name: 'name',
+        type: 'text',
+        label: 'Название',
+        required: true,
+        value: category.name,
+      },
+    ],
+    onSubmit: async (data) => {
+      try {
+        await receiptStore.renameCategory(category.id, data.name)
+      } catch (err) {
+        notificationStore.addNotification(
+          errorMessage(err, 'Не удалось переименовать категорию'),
+          'error'
+        )
+        throw err
+      }
+      notificationStore.addNotification('Категория переименована', 'success')
     },
   })
 }
@@ -160,9 +260,57 @@ function openAddKeywordModal() {
   })
 }
 
+function openEditMerchantModal(merchant) {
+  modalStore.open({
+    title: merchant.sellerDisplay,
+    submitButtonText: 'Сохранить',
+    submittingText: 'Сохранение...',
+    fields: [
+      {
+        name: 'categoryId',
+        type: 'select',
+        label: 'Категория',
+        required: true,
+        options: receiptStore.categoryOptions,
+        value: merchant.categoryId,
+      },
+    ],
+    onSubmit: async (data) => {
+      let result
+      try {
+        result = await updateReceiptCategoryMerchant(
+          merchant.inn,
+          Number(data.categoryId)
+        )
+      } catch (err) {
+        notificationStore.addNotification(
+          errorMessage(err, 'Не удалось изменить категорию продавца'),
+          'error'
+        )
+        throw err
+      }
+      // merchant тут — строка из вычисляемого merchantRows (новый объект на
+      // каждый пересчёт), мутировать её бессмысленно — правим источник,
+      // merchants.value, по ИНН.
+      const source = merchants.value.find((m) => m.inn === merchant.inn)
+      if (source) {
+        source.categoryId = Number(data.categoryId)
+        source.source = 'user_override'
+      }
+      notificationStore.addNotification(
+        result.updatedReceipts
+          ? `Категория обновлена — переставлена на ${result.updatedReceipts} уже сохранённых чеках`
+          : 'Категория обновлена',
+        'success'
+      )
+    },
+  })
+}
+
 onMounted(async () => {
   await loadCategories()
   await loadKeywords()
+  await loadMerchants()
 })
 </script>
 

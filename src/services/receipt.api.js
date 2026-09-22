@@ -165,6 +165,16 @@ export const createReceiptCategory = async (name) => {
   }
 }
 
+export const renameReceiptCategory = async (id, name) => {
+  try {
+    const response = await timeTrackApi.put(`/receipt-categories/${id}`, { name })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при переименовании категории:', error)
+    throw error
+  }
+}
+
 // Словарь "ключевое слово -> категория" для автоклассификации по позициям
 // чека (см. internal/receipt_category.ClassifyReceipt).
 export const getReceiptCategoryKeywords = async () => {
@@ -186,6 +196,32 @@ export const createReceiptCategoryKeyword = async (keyword, categoryId) => {
     return response.data
   } catch (error) {
     console.error('Ошибка при добавлении ключевого слова:', error)
+    throw error
+  }
+}
+
+// Словарь "ИНН продавца -> категория" (самообучающийся + ручные правки).
+export const getReceiptCategoryMerchants = async () => {
+  try {
+    const response = await timeTrackApi.get('/receipt-categories/merchants')
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении словаря продавцов:', error)
+    throw error
+  }
+}
+
+// Правит связь продавец -> категория и сразу переносит новую категорию на
+// все уже сохранённые чеки этого продавца (отдаёт { updatedReceipts }).
+export const updateReceiptCategoryMerchant = async (inn, categoryId) => {
+  try {
+    const response = await timeTrackApi.put(
+      `/receipt-categories/merchants/${inn}`,
+      { categoryId }
+    )
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при обновлении категории продавца:', error)
     throw error
   }
 }
