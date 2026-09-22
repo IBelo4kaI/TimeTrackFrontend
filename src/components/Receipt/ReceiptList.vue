@@ -211,7 +211,7 @@ import {
 } from '@/services/receipt.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
-import { useReceiptStore } from '@/stores/receipt'
+import { NO_CATEGORY_FILTER, useReceiptStore } from '@/stores/receipt'
 import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user.js'
 import { getDateNamed } from '@/utils/calendar.utils'
@@ -309,6 +309,7 @@ const sortOptions = [
 const categoryFilterOptions = computed(() => [
   { label: 'Все категории', value: '' },
   ...receiptStore.categoryOptions,
+  { label: 'Без категории', value: NO_CATEGORY_FILTER },
 ])
 
 const headers = computed(() => {

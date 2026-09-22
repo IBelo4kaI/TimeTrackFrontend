@@ -13,6 +13,10 @@ import { computed, ref, watch } from 'vue'
 import { nullInt } from '@/utils/receipt.utils'
 import { useUserStore } from './user'
 
+// Отдельное значение фильтра "Без категории" — '' уже занято под "Все
+// категории", а category_id IS NULL не выразить обычным числовым id.
+export const NO_CATEGORY_FILTER = 'none'
+
 export const useReceiptStore = defineStore('receipt', () => {
   // бэк отдаёт чеки без фильтра по дате — год/месяц фильтруем на фронте
   // (см. filterReceipts), в отличие от vacation, где год уходит в запрос.
@@ -47,8 +51,11 @@ export const useReceiptStore = defineStore('receipt', () => {
         if (selectedMonth.value && date.getMonth() + 1 != selectedMonth.value)
           return false
         if (employeeId.value && r.userId != employeeId.value) return false
-        if (categoryId.value && nullInt(r.categoryId) != categoryId.value)
+        if (categoryId.value === NO_CATEGORY_FILTER) {
+          if (nullInt(r.categoryId) != null) return false
+        } else if (categoryId.value && nullInt(r.categoryId) != categoryId.value) {
           return false
+        }
         return true
       })
   })
