@@ -100,3 +100,92 @@ export const transferReceipt = async (id, userId) => {
     throw error
   }
 }
+
+// Категория чека проставляется бэком автоматически при создании (локальные
+// словари, см. internal/receipt_category) — этот вызов только для ручной
+// правки. categoryId: null снимает категорию.
+export const setReceiptCategory = async (id, categoryId) => {
+  try {
+    const response = await timeTrackApi.put(`/receipts/${id}/category`, {
+      categoryId,
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка изменения категории чека:', error)
+    throw error
+  }
+}
+
+// Задним числом проставляет категорию уже сохранённым чекам без неё (тем же
+// алгоритмом, что и при создании). Отдаёт {updated, total}.
+export const backfillReceiptCategories = async () => {
+  try {
+    const response = await timeTrackApi.post('/receipts/backfill-categories')
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при массовой категоризации чеков:', error)
+    throw error
+  }
+}
+
+// Предпросмотр категории ДО сохранения чека (см. ReceiptScan.vue) — та же
+// классификация, что и при создании, но без записи в словарь продавцов.
+export const previewReceiptCategory = async (sellerInn, items) => {
+  try {
+    const response = await timeTrackApi.post('/receipt-categories/preview', {
+      sellerInn,
+      items,
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка предпросмотра категории чека:', error)
+    throw error
+  }
+}
+
+// Справочник категорий чеков — читать может любой, добавлять новые
+// (is_system=false) только receipts.all:edit.
+export const getReceiptCategories = async () => {
+  try {
+    const response = await timeTrackApi.get('/receipt-categories')
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении категорий чеков:', error)
+    throw error
+  }
+}
+
+export const createReceiptCategory = async (name) => {
+  try {
+    const response = await timeTrackApi.post('/receipt-categories', { name })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при создании категории:', error)
+    throw error
+  }
+}
+
+// Словарь "ключевое слово -> категория" для автоклассификации по позициям
+// чека (см. internal/receipt_category.ClassifyReceipt).
+export const getReceiptCategoryKeywords = async () => {
+  try {
+    const response = await timeTrackApi.get('/receipt-categories/keywords')
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении словаря ключевых слов:', error)
+    throw error
+  }
+}
+
+export const createReceiptCategoryKeyword = async (keyword, categoryId) => {
+  try {
+    const response = await timeTrackApi.post('/receipt-categories/keywords', {
+      keyword,
+      categoryId,
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при добавлении ключевого слова:', error)
+    throw error
+  }
+}

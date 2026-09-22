@@ -26,6 +26,7 @@
             <Badge :type="receipt.hasPaper ? 'success' : 'muted'">
               {{ receipt.hasPaper ? 'Бумажный' : 'Электронный' }}
             </Badge>
+            <Badge type="muted">{{ categoryLabel ?? 'Без категории' }}</Badge>
             <Badge type="success">Завершён</Badge>
           </div>
         </div>
@@ -134,6 +135,23 @@
       <div class="info__admin" v-if="canManage || canTransfer">
         <div class="info__admin-title">Управление чеком</div>
 
+        <div class="info__category" v-if="canTransfer">
+          <SelectUI
+            v-model="categoryDraft"
+            :options="receiptStore.categoryOptions"
+            label="Категория"
+            placeholder="Без категории"
+          />
+          <ButtonUI
+            type="muted-accent"
+            icon="fa-regular fa-check"
+            :disabled="!categoryChanged || isMutating"
+            @click="onSaveCategory"
+          >
+            Сохранить
+          </ButtonUI>
+        </div>
+
         <div class="info__transfer" v-if="canTransfer">
           <Autocomplete
             v-model="transferUserId"
@@ -176,7 +194,8 @@ import ButtonUI from '@/components/ButtonUI.vue'
 import CardStatistics from '@/components/CardStatistics.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import ReceiptPaper from '@/components/Receipt/ReceiptView/ReceiptPaper.vue'
-import { transferReceipt } from '@/services/receipt.api'
+import SelectUI from '@/components/SelectUI.vue'
+import { setReceiptCategory, transferReceipt } from '@/services/receipt.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
@@ -185,7 +204,7 @@ import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
 import { playSuccessSound } from '@/utils/sound.utils'
 import { formatMoney, nullInt, nullString } from '@/utils/receipt.utils'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -198,6 +217,10 @@ const receiptStore = useReceiptStore()
 const notificationStore = useNotificationStore()
 const confirmModalStore = useConfirmModal()
 const router = useRouter()
+
+onMounted(() => {
+  receiptStore.fetchCategories()
+})
 
 const paperComponent = ref(null)
 
@@ -218,6 +241,10 @@ const ticketDateLabel = computed(() => {
 })
 
 const address = computed(() => nullString(props.receipt?.retailPlaceAddress))
+
+const categoryLabel = computed(() =>
+  receiptStore.getCategoryLabel(nullInt(props.receipt?.categoryId))
+)
 
 const paymentBreakdown = computed(() => {
   if (!props.receipt) return []
@@ -341,6 +368,40 @@ const transferOptions = computed(() =>
 )
 
 const isMutating = ref(false)
+
+// Черновик категории до "Сохранить" — та же схема, что у transferUserId
+// выше (пишем в receipt.categoryId только по явному сохранению).
+const categoryDraft = ref('')
+watch(
+  () => props.receipt,
+  (receipt) => {
+    categoryDraft.value = nullInt(receipt?.categoryId) ?? ''
+  },
+  { immediate: true }
+)
+
+const categoryChanged = computed(
+  () => categoryDraft.value !== (nullInt(props.receipt?.categoryId) ?? '')
+)
+
+async function onSaveCategory() {
+  isMutating.value = true
+  try {
+    const updated = await setReceiptCategory(
+      props.receipt.id,
+      categoryDraft.value || null
+    )
+    props.receipt.categoryId = updated.categoryId
+    notificationStore.addNotification('Категория обновлена', 'success')
+  } catch {
+    notificationStore.addNotification(
+      'Не удалось обновить категорию чека',
+      'error'
+    )
+  } finally {
+    isMutating.value = false
+  }
+}
 
 async function onTransfer() {
   if (!transferUserId.value) return
@@ -573,6 +634,7 @@ async function onDelete() {
   flex-wrap: wrap;
 }
 
+.info__category,
 .info__transfer {
   display: flex;
   align-items: flex-end;
@@ -580,6 +642,7 @@ async function onDelete() {
   flex-wrap: wrap;
 }
 
+.info__category > :first-child,
 .info__transfer > :first-child {
   flex: 1;
   min-width: 14rem;
@@ -598,6 +661,7 @@ async function onDelete() {
 }
 
 @media (max-width: 768px) {
+  .info__category,
   .info__transfer {
     flex-direction: column;
     align-items: stretch;

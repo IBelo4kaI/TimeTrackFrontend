@@ -42,6 +42,12 @@
             empty-text="Сотрудник не найден"
             class="filters-employee"
           />
+          <SelectUI
+            label=""
+            align="center"
+            :options="categoryFilterOptions"
+            v-model="receiptStore.categoryId"
+          />
         </template>
 
         <button
@@ -62,21 +68,38 @@
 
           <ButtonUI
             v-if="isAdmin"
+            type="muted-accent"
+            :icon="
+              isBackfillingCategories
+                ? 'fa-regular fa-spinner fa-spin'
+                : 'fa-regular fa-wand-magic-sparkles'
+            "
+            :disabled="isBackfillingCategories"
+            v-tooltip="
+              'Определить категории у уже сохранённых чеков без категории'
+            "
+            @click="onBackfillCategories"
+          />
+
+          <ButtonUI
+            v-if="isAdmin"
             type="muted"
             icon="fa-regular fa-print"
             :disabled="!selectedIds.length"
+            v-tooltip="
+              selectedIds.length
+                ? `Печать (${selectedIds.length})`
+                : 'Печать выбранных'
+            "
             @click="onPrintSelected"
-          >
-            Печать{{ selectedIds.length ? ` (${selectedIds.length})` : '' }}
-          </ButtonUI>
+          />
 
           <ButtonUI
             type="accent"
             icon="fa-regular fa-plus"
+            v-tooltip="'Добавить чек'"
             @click="router.push({ name: 'receipt-create' })"
-          >
-            Добавить
-          </ButtonUI>
+          />
         </div>
       </template>
 
@@ -99,6 +122,11 @@
         <Badge :type="value ? 'success' : 'muted'">
           {{ value ? 'Бумажный' : 'Электронный' }}
         </Badge>
+      </template>
+
+      <template #cell-categoryLabel="{ value }">
+        <Badge v-if="value" type="muted">{{ value }}</Badge>
+        <span v-else>Без категории</span>
       </template>
 
       <template #actions="{ row }">
@@ -158,6 +186,12 @@
         placeholder="Все сотрудники"
         empty-text="Сотрудник не найден"
       />
+      <SelectUI
+        label="Категория"
+        full-width
+        :options="categoryFilterOptions"
+        v-model="receiptStore.categoryId"
+      />
     </MobileFilterDrawer>
   </div>
 </template>
@@ -171,7 +205,10 @@ import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
 import MonthYearSelect from '@/components/MonthYearSelect.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
-import { uploadReceiptFile } from '@/services/receipt.api'
+import {
+  backfillReceiptCategories,
+  uploadReceiptFile,
+} from '@/services/receipt.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
@@ -182,10 +219,11 @@ import { parseDate } from '@/utils/date.utils'
 import {
   formatMoney,
   getOperationTypeLabel,
+  nullInt,
   nullString,
 } from '@/utils/receipt.utils'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const receiptStore = useReceiptStore()
@@ -194,6 +232,10 @@ const notificationStore = useNotificationStore()
 const confirmModalStore = useConfirmModal()
 const router = useRouter()
 const { isMobile } = storeToRefs(useThemeStore())
+
+onMounted(() => {
+  receiptStore.fetchCategories()
+})
 
 const filtersOpen = ref(false)
 
@@ -208,6 +250,7 @@ watch(
     receiptStore.selectedMonth,
     receiptStore.selectedYear,
     receiptStore.employeeId,
+    receiptStore.categoryId,
   ],
   () => {
     selectedIds.value = []
@@ -224,6 +267,31 @@ function onPrintSelected() {
   window.open(url, '_blank')
 }
 
+const isBackfillingCategories = ref(false)
+
+async function onBackfillCategories() {
+  if (isBackfillingCategories.value) return
+
+  isBackfillingCategories.value = true
+  try {
+    const { updated, total } = await backfillReceiptCategories()
+    notificationStore.addNotification(
+      total
+        ? `Категоризировано чеков: ${updated} из ${total}`
+        : 'Все чеки уже с категорией',
+      'success'
+    )
+    if (updated) await receiptStore.fetchReceipts()
+  } catch {
+    notificationStore.addNotification(
+      'Не удалось выполнить массовую категоризацию',
+      'error'
+    )
+  } finally {
+    isBackfillingCategories.value = false
+  }
+}
+
 // как у vacation.all:read (см. комментарий в VacationList.vue) — вкладка
 // "Все чеки" для бухгалтерии/руководителей
 const isAdmin = computed(() => userStore.hasPermission('receipts.all', 'read'))
@@ -237,6 +305,11 @@ const sortOptions = [
   { label: 'По дате добавления', value: 'createdAt' },
   { label: 'По дате чека', value: 'ticketDate' },
 ]
+
+const categoryFilterOptions = computed(() => [
+  { label: 'Все категории', value: '' },
+  ...receiptStore.categoryOptions,
+])
 
 const headers = computed(() => {
   const cols = [{ valueKey: 'operationType', title: 'Тип' }]
@@ -253,6 +326,7 @@ const headers = computed(() => {
     },
     { valueKey: 'totalSum', title: 'Сумма' },
     { valueKey: 'hasPaper', title: 'Экземпляр' },
+    { valueKey: 'categoryLabel', title: 'Категория' },
     {
       valueKey: 'createdAt',
       title: 'Добавлен',
@@ -268,6 +342,7 @@ const rows = computed(() =>
     sellerDisplay: nullString(item.sellerName) || `ИНН ${item.sellerInn}`,
     userName:
       receiptStore.target == 'all' ? getUserFullName(item.userId) : null,
+    categoryLabel: receiptStore.getCategoryLabel(nullInt(item.categoryId)),
   }))
 )
 
@@ -374,7 +449,6 @@ async function onFileSelected(id, event) {
    вертикальное выравнивание под line-style селекты */
 :deep(.table-toolbar) {
   align-items: flex-end;
-  gap: 2rem;
 }
 
 .receipt-list__end {

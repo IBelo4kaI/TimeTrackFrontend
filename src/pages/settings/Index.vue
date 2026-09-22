@@ -16,6 +16,7 @@
       <CalendarEventsList />
     </template>
     <NewsSettings v-else-if="submenuStore.activeTab === 'news'" />
+    <ReceiptCategorySettings v-else-if="submenuStore.activeTab === 'receipt-categories'" />
   </div>
 </template>
 
@@ -26,6 +27,7 @@ import ManualNotificationSender from '@/components/Settings/ManualNotificationSe
 import NewsSettings from '@/components/Settings/NewsSettings.vue'
 import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
 import NotificationTemplateSettings from '@/components/Settings/NotificationTemplateSettings.vue'
+import ReceiptCategorySettings from '@/components/Settings/ReceiptCategorySettings.vue'
 import StandardSettings from '@/components/Settings/StandardSettings.vue'
 import TimesheetReminderCard from '@/components/Settings/TimesheetReminderCard.vue'
 import VacationSettings from '@/components/Settings/VacationSettings.vue'
@@ -47,6 +49,7 @@ submenuStore.setItems([
   { id: 'notifications', label: 'Уведомления' },
   { id: 'calendar', label: 'Календарь' },
   { id: 'news', label: 'Новости' },
+  { id: 'receipt-categories', label: 'Категории чеков' },
 ])
 submenuStore.setActiveTab('vacation')
 

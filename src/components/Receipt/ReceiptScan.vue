@@ -399,6 +399,15 @@
         <span>{{ formatMoney(getSummary(item).totalSum) }}</span>
       </div>
 
+      <div class="receipt-result__category">
+        <span class="receipt-result__label">Категория</span>
+        <i v-if="item.categoryPreviewLoading" class="fa-regular fa-spinner fa-spin"></i>
+        <Badge v-else-if="item.categoryId" type="muted">
+          {{ receiptStore.getCategoryLabel(item.categoryId) }}
+        </Badge>
+        <span v-else class="receipt-result__category-empty">Не определена</span>
+      </div>
+
       <label class="checkbox-label">
         <input
           type="checkbox"
@@ -483,13 +492,14 @@
 </template>
 
 <script setup>
+import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
 
 import QrScanner from 'qr-scanner'
 import QrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url'
 
-import { nextTick, ref, reactive, computed, onBeforeUnmount } from 'vue'
+import { nextTick, ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 
 import {
   checkReceiptByRaw,
@@ -497,7 +507,7 @@ import {
   checkReceiptByRequisites,
   ReceiptCheckError,
 } from '@/services/proverkacheka.api'
-import { uploadReceiptFile } from '@/services/receipt.api'
+import { previewReceiptCategory, uploadReceiptFile } from '@/services/receipt.api'
 import {
   mapExternalReceipt,
   parseExternalDate,
@@ -515,6 +525,9 @@ import { storeToRefs } from 'pinia'
 QrScanner.WORKER_PATH = QrScannerWorkerPath
 
 const receiptStore = useReceiptStore()
+onMounted(() => {
+  receiptStore.fetchCategories()
+})
 const userStore = useUserStore()
 const filePreviewStore = useFilePreviewStore()
 const confirmModalStore = useConfirmModal()
@@ -574,6 +587,11 @@ function addPending(data, extra = {}) {
     // физический бумажный чек (не то же самое, что "фото чека" — фото можно
     // сделать и с чужого/электронного чека без бумажного оригинала на руках)
     hasPaper: false,
+    // Категория определяется бэком асинхронно (см. previewCategory ниже) —
+    // сюда пишем результат, когда он придёт; null, пока не пришёл или ничего
+    // не определилось ("Без категории").
+    categoryId: null,
+    categoryPreviewLoading: true,
     itemsVisible: false,
     isAdding: false,
     addError: '',
@@ -586,7 +604,26 @@ function addPending(data, extra = {}) {
   // его в reactive-прокси при пуше, и последующие item.photoFile = ...
   // в onItemPhotoSelected идут мимо прокси: Vue не видит изменение и не
   // перерисовывает карточку (превью/чекбокс так и не появляются).
-  return pendingReceipts.value[0]
+  const inserted = pendingReceipts.value[0]
+  previewCategory(inserted)
+  return inserted
+}
+
+// Асинхронный предпросмотр категории (без сохранения чека и без
+// самообучения словаря — см. PreviewCategory на бэке) — не блокирует саму
+// очередь, просто дозаполняет карточку, когда ответ придёт.
+async function previewCategory(item) {
+  try {
+    const result = await previewReceiptCategory(
+      String(item.data.userInn ?? '').trim(),
+      (item.data.items ?? []).map((i) => ({ name: i.name }))
+    )
+    item.categoryId = result.categoryId
+  } catch {
+    // предпросмотр не критичен — просто не покажем категорию заранее
+  } finally {
+    item.categoryPreviewLoading = false
+  }
 }
 
 function removePending(item) {
@@ -1561,6 +1598,17 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   font-weight: 600;
+}
+
+.receipt-result__category {
+  display: flex;
+  align-items: center;
+  gap: 0.57rem;
+  font-size: 0.93rem;
+}
+
+.receipt-result__category-empty {
+  color: var(--muted-text);
 }
 
 .pending-attach-photo {
