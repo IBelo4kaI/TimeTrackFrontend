@@ -1,8 +1,21 @@
 <template>
   <div class="receipt-category-settings">
-    <AppTable :headers="categoryHeaders" :rows="categoryRows" :loading="isLoadingCategories" row-key="id">
+    <AppTable
+      :headers="categoryHeaders"
+      :rows="pagedCategoryRows"
+      :loading="isLoadingCategories"
+      row-key="id"
+      pagination
+      :current-page="categoryPage"
+      :page-size="PAGE_SIZE"
+      :total="categoryRows.length"
+      @update:current-page="categoryPage = $event"
+    >
       <template #toolbar>
         <div class="settings-title">Категории чеков</div>
+        <InputUi v-model="categorySearch" placeholder="Поиск" class="search-input">
+          <template #prefix><i class="fa-regular fa-magnifying-glass"></i></template>
+        </InputUi>
         <div class="spacer"></div>
         <ButtonUI @click="openAddCategoryModal">Добавить категорию</ButtonUI>
       </template>
@@ -23,9 +36,22 @@
       </template>
     </AppTable>
 
-    <AppTable :headers="keywordHeaders" :rows="keywordRows" :loading="isLoadingKeywords" row-key="keyword">
+    <AppTable
+      :headers="keywordHeaders"
+      :rows="pagedKeywordRows"
+      :loading="isLoadingKeywords"
+      row-key="keyword"
+      pagination
+      :current-page="keywordPage"
+      :page-size="PAGE_SIZE"
+      :total="keywordRows.length"
+      @update:current-page="keywordPage = $event"
+    >
       <template #toolbar>
         <div class="settings-title">Ключевые слова</div>
+        <InputUi v-model="keywordSearch" placeholder="Поиск" class="search-input">
+          <template #prefix><i class="fa-regular fa-magnifying-glass"></i></template>
+        </InputUi>
         <div class="spacer"></div>
         <ButtonUI @click="openAddKeywordModal">Добавить слово</ButtonUI>
       </template>
@@ -37,9 +63,22 @@
       </template>
     </AppTable>
 
-    <AppTable :headers="merchantHeaders" :rows="merchantRows" :loading="isLoadingMerchants" row-key="inn">
+    <AppTable
+      :headers="merchantHeaders"
+      :rows="pagedMerchantRows"
+      :loading="isLoadingMerchants"
+      row-key="inn"
+      pagination
+      :current-page="merchantPage"
+      :page-size="PAGE_SIZE"
+      :total="merchantRows.length"
+      @update:current-page="merchantPage = $event"
+    >
       <template #toolbar>
         <div class="settings-title">Продавцы</div>
+        <InputUi v-model="merchantSearch" placeholder="Поиск" class="search-input">
+          <template #prefix><i class="fa-regular fa-magnifying-glass"></i></template>
+        </InputUi>
         <div class="spacer"></div>
       </template>
 
@@ -65,6 +104,7 @@
 import AppTable from '@/components/AppTable.vue'
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
+import InputUi from '@/components/InputUi.vue'
 import {
   createReceiptCategoryKeyword,
   getReceiptCategoryKeywords,
@@ -75,7 +115,7 @@ import { useReceiptStore } from '@/stores/receipt'
 import { useUniversalModalStore } from '@/stores/modal'
 import { useNotificationStore } from '@/stores/notification'
 import { nullString } from '@/utils/receipt.utils'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 const receiptStore = useReceiptStore()
 const modalStore = useUniversalModalStore()
@@ -86,6 +126,35 @@ const isLoadingKeywords = ref(false)
 const isLoadingMerchants = ref(false)
 const keywords = ref([])
 const merchants = ref([])
+
+// Пагинация — AppTable сама не режет rows, ждёт уже готовый срез страницы
+// (см. AppTable.vue: pagination/currentPage/pageSize/total только рисуют
+// контролы и считают total, слайс — забота родителя).
+const PAGE_SIZE = 8
+const categoryPage = ref(1)
+const keywordPage = ref(1)
+const merchantPage = ref(1)
+
+const categorySearch = ref('')
+const keywordSearch = ref('')
+const merchantSearch = ref('')
+
+// Поиск сбрасывает текущую страницу — иначе после фильтрации легко
+// оказаться на несуществующей (пустой) странице.
+watch(categorySearch, () => (categoryPage.value = 1))
+watch(keywordSearch, () => (keywordPage.value = 1))
+watch(merchantSearch, () => (merchantPage.value = 1))
+
+function paginate(rows, page) {
+  const start = (page - 1) * PAGE_SIZE
+  return rows.slice(start, start + PAGE_SIZE)
+}
+
+function matches(search, ...values) {
+  const term = search.trim().toLowerCase()
+  if (!term) return true
+  return values.some((v) => v && String(v).toLowerCase().includes(term))
+}
 
 const categoryHeaders = [
   { valueKey: 'name', title: 'Название' },
@@ -104,21 +173,38 @@ const merchantHeaders = [
   { valueKey: 'source', title: 'Откуда' },
 ]
 
-const categoryRows = computed(() => receiptStore.categories)
+const categoryRows = computed(() =>
+  receiptStore.categories.filter((c) => matches(categorySearch.value, c.name))
+)
+const pagedCategoryRows = computed(() =>
+  paginate(categoryRows.value, categoryPage.value)
+)
 
 const keywordRows = computed(() =>
-  keywords.value.map((k) => ({
-    ...k,
-    categoryName: receiptStore.getCategoryLabel(k.categoryId) ?? '—',
-  }))
+  keywords.value
+    .map((k) => ({
+      ...k,
+      categoryName: receiptStore.getCategoryLabel(k.categoryId) ?? '—',
+    }))
+    .filter((k) => matches(keywordSearch.value, k.keyword, k.categoryName))
+)
+const pagedKeywordRows = computed(() =>
+  paginate(keywordRows.value, keywordPage.value)
 )
 
 const merchantRows = computed(() =>
-  merchants.value.map((m) => ({
-    ...m,
-    sellerDisplay: nullString(m.sellerName) || `ИНН ${m.inn}`,
-    categoryName: receiptStore.getCategoryLabel(m.categoryId) ?? '—',
-  }))
+  merchants.value
+    .map((m) => ({
+      ...m,
+      sellerDisplay: nullString(m.sellerName) || `ИНН ${m.inn}`,
+      categoryName: receiptStore.getCategoryLabel(m.categoryId) ?? '—',
+    }))
+    .filter((m) =>
+      matches(merchantSearch.value, m.sellerDisplay, m.inn, m.categoryName)
+    )
+)
+const pagedMerchantRows = computed(() =>
+  paginate(merchantRows.value, merchantPage.value)
 )
 
 const SOURCE_LABELS = {
@@ -151,7 +237,10 @@ async function loadKeywords() {
   try {
     keywords.value = (await getReceiptCategoryKeywords()) ?? []
   } catch {
-    notificationStore.addNotification('Не удалось загрузить ключевые слова', 'error')
+    notificationStore.addNotification(
+      'Не удалось загрузить ключевые слова',
+      'error'
+    )
   } finally {
     isLoadingKeywords.value = false
   }
@@ -162,7 +251,10 @@ async function loadMerchants() {
   try {
     merchants.value = (await getReceiptCategoryMerchants()) ?? []
   } catch {
-    notificationStore.addNotification('Не удалось загрузить словарь продавцов', 'error')
+    notificationStore.addNotification(
+      'Не удалось загрузить словарь продавцов',
+      'error'
+    )
   } finally {
     isLoadingMerchants.value = false
   }
@@ -173,7 +265,15 @@ function openAddCategoryModal() {
     title: 'Новая категория',
     submitButtonText: 'Добавить',
     submittingText: 'Добавление...',
-    fields: [{ name: 'name', type: 'text', label: 'Название', required: true, value: '' }],
+    fields: [
+      {
+        name: 'name',
+        type: 'text',
+        label: 'Название',
+        required: true,
+        value: '',
+      },
+    ],
     onSubmit: async (data) => {
       try {
         await receiptStore.addCategory(data.name)
@@ -331,5 +431,9 @@ onMounted(async () => {
 
 .spacer {
   flex: 1;
+}
+
+.search-input {
+  width: 16rem;
 }
 </style>
