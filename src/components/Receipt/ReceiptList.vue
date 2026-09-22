@@ -76,7 +76,7 @@
             "
             :disabled="isBackfillingCategories"
             v-tooltip="
-              'Определить категории у уже сохранённых чеков без категории'
+              'Перепрогнать категоризацию по всем уже сохранённым чекам'
             "
             @click="onBackfillCategories"
           />
@@ -276,9 +276,9 @@ async function onBackfillCategories() {
   try {
     const { updated, total } = await backfillReceiptCategories()
     notificationStore.addNotification(
-      total
-        ? `Категоризировано чеков: ${updated} из ${total}`
-        : 'Все чеки уже с категорией',
+      updated
+        ? `Категория обновлена у ${updated} из ${total} чеков`
+        : 'Категории уже актуальны, менять нечего',
       'success'
     )
     if (updated) await receiptStore.fetchReceipts()
