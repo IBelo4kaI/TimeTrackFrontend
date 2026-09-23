@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico'],
+        // Включает манифест и service worker в `npm run dev`, а не только в сборке.
+        devOptions: { enabled: true },
         manifest: {
           name: 'Учет времени',
           short_name: 'Учет времени',
