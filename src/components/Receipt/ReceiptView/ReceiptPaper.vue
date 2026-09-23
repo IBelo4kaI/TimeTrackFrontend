@@ -58,28 +58,30 @@
         <span>{{ row.value }}</span>
       </div>
 
-      <div class="receipt-paper__divider"></div>
+      <template v-if="sellerInn || requestNumber || shiftNumber || machineNumber || taxationLabel">
+        <div class="receipt-paper__divider"></div>
 
-      <div class="receipt-paper__row">
-        <span>ИНН</span>
-        <span>{{ receipt.sellerInn }}</span>
-      </div>
-      <div class="receipt-paper__row" v-if="requestNumber">
-        <span>Чек №</span>
-        <span>{{ requestNumber }}</span>
-      </div>
-      <div class="receipt-paper__row" v-if="shiftNumber">
-        <span>№ смены</span>
-        <span>{{ shiftNumber }}</span>
-      </div>
-      <div class="receipt-paper__row" v-if="machineNumber">
-        <span>№ АВТ</span>
-        <span>{{ machineNumber }}</span>
-      </div>
-      <div class="receipt-paper__row" v-if="taxationLabel">
-        <span>СНО</span>
-        <span>{{ taxationLabel }}</span>
-      </div>
+        <div class="receipt-paper__row" v-if="sellerInn">
+          <span>ИНН</span>
+          <span>{{ sellerInn }}</span>
+        </div>
+        <div class="receipt-paper__row" v-if="requestNumber">
+          <span>Чек №</span>
+          <span>{{ requestNumber }}</span>
+        </div>
+        <div class="receipt-paper__row" v-if="shiftNumber">
+          <span>№ смены</span>
+          <span>{{ shiftNumber }}</span>
+        </div>
+        <div class="receipt-paper__row" v-if="machineNumber">
+          <span>№ АВТ</span>
+          <span>{{ machineNumber }}</span>
+        </div>
+        <div class="receipt-paper__row" v-if="taxationLabel">
+          <span>СНО</span>
+          <span>{{ taxationLabel }}</span>
+        </div>
+      </template>
 
       <div class="receipt-paper__divider"></div>
 
@@ -87,25 +89,35 @@
         <span>Дата/Время</span>
         <span>{{ dateTimeLabel }}</span>
       </div>
-      <div class="receipt-paper__row">
-        <span>ФД №</span>
-        <span>{{ receipt.fiscalDocumentNumber }}</span>
-      </div>
-      <div class="receipt-paper__row" v-if="fiscalDocumentFormatVer">
-        <span>Версия ФФД</span>
-        <span>{{ fiscalDocumentFormatVer }}</span>
-      </div>
-      <div class="receipt-paper__row">
-        <span>ФН</span>
-        <span>{{ receipt.fiscalDriveNumber }}</span>
-      </div>
-      <div class="receipt-paper__row" v-if="kktRegId">
-        <span>РН ККТ</span>
-        <span>{{ kktRegId }}</span>
-      </div>
-      <div class="receipt-paper__row">
-        <span>ФП</span>
-        <span>{{ receipt.fiscalSign }}</span>
+
+      <!-- Фискальные реквизиты — только у чеков, отсканированных через ФНС;
+           у введённых вручную (см. ReceiptScan.vue "Ввести чек полностью")
+           их нет вообще, не только частично, см. validate на бэке. -->
+      <template v-if="hasFiscalData">
+        <div class="receipt-paper__row">
+          <span>ФД №</span>
+          <span>{{ fiscalDocumentNumber }}</span>
+        </div>
+        <div class="receipt-paper__row" v-if="fiscalDocumentFormatVer">
+          <span>Версия ФФД</span>
+          <span>{{ fiscalDocumentFormatVer }}</span>
+        </div>
+        <div class="receipt-paper__row">
+          <span>ФН</span>
+          <span>{{ fiscalDriveNumber }}</span>
+        </div>
+        <div class="receipt-paper__row" v-if="kktRegId">
+          <span>РН ККТ</span>
+          <span>{{ kktRegId }}</span>
+        </div>
+        <div class="receipt-paper__row">
+          <span>ФП</span>
+          <span>{{ fiscalSign }}</span>
+        </div>
+      </template>
+      <div class="receipt-paper__row" v-else>
+        <span>Реквизиты</span>
+        <span>Чек добавлен вручную, без проверки ФНС</span>
       </div>
 
       <template v-if="operator || retailPlace || address">
@@ -125,11 +137,13 @@
         </div>
       </template>
 
-      <div class="receipt-paper__divider"></div>
+      <template v-if="qrDataUrl">
+        <div class="receipt-paper__divider"></div>
 
-      <div class="receipt-paper__qr">
-        <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR-код чека" />
-      </div>
+        <div class="receipt-paper__qr">
+          <img :src="qrDataUrl" alt="QR-код чека" />
+        </div>
+      </template>
     </div>
 
     <div class="receipt-paper__zigzag receipt-paper__zigzag--bottom"></div>
@@ -166,6 +180,17 @@ const operationTypeLabel = computed(() =>
 )
 
 const sellerName = computed(() => nullString(props.receipt.sellerName))
+const sellerInn = computed(() => nullString(props.receipt.sellerInn))
+
+const fiscalDriveNumber = computed(() => nullString(props.receipt.fiscalDriveNumber))
+const fiscalDocumentNumber = computed(() =>
+  nullString(props.receipt.fiscalDocumentNumber)
+)
+const fiscalSign = computed(() => nullString(props.receipt.fiscalSign))
+
+// Чек введён вручную (см. ReceiptScan.vue "Ввести чек полностью") — либо
+// все три реквизита есть, либо ни одного, см. validate на бэке.
+const hasFiscalData = computed(() => !!fiscalDriveNumber.value)
 
 const address = computed(() => nullString(props.receipt.retailPlaceAddress))
 
@@ -239,10 +264,15 @@ function formatMoneyPlain(kopecks) {
   })
 }
 
-// ФНС-формат QR (t/s/fn/i/fp/n) — берём сохранённую строку или собираем сами
+// ФНС-формат QR (t/s/fn/i/fp/n) — берём сохранённую строку или собираем сами.
+// null — у чека нет ни того, ни другого (введён вручную, без реквизитов) —
+// собирать QR не из чего, показывать пустой/бессмысленный QR не нужно.
 function buildQrPayload(receipt) {
   const raw = nullString(receipt.rawQr)
   if (raw) return raw
+
+  const fn = nullString(receipt.fiscalDriveNumber)
+  if (!fn) return null
 
   const date = parseDate(receipt.ticketDate)
   const pad = (n) => String(n).padStart(2, '0')
@@ -251,7 +281,7 @@ function buildQrPayload(receipt) {
   )}${pad(date.getMinutes())}`
   const s = (receipt.totalSum / 100).toFixed(2)
 
-  return `t=${t}&s=${s}&fn=${receipt.fiscalDriveNumber}&i=${receipt.fiscalDocumentNumber}&fp=${receipt.fiscalSign}&n=${receipt.operationType}`
+  return `t=${t}&s=${s}&fn=${fn}&i=${nullString(receipt.fiscalDocumentNumber)}&fp=${nullString(receipt.fiscalSign)}&n=${receipt.operationType}`
 }
 
 const qrDataUrl = ref('')
@@ -259,12 +289,13 @@ const qrDataUrl = ref('')
 watch(
   () => props.receipt,
   async (receipt) => {
-    if (!receipt) {
+    const payload = receipt ? buildQrPayload(receipt) : null
+    if (!payload) {
       qrDataUrl.value = ''
       return
     }
     try {
-      qrDataUrl.value = await QRCode.toDataURL(buildQrPayload(receipt), {
+      qrDataUrl.value = await QRCode.toDataURL(payload, {
         margin: 1,
         width: 168,
         color: { dark: '#33302a', light: '#00000000' },

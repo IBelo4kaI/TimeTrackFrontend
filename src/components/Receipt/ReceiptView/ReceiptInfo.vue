@@ -27,6 +27,7 @@
               {{ receipt.hasPaper ? 'Бумажный' : 'Электронный' }}
             </Badge>
             <Badge type="muted">{{ categoryLabel ?? 'Без категории' }}</Badge>
+            <Badge v-if="isManual" type="muted">Без проверки ФНС</Badge>
             <Badge type="success">Завершён</Badge>
           </div>
         </div>
@@ -47,11 +48,12 @@
             :value="formatMoney(receipt.totalSum)"
           />
           <CardStatistics
+            v-if="sellerInn"
             icon="fa-regular fa-building"
             iconVariant="primary"
             valueVariant="primary"
             label="ИНН продавца"
-            :value="receipt.sellerInn"
+            :value="sellerInn"
           />
         </div>
       </div>
@@ -241,6 +243,11 @@ const ticketDateLabel = computed(() => {
 })
 
 const address = computed(() => nullString(props.receipt?.retailPlaceAddress))
+const sellerInn = computed(() => nullString(props.receipt?.sellerInn))
+
+// Чек введён вручную (см. ReceiptScan.vue "Ввести чек полностью") — без
+// фискальных реквизитов, не проверялся через ФНС.
+const isManual = computed(() => !nullString(props.receipt?.fiscalDriveNumber))
 
 const categoryLabel = computed(() =>
   receiptStore.getCategoryLabel(nullInt(props.receipt?.categoryId))
@@ -507,6 +514,7 @@ async function onDelete() {
   align-items: center;
   justify-content: space-between;
   gap: var(--gap-primary);
+  flex-wrap: wrap;
 }
 
 .info__panel-badges {
@@ -514,13 +522,19 @@ async function onDelete() {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  /* Бейджей может набраться много (Бумажный/категория/ФНС/Завершён) — при
+     нехватке места сначала переносятся на новую строку под заголовком
+     (flex-wrap у .info__panel-header), а если не влезают и там —
+     переносятся уже сами внутри себя, а не растягивают карточку. */
+  max-width: 100%;
 }
 
 .info__panel-title-column {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 12rem;
 }
 
 .info__panel-title {

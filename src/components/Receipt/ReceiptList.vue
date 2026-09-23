@@ -338,7 +338,11 @@ const headers = computed(() => {
 const rows = computed(() =>
   receiptStore.filterReceipts.map((item) => ({
     ...item,
-    sellerDisplay: nullString(item.sellerName) || `ИНН ${item.sellerInn}`,
+    sellerDisplay:
+      nullString(item.sellerName) ||
+      (nullString(item.sellerInn)
+        ? `ИНН ${nullString(item.sellerInn)}`
+        : 'Без продавца'),
     userName:
       receiptStore.target == 'all' ? getUserFullName(item.userId) : null,
     categoryLabel: receiptStore.getCategoryLabel(nullInt(item.categoryId)),

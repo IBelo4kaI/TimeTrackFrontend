@@ -13,6 +13,7 @@
         isCheckingReceipt ||
         cameraOpen ||
         manualMode ||
+        fullManualMode ||
         isAddingAll
       "
       @click="openCameraScanner"
@@ -28,6 +29,7 @@
         isCheckingReceipt ||
         cameraOpen ||
         manualMode ||
+        fullManualMode ||
         isAddingAll
       "
       @click="qrFileInput.click()"
@@ -43,11 +45,31 @@
         isCheckingReceipt ||
         cameraOpen ||
         manualMode ||
+        fullManualMode ||
         isAddingAll
       "
       @click="manualMode = true"
     >
-      <span>Ввести вручную</span>
+      <span>Найти по ФН/ФД/ФП</span>
+    </ButtonUI>
+
+    <!-- Без реквизитов вообще — когда ИНН/фискальные данные не известны
+         (нет чека под рукой, оплата без ККТ и т.п.), сервис "Проверка чека
+         онлайн" тут не задействован, чек сохраняется как есть. -->
+    <ButtonUI
+      type="muted"
+      icon="fa-regular fa-pen-to-square"
+      :disabled="
+        isScanningImage ||
+        isCheckingReceipt ||
+        cameraOpen ||
+        manualMode ||
+        fullManualMode ||
+        isAddingAll
+      "
+      @click="fullManualMode = true"
+    >
+      <span>Ввести чек полностью</span>
     </ButtonUI>
 
     <!-- Без capture — иначе на большинстве мобильных браузеров пикер
@@ -274,6 +296,124 @@
         >
           <i v-if="isCheckingReceipt" class="fa-regular fa-spinner fa-spin"></i>
           Проверить чек
+        </ButtonUI>
+      </div>
+    </div>
+
+    <!-- ================== Полностью ручной ввод (без ИНН/реквизитов) ================== -->
+    <div v-if="fullManualMode" class="manual-form">
+      <p class="manual-form__hint">
+        Для чеков, по которым нет реквизитов — ИНН продавца можно не указывать.
+      </p>
+
+      <div class="manual-form__grid">
+        <InputUi
+          v-model="fullManualFields.sellerName"
+          label="Продавец"
+          placeholder="ИП Иванов И.И."
+          required
+        />
+        <InputUi
+          v-model="fullManualFields.sellerInn"
+          label="ИНН продавца"
+          placeholder="Необязательно"
+        />
+        <InputUi
+          v-model="fullManualFields.ticketDate"
+          type="datetime-local"
+          label="Дата и время покупки"
+          required
+        />
+      </div>
+
+      <div class="manual-form__items">
+        <div
+          v-for="(item, index) in fullManualFields.items"
+          :key="index"
+          class="manual-form__item-row"
+        >
+          <InputUi
+            v-model="item.name"
+            label="Название"
+            placeholder="Позиция"
+            required
+          />
+          <InputUi
+            v-model="item.price"
+            type="number"
+            label="Цена, ₽"
+            placeholder="199.99"
+            required
+          />
+          <InputUi
+            v-model="item.quantity"
+            type="number"
+            label="Кол-во"
+            placeholder="1"
+            required
+          />
+          <ButtonUI
+            type="destructive"
+            icon="fa-regular fa-trash-can-xmark"
+            :disabled="fullManualFields.items.length <= 1"
+            v-tooltip="'Убрать позицию'"
+            @click="removeFullManualItem(index)"
+          />
+        </div>
+
+        <ButtonUI type="muted" icon="fa-regular fa-plus" @click="addFullManualItem">
+          Добавить позицию
+        </ButtonUI>
+      </div>
+
+      <div class="manual-form__total">
+        Итого: {{ formatMoney(fullManualTotalSum) }}
+      </div>
+
+      <div v-if="fullManualPhotoUrl" class="scan-block__photo">
+        <img :src="fullManualPhotoUrl" alt="Фото чека" />
+
+        <div class="scan-block__photo-info">
+          <span class="scan-block__photo-label">Фото прикреплено к чеку</span>
+
+          <button
+            type="button"
+            class="scan-block__photo-remove"
+            @click="clearFullManualPhoto"
+            v-tooltip="'Убрать фото'"
+          >
+            <i class="fa-regular fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <button
+        v-else
+        type="button"
+        class="pending-attach-photo"
+        @click="fullManualPhotoInput.click()"
+      >
+        <i class="fa-regular fa-image"></i>
+        Прикрепить фото к чеку
+      </button>
+
+      <input
+        ref="fullManualPhotoInput"
+        type="file"
+        accept="image/*"
+        style="display: none"
+        @change="onFullManualPhotoSelected"
+      />
+
+      <div v-if="fullManualError" class="manual-form__error">
+        {{ fullManualError }}
+      </div>
+
+      <div class="manual-form__actions">
+        <ButtonUI type="muted" @click="cancelFullManual"> Отмена </ButtonUI>
+
+        <ButtonUI type="accent" @click="submitFullManual">
+          Добавить чек
         </ButtonUI>
       </div>
     </div>
@@ -683,6 +823,7 @@ const hasScanContent = computed(
     isCheckingReceipt.value ||
     !!scannedPhotoUrl.value ||
     manualMode.value ||
+    fullManualMode.value ||
     pendingReceipts.value.length > 0 ||
     scanBatchErrors.value.length > 0 ||
     !!scanLimitNotice.value
@@ -745,6 +886,134 @@ const submitManual = async () => {
   } finally {
     isCheckingReceipt.value = false
   }
+}
+
+// Полностью ручной ввод (без внешнего API вообще) — когда нет ни QR, ни
+// реквизитов чека. Собирает объект в том же формате, что отдаёт внешнее
+// API "Проверка чека онлайн" (fiscal*/userInn пустые), и передаёт его в
+// addPending — дальше чек идёт по общей очереди наравне со сканированными
+// (mapExternalReceipt на пустых fiscal*/userInn уже корректно отдаёт "" —
+// бэк трактует это как "реквизиты/ИНН не указаны", см. validate на бэке).
+const fullManualMode = ref(false)
+const fullManualError = ref('')
+
+function emptyManualItem() {
+  return { name: '', price: '', quantity: '1' }
+}
+
+const fullManualFields = reactive({
+  sellerName: '',
+  sellerInn: '',
+  ticketDate: '',
+  items: [emptyManualItem()],
+})
+
+// Фото прикрепляется сразу в форме — тот же приём, что и при сканировании
+// по фото (см. onQrFileSelected), просто без распознавания QR: файл едет
+// в pending-элемент, а дальше — как у остальных способов через addPending.
+const fullManualPhotoInput = ref(null)
+const fullManualPhotoFile = ref(null)
+const fullManualPhotoUrl = ref('')
+
+function onFullManualPhotoSelected(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+
+  if (fullManualPhotoUrl.value) URL.revokeObjectURL(fullManualPhotoUrl.value)
+  fullManualPhotoFile.value = file
+  fullManualPhotoUrl.value = URL.createObjectURL(file)
+}
+
+function clearFullManualPhoto() {
+  if (fullManualPhotoUrl.value) URL.revokeObjectURL(fullManualPhotoUrl.value)
+  fullManualPhotoFile.value = null
+  fullManualPhotoUrl.value = ''
+}
+
+const fullManualTotalSum = computed(() =>
+  fullManualFields.items.reduce((sum, item) => {
+    const price = Number(item.price)
+    const quantity = Number(item.quantity)
+    if (!Number.isFinite(price) || !Number.isFinite(quantity)) return sum
+    return sum + Math.round(price * 100) * quantity
+  }, 0)
+)
+
+function addFullManualItem() {
+  fullManualFields.items.push(emptyManualItem())
+}
+
+function removeFullManualItem(index) {
+  if (fullManualFields.items.length <= 1) return
+  fullManualFields.items.splice(index, 1)
+}
+
+function resetFullManualFields() {
+  fullManualFields.sellerName = ''
+  fullManualFields.sellerInn = ''
+  fullManualFields.ticketDate = ''
+  fullManualFields.items = [emptyManualItem()]
+  fullManualError.value = ''
+  clearFullManualPhoto()
+}
+
+const cancelFullManual = () => {
+  fullManualMode.value = false
+  resetFullManualFields()
+}
+
+function submitFullManual() {
+  if (!fullManualFields.sellerName.trim()) {
+    fullManualError.value = 'Укажите продавца'
+    return
+  }
+  if (!fullManualFields.ticketDate) {
+    fullManualError.value = 'Укажите дату и время покупки'
+    return
+  }
+  for (const item of fullManualFields.items) {
+    if (
+      !item.name.trim() ||
+      !(Number(item.price) > 0) ||
+      !(Number(item.quantity) > 0)
+    ) {
+      fullManualError.value = 'Заполните все поля позиций корректно'
+      return
+    }
+  }
+
+  fullManualError.value = ''
+
+  const items = fullManualFields.items.map((item) => {
+    const priceKopecks = Math.round(Number(item.price) * 100)
+    const quantity = Number(item.quantity)
+    return {
+      name: item.name.trim(),
+      price: priceKopecks,
+      quantity,
+      sum: priceKopecks * quantity,
+      nds: null,
+    }
+  })
+
+  addPending(
+    {
+      fiscalDriveNumber: '',
+      fiscalDocumentNumber: '',
+      fiscalSign: '',
+      ticketDate: fullManualFields.ticketDate,
+      totalSum: fullManualTotalSum.value,
+      userInn: fullManualFields.sellerInn.trim(),
+      user: fullManualFields.sellerName.trim(),
+      operationType: MANUAL_OPERATION_TYPE,
+      items,
+    },
+    { photoFile: fullManualPhotoFile.value }
+  )
+
+  fullManualMode.value = false
+  resetFullManualFields()
 }
 
 // Нормализация под показ — сырой ответ сервиса на разных чеках называет
@@ -1428,6 +1697,31 @@ onBeforeUnmount(() => {
 .manual-form__error {
   font-size: 0.86rem;
   color: var(--destructive);
+}
+
+.manual-form__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.57rem;
+}
+
+.manual-form__item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 0.57rem;
+  align-items: end;
+}
+
+@media (max-width: 768px) {
+  .manual-form__item-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.manual-form__total {
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: right;
 }
 
 .manual-form__actions {
