@@ -70,3 +70,31 @@ export const getVacationApprovedNotificationUserIds = () =>
   getNotificationRecipients('notification_vacation_approved_user_ids')
 export const updateVacationApprovedNotificationUserIds = (userIds) =>
   updateNotificationRecipients('notification_vacation_approved_user_ids', userIds)
+
+// Почта для письма с утверждённой заявкой на отпуск и сканом заявления —
+// одно значение (строка), а не список user_id, как выше. Письмо уходит,
+// только если к заявке прикреплён скан (см. vacationService.SendApprovalEmailIfReady
+// на бэке); пусто — отправка выключена.
+export const getVacationApprovedNotificationEmail = async () => {
+  try {
+    const response = await timeTrackApi.get(
+      `/system-settings/notification_vacation_approved_email`
+    )
+    return response.data?.settingValue?.String ?? ''
+  } catch (error) {
+    console.error('Ошибка при получении email для уведомлений:', error)
+    throw error
+  }
+}
+
+export const updateVacationApprovedNotificationEmail = async (email) => {
+  try {
+    await timeTrackApi.post('/system-settings/value', {
+      settingKey: 'notification_vacation_approved_email',
+      settingValue: email,
+    })
+  } catch (error) {
+    console.error('Ошибка при обновлении email для уведомлений:', error)
+    throw error
+  }
+}

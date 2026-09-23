@@ -120,14 +120,10 @@ export const createVacation = async (data) => {
   }
 }
 
-// applicantName — ФИО сотрудника, чья заявка (фронт уже знает его из
-// usersAll) — только для текста уведомления об утверждении, см.
-// applicantName у createVacation.
-export const updateVacationStatus = async (id, status, applicantName = '') => {
+export const updateVacationStatus = async (id, status) => {
   try {
     const response = await timeTrackApi.put(`/vacation/${id}/status`, {
       status: status,
-      applicantName,
     })
     return response.data
   } catch (error) {
@@ -136,11 +132,9 @@ export const updateVacationStatus = async (id, status, applicantName = '') => {
   }
 }
 
-export const approvedVacationStatus = async (id, applicantName = '') => {
+export const approvedVacationStatus = async (id) => {
   try {
-    const response = await timeTrackApi.put(`/vacation/${id}/approve`, {
-      applicantName,
-    })
+    const response = await timeTrackApi.put(`/vacation/${id}/approve`)
     return response.data
   } catch (error) {
     console.error('Ошибка создания дня:', error)

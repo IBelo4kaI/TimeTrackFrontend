@@ -7,6 +7,7 @@
     <StandardSettings v-else-if="submenuStore.activeTab === 'standards'" />
     <template v-else-if="submenuStore.activeTab === 'notifications'">
       <NotificationSettings />
+      <SmtpSettings />
       <ManualNotificationSender />
       <NotificationTemplateSettings />
       <TimesheetReminderCard />
@@ -28,6 +29,7 @@ import NewsSettings from '@/components/Settings/NewsSettings.vue'
 import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
 import NotificationTemplateSettings from '@/components/Settings/NotificationTemplateSettings.vue'
 import ReceiptCategorySettings from '@/components/Settings/ReceiptCategorySettings.vue'
+import SmtpSettings from '@/components/Settings/SmtpSettings.vue'
 import StandardSettings from '@/components/Settings/StandardSettings.vue'
 import TimesheetReminderCard from '@/components/Settings/TimesheetReminderCard.vue'
 import VacationSettings from '@/components/Settings/VacationSettings.vue'

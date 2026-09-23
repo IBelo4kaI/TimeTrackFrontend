@@ -2,8 +2,8 @@
   <div class="settings-notifications">
     <div class="settings-notifications__title">Уведомления о новых заявках</div>
     <div class="settings-notifications__hint">
-      Уведомление придёт в приложение и, если у сотрудника привязан VK, туда же. Для отпусков
-      и больничных получатели настраиваются отдельно.
+      Уведомление придёт в приложение и, если у сотрудника привязан VK, туда же.
+      Для отпусков и больничных получатели настраиваются отдельно.
     </div>
 
     <NotificationRecipientsPicker
@@ -21,10 +21,13 @@
   </div>
 
   <div class="settings-notifications">
-    <div class="settings-notifications__title">Уведомления об утверждении отпуска</div>
+    <div class="settings-notifications__title">
+      Уведомления об утверждении отпуска
+    </div>
     <div class="settings-notifications__hint">
-      Отдельно от списка выше: сам сотрудник о решении по своей заявке уведомляется всегда
-      автоматически, тут — кому ещё сообщить, когда его отпуск утвердили (ФИО и даты).
+      Отдельно от списка выше: сам сотрудник о решении по своей заявке
+      уведомляется всегда автоматически, тут — кому ещё сообщить, когда его
+      отпуск утвердили (ФИО и даты).
     </div>
 
     <NotificationRecipientsPicker
@@ -33,20 +36,45 @@
       :is-loading="isLoadingVacationApproved"
       @update:model-value="onVacationApprovedChange"
     />
+
+    <div class="settings-notifications__email">
+      <InputUi
+        v-model="vacationApprovedEmailDraft"
+        type="email"
+        label="Почта"
+        placeholder="buhgalteria@company.ru"
+        hint="Письмо со сканом уходит только когда заявка утверждена И к ней прикреплён скан — пусто, если отправлять не нужно"
+        :disabled="isLoadingVacationApprovedEmail"
+      />
+      <ButtonUI
+        type="muted-accent"
+        icon="fa-regular fa-check"
+        :disabled="
+          !vacationApprovedEmailChanged || isSavingVacationApprovedEmail
+        "
+        @click="onSaveVacationApprovedEmail"
+      >
+        Сохранить
+      </ButtonUI>
+    </div>
   </div>
 </template>
 
 <script setup>
+import ButtonUI from '@/components/ButtonUI.vue'
+import InputUi from '@/components/InputUi.vue'
 import {
   getSickLeaveNotificationAdminUserIds,
+  getVacationApprovedNotificationEmail,
   getVacationApprovedNotificationUserIds,
   getVacationNotificationAdminUserIds,
   updateSickLeaveNotificationAdminUserIds,
+  updateVacationApprovedNotificationEmail,
   updateVacationApprovedNotificationUserIds,
   updateVacationNotificationAdminUserIds,
 } from '@/services/systemSettings.api'
 import { useNotificationStore } from '@/stores/notification'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import NotificationRecipientsPicker from './NotificationRecipientsPicker.vue'
 
 const notificationStore = useNotificationStore()
@@ -58,6 +86,16 @@ const isLoadingVacation = ref(true)
 const isLoadingSickLeave = ref(true)
 const isLoadingVacationApproved = ref(true)
 
+// Черновик до "Сохранить" — та же схема, что у категории чека в
+// ReceiptInfo.vue: сохраняем не на каждый ввод символа, а по клику.
+const vacationApprovedEmail = ref('')
+const vacationApprovedEmailDraft = ref('')
+const isLoadingVacationApprovedEmail = ref(true)
+const isSavingVacationApprovedEmail = ref(false)
+const vacationApprovedEmailChanged = computed(
+  () => vacationApprovedEmailDraft.value !== vacationApprovedEmail.value
+)
+
 async function onVacationChange(ids) {
   const previous = vacationIds.value
   vacationIds.value = ids
@@ -65,7 +103,10 @@ async function onVacationChange(ids) {
     await updateVacationNotificationAdminUserIds(ids)
   } catch {
     vacationIds.value = previous
-    notificationStore.addNotification('Не удалось сохранить получателей уведомлений', 'error')
+    notificationStore.addNotification(
+      'Не удалось сохранить получателей уведомлений',
+      'error'
+    )
   }
 }
 
@@ -76,7 +117,10 @@ async function onSickLeaveChange(ids) {
     await updateSickLeaveNotificationAdminUserIds(ids)
   } catch {
     sickLeaveIds.value = previous
-    notificationStore.addNotification('Не удалось сохранить получателей уведомлений', 'error')
+    notificationStore.addNotification(
+      'Не удалось сохранить получателей уведомлений',
+      'error'
+    )
   }
 }
 
@@ -87,7 +131,25 @@ async function onVacationApprovedChange(ids) {
     await updateVacationApprovedNotificationUserIds(ids)
   } catch {
     vacationApprovedIds.value = previous
-    notificationStore.addNotification('Не удалось сохранить получателей уведомлений', 'error')
+    notificationStore.addNotification(
+      'Не удалось сохранить получателей уведомлений',
+      'error'
+    )
+  }
+}
+
+async function onSaveVacationApprovedEmail() {
+  const value = vacationApprovedEmailDraft.value.trim()
+  isSavingVacationApprovedEmail.value = true
+  try {
+    await updateVacationApprovedNotificationEmail(value)
+    vacationApprovedEmail.value = value
+    vacationApprovedEmailDraft.value = value
+    notificationStore.addNotification('Почта сохранена', 'success')
+  } catch {
+    notificationStore.addNotification('Не удалось сохранить почту', 'error')
+  } finally {
+    isSavingVacationApprovedEmail.value = false
   }
 }
 
@@ -109,11 +171,23 @@ onMounted(async () => {
   }
 
   try {
-    vacationApprovedIds.value = (await getVacationApprovedNotificationUserIds()) ?? []
+    vacationApprovedIds.value =
+      (await getVacationApprovedNotificationUserIds()) ?? []
   } catch {
     vacationApprovedIds.value = []
   } finally {
     isLoadingVacationApproved.value = false
+  }
+
+  try {
+    const email = (await getVacationApprovedNotificationEmail()) ?? ''
+    vacationApprovedEmail.value = email
+    vacationApprovedEmailDraft.value = email
+  } catch {
+    vacationApprovedEmail.value = ''
+    vacationApprovedEmailDraft.value = ''
+  } finally {
+    isLoadingVacationApprovedEmail.value = false
   }
 })
 </script>
@@ -139,5 +213,15 @@ onMounted(async () => {
   font-size: 0.86rem;
   color: var(--muted-text);
   margin-top: -0.71rem;
+}
+
+.settings-notifications__email {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap-primary);
+}
+
+.settings-notifications__email > :first-child {
+  flex: 1;
 }
 </style>
