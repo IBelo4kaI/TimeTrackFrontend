@@ -90,13 +90,23 @@ export const useUserStore = defineStore('user', () => {
 
   const birthdays = computed(() => {
     if (usersAll.value)
-      return usersAll.value.map((u) => {
-        return {
-          fullName: u.surname + ' ' + u.name,
-          initials: [u.surname.charAt(0), u.name.charAt(0)].join(''),
-          birthday: u.birthday,
-        }
-      })
+      return usersAll.value
+        .map((u) => {
+          return {
+            fullName: u.surname + ' ' + u.name,
+            initials: [u.surname.charAt(0), u.name.charAt(0)].join(''),
+            birthday: u.birthday,
+          }
+        })
+        .sort((a, b) => {
+          const da = parseDate(a.birthday)
+          const db = parseDate(b.birthday)
+          return (
+            da.getMonth() - db.getMonth() ||
+            da.getDate() - db.getDate() ||
+            a.fullName.localeCompare(b.fullName)
+          )
+        })
     else return []
   })
 

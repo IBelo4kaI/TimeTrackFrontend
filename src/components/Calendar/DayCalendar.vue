@@ -5,37 +5,22 @@
       'day',
       { 'day-selected': isSelected },
       { 'day-weekend': day.isWeekend },
+      { 'day-birthday-hovered': isBirthdayHovered },
     ]"
     @mousedown="handleMouseDown"
     @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
     @dblclick="open(day)"
   >
     <div class="day-header">
       <span class="day-number">
         {{ dayDate.getDate() }}
       </span>
-      <template v-if="day.holidays.length > 0">
-        <div
-          class="day-description"
-          v-tooltip="{
-            content: day.holidays.length > 0 ? day.holidays.join('\n') : null,
-            offset: -4,
-          }"
-        >
-          {{ day.holidays[0] }}
-        </div>
-      </template>
       <template v-if="birthday.length > 0">
-        <span
-          class="day-number day-birthday"
-          v-tooltip="{
-            content: birthday
-              .map((b) => 'День рождения ' + b.fullName)
-              .join('\n'),
-            offset: 4,
-          }"
-        >
-          {{ birthday[0].initials }}
+        <span class="day-number day-birthday">
+          <svg class="day-dot" viewBox="0 0 8 8" aria-hidden="true">
+            <circle cx="4" cy="4" r="4" />
+          </svg>
         </span>
       </template>
     </div>
@@ -44,14 +29,44 @@
         {{ day.hours }}
       </div>
     </div>
+    <div class="day-footer">
+      <div
+        class="day-usertype day-flex-row"
+        :class="{ 'day-dot-only': day.calendarEventTypeId }"
+        v-if="day.userTimeTypeId"
+      >
+        <span class="day-circle">
+          <svg class="day-dot" viewBox="0 0 8 8" aria-hidden="true">
+            <circle cx="4" cy="4" r="4" />
+          </svg>
+        </span>
+        <span v-if="!day.calendarEventTypeId" class="day-label">
+          {{ dayTypesStore.getTypeNameById(day.userTimeTypeId) }}
+        </span>
+      </div>
+      <div class="day-holiday day-flex-row" v-if="day.calendarEventTypeId">
+        <span class="day-circle">
+          <svg class="day-dot" viewBox="0 0 8 8" aria-hidden="true">
+            <circle cx="4" cy="4" r="4" />
+          </svg>
+        </span>
+        <span v-if="day.holidays.length == 0" class="day-label">
+          {{ dayTypesStore.getTypeNameById(day.calendarEventTypeId) }}
+        </span>
+        <span v-else class="day-label">
+          {{ day.holidays[0] }}
+        </span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { useAddReportModalStore } from '@/stores/addReportModal'
+import { useCalendarStore } from '@/stores/calendar'
 import { useDayTypesStore } from '@/stores/dayTypes'
 import { useUserStore } from '@/stores/user'
-import { getContrastColor } from '@/utils/color.utils'
+import { softBackground } from '@/utils/color.utils'
 import { parseDate } from '@/utils/date.utils'
 import { computed, onMounted, useTemplateRef } from 'vue'
 
@@ -68,6 +83,7 @@ const addReportStore = useAddReportModalStore()
 const { open } = addReportStore
 
 const dayTypesStore = useDayTypesStore()
+const calendarStore = useCalendarStore()
 
 const dayDate = computed(() => parseDate(day.date))
 
@@ -78,6 +94,10 @@ const birthday = computed(() => {
   )
 })
 
+const isBirthdayHovered = computed(
+  () => dayDate.value.getDate() == calendarStore.hoveredBirthday
+)
+
 const handleMouseDown = (event) => {
   // if (!day.isCurrentMonth) return;
   emit('day-mouse-down', day, event)
@@ -86,27 +106,30 @@ const handleMouseDown = (event) => {
 const handleMouseEnter = (event) => {
   // if (!day.isCurrentMonth) return;
   emit('day-mouse-enter', day, event)
+  if (birthday.value.length > 0) {
+    calendarStore.hoverBirthday(birthday.value[0].birthday)
+  }
+}
+
+const handleMouseLeave = (event) => {
+  if (birthday.value.length > 0) {
+    calendarStore.resetHoveredBirthday()
+  }
 }
 
 onMounted(() => {
-  if (day.calendarEventTypeId && day.userTimeTypeId) {
-    const uColor = dayTypesStore.getColorById(day.userTimeTypeId)
-    const cColor = dayTypesStore.getColorById(day.calendarEventTypeId)
-
-    dayElement.value.style.setProperty('--border-color', uColor)
-    dayElement.value.style.setProperty('--background-number', cColor)
-    dayElement.value.style.setProperty(
-      '--text-number',
-      getContrastColor(cColor)
-    )
-  } else if (day.userTimeTypeId) {
+  if (day.userTimeTypeId) {
     const color = dayTypesStore.getColorById(day.userTimeTypeId)
-    dayElement.value.style.setProperty('--background-number', color)
-    dayElement.value.style.setProperty('--text-number', getContrastColor(color))
-  } else if (day.calendarEventTypeId) {
+    dayElement.value.style.setProperty('--usertype', color)
+    dayElement.value.style.setProperty('--usertype-back', softBackground(color))
+  }
+  if (day.calendarEventTypeId) {
     const color = dayTypesStore.getColorById(day.calendarEventTypeId)
-    dayElement.value.style.setProperty('--background-number', color)
-    dayElement.value.style.setProperty('--text-number', getContrastColor(color))
+    dayElement.value.style.setProperty('--calendartype', color)
+    dayElement.value.style.setProperty(
+      '--calendartype-back',
+      softBackground(color)
+    )
   }
 })
 </script>
@@ -115,16 +138,29 @@ onMounted(() => {
 .day {
   display: flex;
   flex-direction: column;
-  background: var(--foreground);
-  color: var(--text);
-  border: 0.07rem solid var(--border-color);
-  min-height: 8rem;
   min-width: 8rem;
+  min-height: 8rem;
+  background: var(--foreground);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text);
   user-select: none;
   transition: all 0.3s ease;
-  border-radius: var(--border-radius);
 }
+
 .day:hover {
+  --border-color: var(--accent);
+}
+
+.day-weekend {
+  background: var(--calendar-weekend);
+}
+
+.day-selected {
+  --border-color: var(--accent);
+}
+
+.day-birthday-hovered {
   --border-color: var(--accent);
   transform: translateY(-0.3rem);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
@@ -138,6 +174,28 @@ onMounted(() => {
   padding: 0.5rem 0.5rem 0 0.5rem;
 }
 
+.day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border-radius: var(--border-radius);
+  background: var(--background);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.day-dot {
+  width: 0.77rem;
+  height: 0.77rem;
+  overflow: visible;
+  fill: currentColor;
+}
+
+.day-birthday {
+  color: var(--accent);
+}
+
 .day-main {
   flex: 1;
   display: flex;
@@ -148,71 +206,72 @@ onMounted(() => {
 }
 
 .day-hours {
-  text-align: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  aspect-ratio: 1/1;
   padding: 0.3rem;
   border-radius: 50%;
-  min-width: 4rem;
-  min-height: 4rem;
-  max-width: 4rem;
-  max-height: 4rem;
-  /*height: 100%;*/
-  font-size: 1.5rem;
-  aspect-ratio: 1/1;
-  /*background: var(--background-day, var(--foreground));*/
+  font-size: 1.2rem;
+  text-align: center;
 }
 
-.day-number {
-  display: inline-flex;
+.day-footer {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 0.5rem 0.5rem 0.5rem;
+  overflow: hidden;
+}
+
+.day-flex-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.33rem;
+  border-radius: 2rem;
+}
+
+/* Флекс-элементы по умолчанию min-width: auto — не сжимаются и толкают
+   .day-footer за границы .day. min-width: 0 разрешает сжатие, а обрезаем
+   многоточием именно текст (.day-label), а не всю строку с иконкой. */
+.day-usertype,
+.day-holiday {
+  max-width: 100%;
+  font-size: 0.77rem;
+}
+
+.day-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.day-circle {
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.25rem;
+}
+
+.day-dot-only {
+  aspect-ratio: 1/1;
+  justify-content: center;
   border-radius: 50%;
-  min-width: 2.4rem;
-  min-height: 2.4rem;
-  max-width: 2.4rem;
-  max-height: 2.4rem;
-  font-size: 1rem;
-  background: var(--background-number, inherit);
-  color: var(--text-number, var(--text));
 }
 
-.day-birthday {
-  background: var(--accent);
-  color: var(--on-accent);
-  cursor: help;
+.day-usertype {
+  background: var(--usertype-back, #fff);
 }
 
-.day-weekend {
-  background: var(--calendar-weekend);
+.day-holiday {
+  background: var(--calendartype-back, #fff);
+  min-width: 0;
 }
 
-.day-description {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8rem;
-  line-height: 2.4rem;
+.day-usertype {
+  color: var(--usertype, #343434);
 }
 
-.day-description .fa-circle {
-  font-size: 0.5rem;
-}
-
-.day-selected {
-  /* background: var(--muted-accent); */
-  --border-color: var(--accent);
-}
-
-.day-selected .day-number {
-  /* background: var(--accent);
-  color: var(--on-accent); */
-}
-
-.day-selected .day-hours {
-  /*color: var(--accent);*/
+.day-holiday {
+  color: var(--calendartype, #343434);
 }
 </style>

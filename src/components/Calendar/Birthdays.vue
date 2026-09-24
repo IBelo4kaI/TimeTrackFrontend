@@ -2,7 +2,19 @@
   <div class="birthdays">
     <div class="birthdays__title">Дни рождения</div>
     <div class="birthdays__list" v-if="birthdays.length > 0">
-      <div class="birthday__item" v-for="birthday in birthdays">
+      <div
+        class="birthday__item"
+        v-for="birthday in birthdays"
+        :class="[
+          {
+            'day-birthday-hovered':
+              parseDate(birthday.birthday).getDate() ==
+              calendarStore.hoveredBirthday,
+          },
+        ]"
+        @mouseenter="calendarStore.hoverBirthday(birthday.birthday)"
+        @mouseleave="calendarStore.resetHoveredBirthday"
+      >
         <div class="birthday__item-date">
           {{ getDateNamed(parseDate(birthday.birthday)) }}
         </div>
@@ -28,6 +40,10 @@ const calendarStore = useCalendarStore()
 const birthdays = computed(() => {
   return userStore.birthdaysByMonth(calendarStore.currentMonth)
 })
+
+const isBirthdayHovered = computed(
+  () => dayDate.value.getDate() == calendarStore.hoveredBirthday
+)
 </script>
 
 <style scoped>
@@ -55,9 +71,17 @@ const birthdays = computed(() => {
   gap: var(--gap-primary);
   padding: 0.71rem;
   font-size: 0.9rem;
+  transition: background 0.2s ease;
+}
+.birthday__item:hover {
+  background: var(--muted-accent);
+  cursor: default;
 }
 .birthday__item + .birthday__item {
   border-top: 0.07rem solid var(--border-color);
+}
+.day-birthday-hovered {
+  background: var(--muted-accent);
 }
 
 .birthday__item span {

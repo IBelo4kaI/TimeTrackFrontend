@@ -6,13 +6,19 @@ import {
   updateUserTimeEntry,
   getStatistics,
 } from '@/services/userTimeEntries.api'
-import { getMyWorkStandards, getStandardsByYear } from '@/services/workStandard.api'
+import {
+  getMyWorkStandards,
+  getStandardsByYear,
+} from '@/services/workStandard.api'
 import {
   getFirstDateOfMonth,
   getLastDateOfMonth,
   getMonthYearName,
 } from '@/utils/calendar.utils'
-import { plannedMonthHours, vacationNormHours } from '@/utils/plannedHours.utils'
+import {
+  plannedMonthHours,
+  vacationNormHours,
+} from '@/utils/plannedHours.utils'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import {
@@ -21,6 +27,7 @@ import {
 } from '../helpers/calendar.helpers'
 import { useDayTypesStore } from './dayTypes'
 import { useUserStore } from './user'
+import { parseDate } from '@/utils/date.utils'
 
 export const useCalendarStore = defineStore('calendar', () => {
   // State
@@ -35,6 +42,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   const nextMonthDays = shallowRef([])
   const currentDate = shallowRef(new Date())
   const isLoading = shallowRef(false)
+  const hoveredBirthday = ref(null)
 
   const userStore = useUserStore()
   const dayTypesStore = useDayTypesStore()
@@ -90,7 +98,8 @@ export const useCalendarStore = defineStore('calendar', () => {
 
     try {
       if (selectedUserId.value === userStore.user?.id) {
-        individualStandards.value = (await getMyWorkStandards(currentYear.value)) ?? []
+        individualStandards.value =
+          (await getMyWorkStandards(currentYear.value)) ?? []
       } else {
         const all = (await getStandardsByYear(currentYear.value)) ?? []
         individualStandards.value = all.filter(
@@ -171,6 +180,16 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
+  const hoverBirthday = (dateHover) => {
+    const d = parseDate(dateHover)
+    hoveredBirthday.value = d.getDate()
+    console.log('hovered date: ', hoveredBirthday.value)
+  }
+
+  const resetHoveredBirthday = () => {
+    hoveredBirthday.value = null
+  }
+
   const workingHours = computed(() =>
     statsData.value
       ? statsData.value.hours
@@ -210,7 +229,11 @@ export const useCalendarStore = defineStore('calendar', () => {
   // сотрудника неизвестен (норму посчитать не из чего).
   const plannedHours = computed(() => {
     if (!viewedGenderId.value) return null
-    return plannedMonthHours(calendarDays.value, viewedGenderId.value, viewedIndividualStandard.value)
+    return plannedMonthHours(
+      calendarDays.value,
+      viewedGenderId.value,
+      viewedIndividualStandard.value
+    )
   })
 
   // Норма месяца (с бэка) за вычетом нормы дней отпуска — иначе отпуск
@@ -257,6 +280,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     individualStandards,
     selectedUserId,
     selectedUser,
+    hoveredBirthday,
 
     // Computed
     currentMonth,
@@ -276,5 +300,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     deleteDay,
     initialFetch,
     init,
+    hoverBirthday,
+    resetHoveredBirthday,
   }
 })
