@@ -110,6 +110,7 @@ const overtimeHours = computed(() => {
   /*gap: calc(var(--padding-secondary) / 2);*/
   border-radius: var(--border-radius);
   overflow: hidden;
+  border: 0.07rem solid var(--border-color);
 }
 .statistics__row {
   display: flex;
@@ -117,7 +118,9 @@ const overtimeHours = computed(() => {
   gap: 0.71rem;
   background: var(--foreground);
   padding: 0.71rem;
-  border: 0.07rem solid var(--border-color);
+}
+.statistics__row:not(:last-child) {
+  border-bottom: 0.07rem solid var(--border-color);
 }
 .statistics__title {
   font-weight: 500;
