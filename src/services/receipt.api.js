@@ -101,13 +101,14 @@ export const transferReceipt = async (id, userId) => {
   }
 }
 
-// Категория чека проставляется бэком автоматически при создании (локальные
-// словари, см. internal/receipt_category) — этот вызов только для ручной
-// правки. categoryId: null снимает категорию.
-export const setReceiptCategory = async (id, categoryId) => {
+// Категории чека автоматически проставляет бэк при создании (одну, по
+// локальным словарям, см. internal/receipt_category) — этот вызов для ручного
+// выбора нескольких. Пустой массив — "Без категории"; после ручного выбора
+// автоклассификация чек больше не трогает.
+export const setReceiptCategory = async (id, categoryIds) => {
   try {
     const response = await timeTrackApi.put(`/receipts/${id}/category`, {
-      categoryId,
+      categoryIds,
     })
     return response.data
   } catch (error) {

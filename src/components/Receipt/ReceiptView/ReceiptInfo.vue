@@ -26,7 +26,12 @@
             <Badge :type="receipt.hasPaper ? 'success' : 'muted'">
               {{ receipt.hasPaper ? 'Бумажный' : 'Электронный' }}
             </Badge>
-            <Badge type="muted">{{ categoryLabel ?? 'Без категории' }}</Badge>
+            <Badge v-for="label in categoryLabels" :key="label" type="muted">
+              {{ label }}
+            </Badge>
+            <Badge v-if="!categoryLabels.length" type="muted">
+              Без категории
+            </Badge>
             <Badge v-if="objectLabel" type="muted">{{ objectLabel }}</Badge>
             <Badge v-if="isManual" type="muted">Без проверки ФНС</Badge>
             <Badge type="success">Завершён</Badge>
@@ -141,8 +146,9 @@
         <div class="info__category" v-if="canTransfer">
           <SelectUI
             v-model="categoryDraft"
+            multiple
             :options="receiptStore.categoryOptions"
-            label="Категория"
+            label="Категории"
             placeholder="Без категории"
           />
           <ButtonUI
@@ -277,8 +283,9 @@ const isManual = computed(() => !nullString(props.receipt?.fiscalDriveNumber))
 const objectId = computed(() => nullString(props.receipt?.objectId))
 const objectLabel = computed(() => receiptStore.getObjectLabel(objectId.value))
 
-const categoryLabel = computed(() =>
-  receiptStore.getCategoryLabel(nullInt(props.receipt?.categoryId))
+const categoryIds = computed(() => props.receipt?.categoryIds ?? [])
+const categoryLabels = computed(() =>
+  categoryIds.value.map((id) => receiptStore.getCategoryLabel(id)).filter(Boolean)
 )
 
 const paymentBreakdown = computed(() => {
@@ -405,18 +412,20 @@ const transferOptions = computed(() =>
 const isMutating = ref(false)
 
 // Черновик категории до "Сохранить" — та же схема, что у transferUserId
-// выше (пишем в receipt.categoryId только по явному сохранению).
-const categoryDraft = ref('')
+// выше (пишем в receipt.categoryIds только по явному сохранению).
+const categoryDraft = ref([])
 watch(
   () => props.receipt,
   (receipt) => {
-    categoryDraft.value = nullInt(receipt?.categoryId) ?? ''
+    categoryDraft.value = [...(receipt?.categoryIds ?? [])]
   },
   { immediate: true }
 )
 
 const categoryChanged = computed(
-  () => categoryDraft.value !== (nullInt(props.receipt?.categoryId) ?? '')
+  () =>
+    categoryDraft.value.length !== categoryIds.value.length ||
+    categoryDraft.value.some((id) => !categoryIds.value.includes(id))
 )
 
 async function onSaveCategory() {
@@ -424,9 +433,9 @@ async function onSaveCategory() {
   try {
     const updated = await setReceiptCategory(
       props.receipt.id,
-      categoryDraft.value || null
+      categoryDraft.value
     )
-    props.receipt.categoryId = updated.categoryId
+    props.receipt.categoryIds = updated.categoryIds
     notificationStore.addNotification('Категория обновлена', 'success')
   } catch {
     notificationStore.addNotification(

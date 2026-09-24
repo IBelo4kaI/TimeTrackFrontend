@@ -11,7 +11,7 @@ import {
 import { createObject, getObjects } from '@/services/referenceObjects.api'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { nullInt, nullString } from '@/utils/receipt.utils'
+import { nullString } from '@/utils/receipt.utils'
 import { useUserStore } from './user'
 
 // Отдельное значение фильтра "Без категории" — '' уже занято под "Все
@@ -58,11 +58,11 @@ export const useReceiptStore = defineStore('receipt', () => {
           return false
         if (employeeId.value && r.userId != employeeId.value) return false
         if (categoryIds.value.length) {
-          const current = nullInt(r.categoryId)
-          const matches =
-            current == null
-              ? categoryIds.value.includes(NO_CATEGORY_FILTER)
-              : categoryIds.value.includes(current)
+          // Любая из выбранных; "Без категории" — у чека нет ни одной
+          const own = r.categoryIds ?? []
+          const matches = own.length
+            ? own.some((id) => categoryIds.value.includes(id))
+            : categoryIds.value.includes(NO_CATEGORY_FILTER)
           if (!matches) return false
         }
         if (objectId.value === NO_OBJECT_FILTER) {

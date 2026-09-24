@@ -139,8 +139,12 @@
         <span v-else>—</span>
       </template>
 
-      <template #cell-categoryLabel="{ value }">
-        <Badge v-if="value" type="muted">{{ value }}</Badge>
+      <template #cell-categoryLabels="{ value }">
+        <div v-if="value.length" class="category-badges">
+          <Badge v-for="label in value" :key="label" type="muted">
+            {{ label }}
+          </Badge>
+        </div>
         <span v-else>Без категории</span>
       </template>
 
@@ -246,7 +250,6 @@ import { parseDate } from '@/utils/date.utils'
 import {
   formatMoney,
   getOperationTypeLabel,
-  nullInt,
   nullString,
 } from '@/utils/receipt.utils'
 import { storeToRefs } from 'pinia'
@@ -360,7 +363,7 @@ const headers = computed(() => {
     },
     { valueKey: 'totalSum', title: 'Сумма' },
     { valueKey: 'hasPaper', title: 'Экземпляр' },
-    { valueKey: 'categoryLabel', title: 'Категория' },
+    { valueKey: 'categoryLabels', title: 'Категории' },
     { valueKey: 'objectLabel', title: 'Объект' },
     {
       valueKey: 'createdAt',
@@ -381,7 +384,9 @@ const rows = computed(() =>
         : 'Без продавца'),
     userName:
       receiptStore.target == 'all' ? getUserFullName(item.userId) : null,
-    categoryLabel: receiptStore.getCategoryLabel(nullInt(item.categoryId)),
+    categoryLabels: (item.categoryIds ?? [])
+      .map((id) => receiptStore.getCategoryLabel(id))
+      .filter(Boolean),
     objectLabel: receiptStore.getObjectLabel(nullString(item.objectId)),
   }))
 )
@@ -500,6 +505,12 @@ async function onFileSelected(id, event) {
 
 .receipt-list__total {
   color: var(--muted-text);
+}
+
+.category-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 .filters-employee {

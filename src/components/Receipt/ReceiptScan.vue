@@ -539,28 +539,33 @@
         <span>{{ formatMoney(getSummary(item).totalSum) }}</span>
       </div>
 
-      <div class="receipt-result__category">
-        <span class="receipt-result__label">Категория</span>
-        <i v-if="item.categoryPreviewLoading" class="fa-regular fa-spinner fa-spin"></i>
-        <Badge v-else-if="item.categoryId" type="muted">
-          {{ receiptStore.getCategoryLabel(item.categoryId) }}
-        </Badge>
-        <span v-else class="receipt-result__category-empty">Не определена</span>
-      </div>
-
-      <Autocomplete
-        v-model="item.objectId"
-        :options="receiptStore.objectOptions"
-        label-key="label"
-        value-key="value"
-        label="Объект"
-        placeholder="Найти или создать объект"
-        empty-text="Объект не найден"
-        button-text='Создать объект "{query}"'
-        button-position="dropdown-bottom"
+      <!-- Предзаполнено автоопределением (одна категория); если пользователь
+           что-то изменил — на бэк уходит его выбор как ручной. -->
+      <SelectUI
+        v-model="item.categoryIds"
+        multiple
+        :options="receiptStore.categoryOptions"
+        :label="item.categoryPreviewLoading ? 'Категории (определяем...)' : 'Категории'"
+        placeholder="Без категории"
         :disabled="isAddingAll"
-        @button-handler="(query) => onCreateObject(item, query)"
+        @change="item.categoriesEdited = true"
       />
+
+      <div class="receipt-result__object">
+        <Autocomplete
+          v-model="item.objectId"
+          :options="receiptStore.objectOptions"
+          label-key="label"
+          value-key="value"
+          label="Объект"
+          placeholder="Найти или создать объект"
+          empty-text="Объект не найден"
+          button-text='Создать объект "{query}"'
+          button-position="dropdown-bottom"
+          :disabled="isAddingAll"
+          @button-handler="(query) => onCreateObject(item, query)"
+        />
+      </div>
 
       <label class="checkbox-label">
         <input
@@ -650,6 +655,7 @@ import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
 import Autocomplete from '@/components/Autocomplete.vue'
+import SelectUI from '@/components/SelectUI.vue'
 
 import QrScanner from 'qr-scanner'
 import QrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url'
@@ -759,7 +765,8 @@ function addPending(data, extra = {}) {
     // Категория определяется бэком асинхронно (см. previewCategory ниже) —
     // сюда пишем результат, когда он придёт; null, пока не пришёл или ничего
     // не определилось ("Без категории").
-    categoryId: null,
+    categoryIds: [],
+    categoriesEdited: false,
     categoryPreviewLoading: true,
     // Объект Reference Service, на который потрачены деньги (необязателен)
     objectId: '',
@@ -789,7 +796,9 @@ async function previewCategory(item) {
       String(item.data.userInn ?? '').trim(),
       (item.data.items ?? []).map((i) => ({ name: i.name }))
     )
-    item.categoryId = result.categoryId
+    if (!item.categoriesEdited && result.categoryId != null) {
+      item.categoryIds = [result.categoryId]
+    }
   } catch {
     // предпросмотр не критичен — просто не покажем категорию заранее
   } finally {
@@ -1336,6 +1345,8 @@ const addOnePending = async (item, { silent = false } = {}) => {
       ...mapExternalReceipt(item.data, item.rawQr),
       hasPaper: item.hasPaper,
       objectId: item.objectId || null,
+      // nil на бэке = автоопределение; ручной выбор шлём только если менялся
+      categoryIds: item.categoriesEdited ? item.categoryIds : undefined,
     }
 
     const created = await receiptStore.addReceipt(payload)
@@ -1409,6 +1420,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.receipt-result__object {
+  max-width: 210px;
+}
+
 /* Единая карточка страницы — как .receipt-list у соседней вкладки "Чеки",
    чтобы обе вкладки читались как одна и та же страница, а не по-разному. */
 .scan-page {
