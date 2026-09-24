@@ -13,7 +13,10 @@
       </div>
     </div>
     <div class="statistics__row" v-if="calendarStore.plannedHours !== null">
-      <div class="statistics__title" v-tooltip="'Отработано + плановая отработка по оставшимся дням'">
+      <div
+        class="statistics__title"
+        v-tooltip="'Отработано + плановая отработка по оставшимся дням'"
+      >
         Плановое кол-во часов
       </div>
       <div class="statistics__value">{{ calendarStore.plannedHours }} ч</div>
@@ -104,7 +107,9 @@ const overtimeHours = computed(() => {
 .statistics {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--padding-secondary) / 2);
+  /*gap: calc(var(--padding-secondary) / 2);*/
+  border-radius: var(--border-radius);
+  overflow: hidden;
 }
 .statistics__row {
   display: flex;
@@ -113,7 +118,6 @@ const overtimeHours = computed(() => {
   background: var(--foreground);
   padding: 0.71rem;
   border: 0.07rem solid var(--border-color);
-  border-radius: var(--border-radius);
 }
 .statistics__title {
   font-weight: 500;
