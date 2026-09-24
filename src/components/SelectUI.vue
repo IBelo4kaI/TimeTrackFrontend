@@ -25,7 +25,7 @@
       >
         <span
           class="select-value"
-          :class="{ 'select-placeholder': !selectedOption }"
+          :class="{ 'select-placeholder': !hasValue }"
           :style="{ textAlign: align }"
         >
           {{ displayValue }}
@@ -50,6 +50,7 @@
       <!-- Скрытый измеритель ширины -->
       <div class="select-sizer" ref="sizerRef" aria-hidden="true">
         <div class="select-trigger">
+          <span v-if="multiple" class="select-value">{{ placeholder }}</span>
           <span
             class="select-value"
             v-for="option in options"
@@ -178,6 +179,12 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // Множественный выбор: v-model — массив значений, список не закрывается
+  // после клика; пустой массив = ничего не выбрано (показывается placeholder).
+  multiple: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const model = defineModel()
@@ -187,8 +194,16 @@ const isOpen = ref(false)
 const selectRef = useTemplateRef('selectRef')
 const focusedIndex = ref(-1)
 
+const selectedValues = computed(() =>
+  Array.isArray(model.value) ? model.value : []
+)
+
+const hasValue = computed(() =>
+  props.multiple ? selectedValues.value.length > 0 : !!selectedOption.value
+)
+
 const selectedOption = computed(() => {
-  if (!model.value) return null
+  if (props.multiple || !model.value) return null
 
   return props.options.find((option) => {
     const optionValue = getOptionValue(option)
@@ -197,6 +212,12 @@ const selectedOption = computed(() => {
 })
 
 const displayValue = computed(() => {
+  if (props.multiple) {
+    const selected = props.options.filter((o) => isSelected(o))
+    if (selected.length === 0) return props.placeholder
+    if (selected.length === 1) return getOptionLabel(selected[0])
+    return `Выбрано: ${selected.length}`
+  }
   if (selectedOption.value) {
     return getOptionLabel(selectedOption.value)
   }
@@ -227,6 +248,7 @@ const getOptionValue = (option) => {
 }
 
 const isSelected = (option) => {
+  if (props.multiple) return selectedValues.value.includes(getOptionValue(option))
   if (!model.value) return false
   return getOptionValue(option) === model.value
 }
@@ -249,6 +271,13 @@ const closeDropdown = () => {
 
 const selectOption = (option) => {
   const value = getOptionValue(option)
+  if (props.multiple) {
+    model.value = selectedValues.value.includes(value)
+      ? selectedValues.value.filter((v) => v !== value)
+      : [...selectedValues.value, value]
+    emit('change', model.value)
+    return
+  }
   model.value = value
   emit('change', value)
   closeDropdown()

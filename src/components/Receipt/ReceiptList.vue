@@ -43,8 +43,20 @@
           />
           <SelectUI
             label=""
+            multiple
+            placeholder="Все категории"
             :options="categoryFilterOptions"
-            v-model="receiptStore.categoryId"
+            v-model="receiptStore.categoryIds"
+          />
+          <Autocomplete
+            v-model="receiptStore.objectId"
+            :options="objectFilterOptions"
+            label-key="label"
+            value-key="value"
+            :is-show-button="false"
+            placeholder="Все объекты"
+            empty-text="Объект не найден"
+            class="filters-employee"
           />
         </template>
 
@@ -122,6 +134,11 @@
         </Badge>
       </template>
 
+      <template #cell-objectLabel="{ value }">
+        <Badge v-if="value" type="muted">{{ value }}</Badge>
+        <span v-else>—</span>
+      </template>
+
       <template #cell-categoryLabel="{ value }">
         <Badge v-if="value" type="muted">{{ value }}</Badge>
         <span v-else>Без категории</span>
@@ -187,8 +204,20 @@
       <SelectUI
         label="Категория"
         full-width
+        multiple
+        placeholder="Все категории"
         :options="categoryFilterOptions"
-        v-model="receiptStore.categoryId"
+        v-model="receiptStore.categoryIds"
+      />
+      <Autocomplete
+        v-model="receiptStore.objectId"
+        :options="objectFilterOptions"
+        label-key="label"
+        value-key="value"
+        :is-show-button="false"
+        label="Объект"
+        placeholder="Все объекты"
+        empty-text="Объект не найден"
       />
     </MobileFilterDrawer>
   </div>
@@ -209,7 +238,7 @@ import {
 } from '@/services/receipt.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
-import { NO_CATEGORY_FILTER, useReceiptStore } from '@/stores/receipt'
+import { NO_CATEGORY_FILTER, NO_OBJECT_FILTER, useReceiptStore } from '@/stores/receipt'
 import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user.js'
 import { getDateNamed } from '@/utils/calendar.utils'
@@ -233,6 +262,7 @@ const { isMobile } = storeToRefs(useThemeStore())
 
 onMounted(() => {
   receiptStore.fetchCategories()
+  receiptStore.fetchObjects()
 })
 
 const filtersOpen = ref(false)
@@ -248,7 +278,7 @@ watch(
     receiptStore.selectedMonth,
     receiptStore.selectedYear,
     receiptStore.employeeId,
-    receiptStore.categoryId,
+    receiptStore.categoryIds,
   ],
   () => {
     selectedIds.value = []
@@ -305,9 +335,14 @@ const sortOptions = [
 ]
 
 const categoryFilterOptions = computed(() => [
-  { label: 'Все категории', value: '' },
   ...receiptStore.categoryOptions,
   { label: 'Без категории', value: NO_CATEGORY_FILTER },
+])
+
+// Пустое значение (крестик в поле) — все объекты
+const objectFilterOptions = computed(() => [
+  { label: 'Без объекта', value: NO_OBJECT_FILTER },
+  ...receiptStore.objectOptions,
 ])
 
 const headers = computed(() => {
@@ -326,6 +361,7 @@ const headers = computed(() => {
     { valueKey: 'totalSum', title: 'Сумма' },
     { valueKey: 'hasPaper', title: 'Экземпляр' },
     { valueKey: 'categoryLabel', title: 'Категория' },
+    { valueKey: 'objectLabel', title: 'Объект' },
     {
       valueKey: 'createdAt',
       title: 'Добавлен',
@@ -346,6 +382,7 @@ const rows = computed(() =>
     userName:
       receiptStore.target == 'all' ? getUserFullName(item.userId) : null,
     categoryLabel: receiptStore.getCategoryLabel(nullInt(item.categoryId)),
+    objectLabel: receiptStore.getObjectLabel(nullString(item.objectId)),
   }))
 )
 

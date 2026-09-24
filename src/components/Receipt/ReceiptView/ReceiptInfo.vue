@@ -27,6 +27,7 @@
               {{ receipt.hasPaper ? 'Бумажный' : 'Электронный' }}
             </Badge>
             <Badge type="muted">{{ categoryLabel ?? 'Без категории' }}</Badge>
+            <Badge v-if="objectLabel" type="muted">{{ objectLabel }}</Badge>
             <Badge v-if="isManual" type="muted">Без проверки ФНС</Badge>
             <Badge type="success">Завершён</Badge>
           </div>
@@ -154,6 +155,29 @@
           </ButtonUI>
         </div>
 
+        <div class="info__category" v-if="canTransfer">
+          <Autocomplete
+            v-model="objectDraft"
+            :options="receiptStore.objectOptions"
+            label-key="label"
+            value-key="value"
+            label="Объект"
+            placeholder="Найти или создать объект"
+            empty-text="Объект не найден"
+            button-text='Создать объект "{query}"'
+            button-position="dropdown-bottom"
+            @button-handler="onCreateObject"
+          />
+          <ButtonUI
+            type="muted-accent"
+            icon="fa-regular fa-check"
+            :disabled="!objectChanged || isMutating"
+            @click="onSaveObject"
+          >
+            Сохранить
+          </ButtonUI>
+        </div>
+
         <div class="info__transfer" v-if="canTransfer">
           <Autocomplete
             v-model="transferUserId"
@@ -197,7 +221,7 @@ import CardStatistics from '@/components/CardStatistics.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import ReceiptPaper from '@/components/Receipt/ReceiptView/ReceiptPaper.vue'
 import SelectUI from '@/components/SelectUI.vue'
-import { setReceiptCategory, transferReceipt } from '@/services/receipt.api'
+import { setReceiptCategory, setReceiptObject, transferReceipt } from '@/services/receipt.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
@@ -222,6 +246,7 @@ const router = useRouter()
 
 onMounted(() => {
   receiptStore.fetchCategories()
+  receiptStore.fetchObjects()
 })
 
 const paperComponent = ref(null)
@@ -248,6 +273,9 @@ const sellerInn = computed(() => nullString(props.receipt?.sellerInn))
 // Чек введён вручную (см. ReceiptScan.vue "Ввести чек полностью") — без
 // фискальных реквизитов, не проверялся через ФНС.
 const isManual = computed(() => !nullString(props.receipt?.fiscalDriveNumber))
+
+const objectId = computed(() => nullString(props.receipt?.objectId))
+const objectLabel = computed(() => receiptStore.getObjectLabel(objectId.value))
 
 const categoryLabel = computed(() =>
   receiptStore.getCategoryLabel(nullInt(props.receipt?.categoryId))
@@ -403,6 +431,50 @@ async function onSaveCategory() {
   } catch {
     notificationStore.addNotification(
       'Не удалось обновить категорию чека',
+      'error'
+    )
+  } finally {
+    isMutating.value = false
+  }
+}
+
+// Черновик объекта до "Сохранить" — та же схема, что у категории.
+const objectDraft = ref('')
+watch(
+  () => props.receipt,
+  () => {
+    objectDraft.value = objectId.value ?? ''
+  },
+  { immediate: true }
+)
+
+const objectChanged = computed(() => objectDraft.value !== (objectId.value ?? ''))
+
+async function onCreateObject(query) {
+  if (!query.trim()) {
+    notificationStore.addNotification('Введите название объекта', 'error')
+    return
+  }
+  try {
+    const id = await receiptStore.ensureObject(query)
+    if (id) objectDraft.value = id
+  } catch {
+    notificationStore.addNotification('Не удалось создать объект', 'error')
+  }
+}
+
+async function onSaveObject() {
+  isMutating.value = true
+  try {
+    const updated = await setReceiptObject(
+      props.receipt.id,
+      objectDraft.value || null
+    )
+    props.receipt.objectId = updated.objectId
+    notificationStore.addNotification('Объект обновлён', 'success')
+  } catch {
+    notificationStore.addNotification(
+      'Не удалось обновить объект чека',
       'error'
     )
   } finally {

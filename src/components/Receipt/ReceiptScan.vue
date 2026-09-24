@@ -548,6 +548,20 @@
         <span v-else class="receipt-result__category-empty">Не определена</span>
       </div>
 
+      <Autocomplete
+        v-model="item.objectId"
+        :options="receiptStore.objectOptions"
+        label-key="label"
+        value-key="value"
+        label="Объект"
+        placeholder="Найти или создать объект"
+        empty-text="Объект не найден"
+        button-text='Создать объект "{query}"'
+        button-position="dropdown-bottom"
+        :disabled="isAddingAll"
+        @button-handler="(query) => onCreateObject(item, query)"
+      />
+
       <label class="checkbox-label">
         <input
           type="checkbox"
@@ -635,6 +649,7 @@
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
+import Autocomplete from '@/components/Autocomplete.vue'
 
 import QrScanner from 'qr-scanner'
 import QrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url'
@@ -667,8 +682,22 @@ QrScanner.WORKER_PATH = QrScannerWorkerPath
 const receiptStore = useReceiptStore()
 onMounted(() => {
   receiptStore.fetchCategories()
+  receiptStore.fetchObjects()
 })
 const userStore = useUserStore()
+
+async function onCreateObject(item, query) {
+  if (!query.trim()) {
+    notificationStore.addNotification('Введите название объекта', 'error')
+    return
+  }
+  try {
+    const id = await receiptStore.ensureObject(query)
+    if (id) item.objectId = id
+  } catch {
+    notificationStore.addNotification('Не удалось создать объект', 'error')
+  }
+}
 const filePreviewStore = useFilePreviewStore()
 const confirmModalStore = useConfirmModal()
 const notificationStore = useNotificationStore()
@@ -732,6 +761,8 @@ function addPending(data, extra = {}) {
     // не определилось ("Без категории").
     categoryId: null,
     categoryPreviewLoading: true,
+    // Объект Reference Service, на который потрачены деньги (необязателен)
+    objectId: '',
     itemsVisible: false,
     isAdding: false,
     addError: '',
@@ -1304,6 +1335,7 @@ const addOnePending = async (item, { silent = false } = {}) => {
       userId: userStore.user.id,
       ...mapExternalReceipt(item.data, item.rawQr),
       hasPaper: item.hasPaper,
+      objectId: item.objectId || null,
     }
 
     const created = await receiptStore.addReceipt(payload)

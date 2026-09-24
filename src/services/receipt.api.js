@@ -116,6 +116,19 @@ export const setReceiptCategory = async (id, categoryId) => {
   }
 }
 
+// Привязка чека к объекту Reference Service; objectId = null снимает.
+export const setReceiptObject = async (id, objectId) => {
+  try {
+    const response = await timeTrackApi.put(`/receipts/${id}/object`, {
+      objectId,
+    })
+    return response.data
+  } catch (error) {
+    console.error('Ошибка изменения объекта чека:', error)
+    throw error
+  }
+}
+
 // Задним числом проставляет категорию уже сохранённым чекам без неё (тем же
 // алгоритмом, что и при создании). Отдаёт {updated, total}.
 export const backfillReceiptCategories = async () => {

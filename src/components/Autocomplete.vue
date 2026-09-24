@@ -59,7 +59,7 @@
         type="button"
         @mousedown.prevent.stop="handleCreate"
       >
-        {{ buttonText }}
+        {{ buttonLabel }}
       </button>
     </div>
 
@@ -80,7 +80,7 @@
           class="autocomplete-item autocomplete-item--create"
           @mousedown.prevent.stop="handleCreate"
         >
-          {{ buttonText }}
+          {{ buttonLabel }}
         </li>
 
         <!-- лоадер внутри списка -->
@@ -118,7 +118,7 @@
           class="autocomplete-item autocomplete-item--create"
           @mousedown.prevent.stop="handleCreate"
         >
-          {{ buttonText }}
+          {{ buttonLabel }}
         </li>
       </ul>
       <div
@@ -287,6 +287,12 @@ const showClear = computed(() => {
   console.log('[Autocomplete] computed showClear:', result)
   return result
 })
+
+// В buttonText можно указать {query} — подставится введённый текст
+// (например, Создать объект "{query}")
+const buttonLabel = computed(() =>
+  props.buttonText.replace('{query}', searchQuery.value.trim())
+)
 
 const canShowButton = computed(() => {
   const result = !!props.isShowButton && !isFreeInputMode.value
