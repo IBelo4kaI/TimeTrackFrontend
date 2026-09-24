@@ -93,6 +93,13 @@ export function softBackground(hex, lightness = 0.95, maxSaturation = 0.6) {
   return toHex(hslToRgb([h, Math.min(s, maxSaturation), lightness]))
 }
 
+/** Фоновый оттенок с учётом темы: на тёмной — тёмный и приглушённый. */
+export function themedBackground(hex, isDark) {
+  return isDark
+    ? softBackground(hex, 0.18, 0.4)
+    : softBackground(hex)
+}
+
 // Пример:
 // lighten("#ff3b30", 0.9)     // светло-розовый
 // softBackground("#ff3b30")   // светло-розовый фон с тем же тоном

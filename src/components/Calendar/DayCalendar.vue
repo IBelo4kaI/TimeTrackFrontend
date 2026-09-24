@@ -1,12 +1,12 @@
 <template>
   <div
-    ref="dayElement"
     :class="[
       'day',
       { 'day-selected': isSelected },
       { 'day-weekend': day.isWeekend },
       { 'day-birthday-hovered': isBirthdayHovered },
     ]"
+    :style="dayStyle"
     @mousedown="handleMouseDown"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
@@ -65,16 +65,16 @@
 import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useCalendarStore } from '@/stores/calendar'
 import { useDayTypesStore } from '@/stores/dayTypes'
+import { useThemeStore } from '@/stores/themes'
 import { useUserStore } from '@/stores/user'
-import { softBackground } from '@/utils/color.utils'
+import { themedBackground } from '@/utils/color.utils'
 import { parseDate } from '@/utils/date.utils'
-import { computed, onMounted, useTemplateRef } from 'vue'
+import { computed } from 'vue'
 
 const { day, isSelected } = defineProps({
   day: Object,
   isSelected: Boolean,
 })
-const dayElement = useTemplateRef('dayElement')
 const emit = defineEmits(['day-mouse-down', 'day-mouse-enter', 'day-click'])
 
 const userStore = useUserStore()
@@ -84,6 +84,7 @@ const { open } = addReportStore
 
 const dayTypesStore = useDayTypesStore()
 const calendarStore = useCalendarStore()
+const themeStore = useThemeStore()
 
 const dayDate = computed(() => parseDate(day.date))
 
@@ -117,20 +118,23 @@ const handleMouseLeave = (event) => {
   }
 }
 
-onMounted(() => {
+// Цвета зависят от темы, поэтому считаем реактивно, а не один раз при монтировании
+const dayStyle = computed(() => {
+  const dark = themeStore.isDarkApplied
+  const style = {}
   if (day.userTimeTypeId) {
     const color = dayTypesStore.getColorById(day.userTimeTypeId)
-    dayElement.value.style.setProperty('--usertype', color)
-    dayElement.value.style.setProperty('--usertype-back', softBackground(color))
+    style['--usertype'] = color
+    style['--usertype-back'] = themedBackground(color, dark)
+    style['--day-back'] = themedBackground(color, dark)
   }
   if (day.calendarEventTypeId) {
     const color = dayTypesStore.getColorById(day.calendarEventTypeId)
-    dayElement.value.style.setProperty('--calendartype', color)
-    dayElement.value.style.setProperty(
-      '--calendartype-back',
-      softBackground(color)
-    )
+    style['--calendartype'] = color
+    style['--calendartype-back'] = themedBackground(color, dark)
+    style['--day-back'] = themedBackground(color, dark)
   }
+  return style
 })
 </script>
 
@@ -140,7 +144,7 @@ onMounted(() => {
   flex-direction: column;
   min-width: 8rem;
   min-height: 8rem;
-  background: var(--foreground);
+  background: var(--day-back, var(--foreground));
   border: 0.07rem solid var(--border-color);
   border-radius: var(--border-radius);
   color: var(--text);
@@ -259,11 +263,11 @@ onMounted(() => {
 }
 
 .day-usertype {
-  background: var(--usertype-back, #fff);
+  background: var(--usertype-back, var(--foreground));
 }
 
 .day-holiday {
-  background: var(--calendartype-back, #fff);
+  background: var(--calendartype-back, var(--foreground));
   min-width: 0;
 }
 

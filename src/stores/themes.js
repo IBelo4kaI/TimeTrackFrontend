@@ -14,6 +14,9 @@ export const useThemeStore = defineStore('theme', () => {
   // Текущая тема
   const currentTheme = ref(THEMES.SYSTEM)
 
+  // Применена ли сейчас тёмная тема (реактивно, в т.ч. для системной)
+  const isDarkApplied = ref(false)
+
   // Инициализация темы из localStorage
   const initTheme = () => {
     const savedTheme = localStorage.getItem('app-theme')
@@ -42,6 +45,8 @@ export const useThemeStore = defineStore('theme', () => {
       document.documentElement.classList.add('dark-theme')
     }
     // Для светлой темы ничего не делаем - это стандартная тема
+
+    isDarkApplied.value = themeToApply === THEMES.DARK
 
     // Сохраняем в localStorage
     localStorage.setItem('app-theme', currentTheme.value)
@@ -119,6 +124,7 @@ export const useThemeStore = defineStore('theme', () => {
 
     // Состояние
     currentTheme,
+    isDarkApplied,
     isMobile,
 
     // Методы
