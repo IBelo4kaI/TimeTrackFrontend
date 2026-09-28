@@ -1,11 +1,13 @@
 <template>
   <div class="container">
     <VacationApplications v-if="submenuStore.activeTab === 'vacation-applications'" />
+    <ApplicationTemplates v-else-if="submenuStore.activeTab === 'application-templates'" />
   </div>
 </template>
 <script setup>
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSubmenuStore } from '@/stores/submenu'
+import ApplicationTemplates from '@/components/Document/ApplicationTemplates.vue'
 import VacationApplications from '@/components/Document/VacationList.vue'
 
 const titleStore = useHeaderTitleStore()
@@ -17,6 +19,7 @@ titleStore.setTitle('Документы', 'Файлы и заявления со
 const submenuStore = useSubmenuStore()
 submenuStore.setItems([
   { id: 'vacation-applications', label: 'Заявления на отпуск' },
+  { id: 'application-templates', label: 'Шаблоны заявлений' },
 ])
 submenuStore.setActiveTab('vacation-applications')
 </script>
