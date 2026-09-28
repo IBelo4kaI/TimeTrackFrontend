@@ -17,7 +17,7 @@ const createEmptyStats = () => ({
 export const useVacationStore = defineStore('vacation', () => {
   const selectedYear = ref(new Date().getFullYear())
   // null = весь год, иначе 1-12 (как selectedMonth в stores/receipt.js)
-  const selectedMonth = ref(new Date().getMonth() + 1)
+  const selectedMonth = ref(null)
   const filter = ref('all')
   const target = ref('my')
 

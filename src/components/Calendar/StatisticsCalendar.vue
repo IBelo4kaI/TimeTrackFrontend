@@ -123,7 +123,7 @@ const overtimeHours = computed(() => {
   border-bottom: 0.07rem solid var(--border-color);
 }
 .statistics__title {
-  font-weight: 500;
+  font-weight: 400;
 }
 .statistics__value {
   font-weight: 700;

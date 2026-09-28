@@ -1,5 +1,10 @@
 <template>
   <div class="receipt-list">
+    <div class="receipt-list__total-mobile" v-if="isMobile">
+      <span>Итого</span>
+      <b>{{ formatMoney(receiptStore.totalSum) }}</b>
+    </div>
+
     <AppTable
       :headers="headers"
       :rows="rows"
@@ -505,6 +510,22 @@ async function onFileSelected(id, event) {
 
 .receipt-list__total {
   color: var(--muted-text);
+}
+
+.receipt-list__total-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--gap-secondary);
+  padding: 0.71rem;
+  background: var(--foreground);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--muted-text);
+}
+
+.receipt-list__total-mobile b {
+  color: var(--text);
 }
 
 .category-badges {

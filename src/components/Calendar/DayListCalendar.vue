@@ -40,12 +40,12 @@ import HeaderCalendar from '@/components/Calendar/HeaderCalendar.vue'
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import { SelectingHelper } from '@/helpers/selecting.helpers'
-import { createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
+import { clearDays, createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
 import { useCalendarStore } from '@/stores/calendar'
 import { useContextMenuStore } from '@/stores/contexMenu'
 import { useDayTypesStore } from '@/stores/dayTypes'
 import { useSelectingStore } from '@/stores/selecting'
-import { parseDate, parseDateStartDay } from '@/utils/date.utils'
+import { parseDate } from '@/utils/date.utils'
 import { storeToRefs } from 'pinia'
 import { onUnmounted } from 'vue'
 import DayCalendar from './DayCalendar.vue'
@@ -76,49 +76,13 @@ const menuItems = [
 // Обработчик действий меню
 const handleContextAction = async (action) => {
   const selectedItems = selectingStore.selectedItems
-  console.log(selectedItems.values)
 
   try {
     // Определяем дни для обработки
     const daysToProcess = Array.from(selectedItems)
 
     if (action === 'clear') {
-      // Удаление - собираем только существующие userTimeId
-      const userTimeIds = daysToProcess
-        .filter((day) => day.userTimeId && day.userTimeId !== '')
-        .filter(
-          (day) =>
-            day.userTimeTypeId != dayTypesStore.getDayTypeIdByName('vacation')
-        )
-        .map((day) => parseDateStartDay(day.date))
-
-      if (userTimeIds.length > 0) {
-        await calendarStore.deleteDay({
-          userId: calendarStore.selectedUserId,
-          entryDate: userTimeIds,
-        })
-      }
-      const vacDays = daysToProcess
-        .filter((day) => day.userTimeId && day.userTimeId !== '')
-        .filter(
-          (day) =>
-            day.userTimeTypeId == dayTypesStore.getDayTypeIdByName('vacation')
-        )
-
-      if (vacDays.length > 0) {
-        const updates = createUpdatesObjects(
-          vacDays,
-          {
-            userTimeTypeId: dayTypesStore.getDayTypeIdByName('vacation'),
-            hours: 0,
-          },
-          calendarStore.selectedUserId
-        )
-
-        console.log(updates, vacDays)
-
-        await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
-      }
+      await clearDays(daysToProcess, calendarStore, dayTypesStore)
     } else {
       // Обновление - определяем тип дня и часы
       const actionConfig = {
@@ -150,7 +114,6 @@ const handleContextAction = async (action) => {
         config,
         calendarStore.selectedUserId
       )
-      console.log(updates, daysToProcess)
 
       await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
     }

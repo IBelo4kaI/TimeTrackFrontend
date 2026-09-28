@@ -1,6 +1,6 @@
-import { createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
+import { clearDays, createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
 import { getDateNamed } from '@/utils/calendar.utils'
-import { parseDate, parseDateStartDay } from '@/utils/date.utils'
+import { parseDate } from '@/utils/date.utils'
 import { defineStore, storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { useCalendarStore } from './calendar'
@@ -85,19 +85,24 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       now.setMonth(calendarStore.currentMonth - 1)
       now.setFullYear(calendarStore.currentYear)
 
-      const day = calendarStore.data.find((d) => {
-        console.log(now, parseDate(d.date))
-        if (now.toUTCString() == parseDate(d.date).toUTCString()) return true
-      })
+      const day = calendarStore.data.find(
+        (d) => now.toUTCString() == parseDate(d.date).toUTCString()
+      )
 
-      daysData.value = { ...day, date: parseDate(day.date) }
+      // Дня нет в загруженных данных — открываем пустой
+      daysData.value = day
+        ? { ...day, date: parseDate(day.date) }
+        : { ...createInitialDayData(), date: now }
       title.value =
         getDateNamed(daysData.value.date) +
         ' ' +
         daysData.value.date.getFullYear()
     }
-    const isMultiEdit = daysData.value.length > 1
-    const isUpdate = daysData.value.userTimeId !== ''
+    const isMultiEdit = selectedItems.value.size > 1
+    const editedDays = isMultiEdit
+      ? Array.from(selectedItems.value)
+      : [daysData.value]
+    const isUpdate = editedDays.some((d) => d.userTimeId)
 
     const fields = [
       {
@@ -156,8 +161,6 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       deletingText: 'Удаление...',
 
       onValidate: (data) => {
-        console.log(data.userTimeTypeId !== '')
-
         return data.userTimeTypeId !== '' && data.hours >= 0 && data.hours <= 24
           ? null
           : 'Ошибка валидации'
@@ -192,64 +195,12 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
         const selectedItems = selectingStore.selectedItems
 
         try {
-          // // Определяем дни для обработки
           const daysToProcess =
             selectedItems.size > 1
               ? Array.from(selectedItems)
               : [daysData.value]
 
-          // const userTimeIds = daysToProcess
-          //   .filter((day) => day.userTimeId && day.userTimeId !== '')
-          //   .map((day) => parseDateStartDay(day.date))
-
-          // if (userTimeIds.length > 0) {
-          //   await calendarStore.deleteDay({
-          //     userId: calendarStore.selectedUserId,
-          //     entryDate: userTimeIds,
-          //   })
-          // }
-
-          // _______________
-
-          const userTimeIds = daysToProcess
-            .filter((day) => day.userTimeId && day.userTimeId !== '')
-            .filter(
-              (day) =>
-                day.userTimeTypeId !=
-                dayTypesStore.getDayTypeIdByName('vacation')
-            )
-            .map((day) => parseDateStartDay(day.date))
-
-          if (userTimeIds.length > 0) {
-            await calendarStore.deleteDay({
-              userId: calendarStore.selectedUserId,
-              entryDate: userTimeIds,
-            })
-          }
-          const vacDays = daysToProcess
-            .filter((day) => day.userTimeId && day.userTimeId !== '')
-            .filter(
-              (day) =>
-                day.userTimeTypeId ==
-                dayTypesStore.getDayTypeIdByName('vacation')
-            )
-
-          if (vacDays.length > 0) {
-            const updates = createUpdatesObjects(
-              vacDays,
-              {
-                userTimeTypeId: dayTypesStore.getDayTypeIdByName('vacation'),
-                hours: 0,
-              },
-              calendarStore.selectedUserId
-            )
-
-            console.log(updates, vacDays)
-
-            await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
-          }
-
-          // _______________
+          await clearDays(daysToProcess, calendarStore, dayTypesStore)
 
           selectingStore.clearSelection()
         } catch (error) {

@@ -1,5 +1,7 @@
 import { parseDateStartDay } from '@/utils/date.utils'
 
+const hasEntry = (day) => day.userTimeId && day.userTimeId !== ''
+
 export const createUpdatesObjects = (daysToProcess, config, userId) => {
   const updates = {
     toUpdate: { userId: userId, entities: [] },
@@ -22,13 +24,41 @@ export const createUpdatesObjects = (daysToProcess, config, userId) => {
 
     // Разделяем на обновление и создание
     if (day.userTimeId && day.userTimeId != '') {
-      console.log(day)
       updates.toUpdate.entities.push(baseData)
     } else {
-      console.log(day)
       updates.toCreate.entities.push(baseData)
     }
   })
 
   return updates
+}
+
+// Очистка дней: обычные записи удаляем, у отпуска только обнуляем часы
+export const clearDays = async (days, calendarStore, dayTypesStore) => {
+  const vacationTypeId = dayTypesStore.getDayTypeIdByName('vacation')
+  const entries = days.filter(hasEntry)
+
+  const dates = entries
+    .filter((day) => day.userTimeTypeId != vacationTypeId)
+    .map((day) => parseDateStartDay(day.date))
+
+  if (dates.length > 0) {
+    await calendarStore.deleteDay({
+      userId: calendarStore.selectedUserId,
+      entryDate: dates,
+    })
+  }
+
+  const vacationDays = entries.filter(
+    (day) => day.userTimeTypeId == vacationTypeId
+  )
+
+  if (vacationDays.length > 0) {
+    const updates = createUpdatesObjects(
+      vacationDays,
+      { userTimeTypeId: vacationTypeId, hours: 0 },
+      calendarStore.selectedUserId
+    )
+    await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
+  }
 }
