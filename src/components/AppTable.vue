@@ -134,6 +134,9 @@
                   v-else
                   v-for="(row, rowIndex) in rows"
                   :key="rowKey ? String(getNestedValue(row, rowKey)) : rowIndex"
+                  :data-row-key="
+                     rowKey ? String(getNestedValue(row, rowKey)) : rowIndex
+                  "
                   :class="[
                      'tr',
                      clickable ? 'tr--clickable' : '',

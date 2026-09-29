@@ -41,6 +41,11 @@ export const useReceiptStore = defineStore('receipt', () => {
   const receipts = ref([])
   const selectedReceipt = ref(null) // карточка с items, см. fetchReceiptById
 
+  // Id чека, к строке которого нужно прокрутить список при возврате со
+  // страницы чека (кнопка "Назад") — см. onOpen/scrollToRow в ReceiptList.vue.
+  // Одноразовый: ReceiptList сбрасывает его сразу после прокрутки.
+  const scrollToReceiptId = ref(null)
+
   const isLoading = ref(false)
   const userStore = useUserStore()
 
@@ -210,6 +215,7 @@ export const useReceiptStore = defineStore('receipt', () => {
     sortBy,
     receipts,
     selectedReceipt,
+    scrollToReceiptId,
     isLoading,
     filterReceipts,
     totalSum,

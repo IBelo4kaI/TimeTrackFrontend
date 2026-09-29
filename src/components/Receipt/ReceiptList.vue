@@ -258,7 +258,7 @@ import {
   nullString,
 } from '@/utils/receipt.utils'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const receiptStore = useReceiptStore()
@@ -430,7 +430,29 @@ function canManageRow(row) {
 }
 
 function onOpen(row) {
+  receiptStore.scrollToReceiptId = row.id
   router.push({ name: 'receipt-view', params: { id: row.id } })
+}
+
+// При возврате со страницы чека (кнопка "Назад") — прокрутка к его строке
+// в таблице. Строки рендерятся сразу после receiptStore.isLoading, поэтому
+// ждём именно его, а не rows (rows пересчитывается синхронно вместе с ним).
+watch(
+  () => receiptStore.isLoading,
+  (loading) => {
+    if (loading || !receiptStore.scrollToReceiptId) return
+    const id = receiptStore.scrollToReceiptId
+    receiptStore.scrollToReceiptId = null
+    nextTick(() => scrollToRow(id))
+  }
+)
+
+function scrollToRow(id) {
+  const el = document.querySelector(`[data-row-key="${CSS.escape(String(id))}"]`)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.add('tr--flash')
+  setTimeout(() => el.classList.remove('tr--flash'), 1200)
 }
 
 function onDelete(row) {
@@ -526,6 +548,12 @@ async function onFileSelected(id, event) {
 
 .receipt-list__total-mobile b {
   color: var(--text);
+}
+
+/* Подсветка строки, к которой прокрутили при возврате со страницы чека */
+:deep(.tr--flash) {
+  background: var(--muted-accent);
+  transition: background 0.6s ease;
 }
 
 .category-badges {
