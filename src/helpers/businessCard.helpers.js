@@ -1,4 +1,5 @@
 import Autocomplete from '@/components/Autocomplete.vue'
+import { Mask } from 'maska'
 import { useBusinessCardStore } from '@/stores/businessCard'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useUniversalModalStore } from '@/stores/modal'
@@ -23,6 +24,10 @@ const digits = (v) => String(v ?? '').replace(/\D/g, '')
 const MASK_CARD_NUMBER = {
   mask: ['#### #### #### ####', '#### #### #### #### ###'],
 }
+const cardNumberMask = new Mask(MASK_CARD_NUMBER)
+
+export const formatCardNumber = (v) => cardNumberMask.masked(v ?? '')
+
 const MASK_EXPIRY = { mask: '##/##' }
 const MASK_MONEY = { number: { locale: 'ru', fraction: 2, unsigned: true } }
 const MASK_HOLDER = {

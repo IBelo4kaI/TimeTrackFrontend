@@ -54,7 +54,9 @@
           </div>
         </div>
 
-        <div v-if="fullNumber" class="number">{{ fullNumber }}</div>
+        <div v-if="fullNumber" class="number">
+          {{ formatCardNumber(fullNumber) }}
+        </div>
 
         <dl class="info">
           <div>
@@ -160,6 +162,7 @@ import {
   releaseBusinessCard,
 } from '@/services/businessCard.api'
 import {
+  formatCardNumber,
   getUserFullName as userName,
   useBusinessCardActions,
 } from '@/helpers/businessCard.helpers'
