@@ -541,26 +541,37 @@
 
       <!-- Предзаполнено автоопределением (одна категория); если пользователь
            что-то изменил — на бэк уходит его выбор как ручной. -->
-      <SelectUI
-        v-model="item.categoryIds"
-        multiple
-        :options="receiptStore.categoryOptions"
-        :label="item.categoryPreviewLoading ? 'Категории (определяем...)' : 'Категории'"
-        placeholder="Без категории"
-        :disabled="isAddingAll"
-        @change="item.categoriesEdited = true"
-      />
+      <div class="receipt-result__field">
+        <SelectUI
+          v-model="item.categoryIds"
+          multiple
+          full-width
+          :options="receiptStore.categoryOptions"
+          :label="item.categoryPreviewLoading ? 'Категории (определяем...)' : 'Категории'"
+          placeholder="Без категории"
+          :disabled="isAddingAll"
+          @change="item.categoriesEdited = true"
+        />
+      </div>
 
-      <SelectUI
+      <div
         v-if="businessCardStore.myActiveCardOptions.length"
-        v-model="item.businessCardId"
-        :options="businessCardStore.myActiveCardOptions"
-        label="Корпоративная карта"
-        placeholder="Не оплачено картой"
-        :disabled="isAddingAll"
-      />
+        class="receipt-result__field"
+      >
+        <SelectUI
+          v-model="item.businessCardId"
+          full-width
+          :options="[
+            { value: '', label: 'Не оплачено картой' },
+            ...businessCardStore.myActiveCardOptions,
+          ]"
+          label="Корпоративная карта"
+          placeholder="Не оплачено картой"
+          :disabled="isAddingAll"
+        />
+      </div>
 
-      <div class="receipt-result__object">
+      <div class="receipt-result__field">
         <Autocomplete
           v-model="item.objectId"
           :options="receiptStore.objectOptions"
@@ -1434,8 +1445,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.receipt-result__object {
-  max-width: 210px;
+.receipt-result__field {
+  max-width: 250px;
 }
 
 /* Единая карточка страницы — как .receipt-list у соседней вкладки "Чеки",
