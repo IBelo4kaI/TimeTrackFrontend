@@ -33,6 +33,9 @@
               Без категории
             </Badge>
             <Badge v-if="objectLabel" type="muted">{{ objectLabel }}</Badge>
+            <Badge v-if="hasBusinessCard" type="muted">
+              {{ businessCardLabel }}
+            </Badge>
             <Badge v-if="isManual" type="muted">Без проверки ФНС</Badge>
             <Badge type="success">Завершён</Badge>
           </div>
@@ -228,6 +231,7 @@ import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import ReceiptPaper from '@/components/Receipt/ReceiptView/ReceiptPaper.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import { setReceiptCategory, setReceiptObject, transferReceipt } from '@/services/receipt.api'
+import { useBusinessCardStore } from '@/stores/businessCard'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useReceiptStore } from '@/stores/receipt'
@@ -246,11 +250,13 @@ const props = defineProps({
 
 const userStore = useUserStore()
 const receiptStore = useReceiptStore()
+const businessCardStore = useBusinessCardStore()
 const notificationStore = useNotificationStore()
 const confirmModalStore = useConfirmModal()
 const router = useRouter()
 
 onMounted(() => {
+  businessCardStore.fetchMyCards().catch(() => {})
   receiptStore.fetchCategories()
   receiptStore.fetchObjects()
 })
@@ -282,6 +288,15 @@ const isManual = computed(() => !nullString(props.receipt?.fiscalDriveNumber))
 
 const objectId = computed(() => nullString(props.receipt?.objectId))
 const objectLabel = computed(() => receiptStore.getObjectLabel(objectId.value))
+
+const hasBusinessCard = computed(() =>
+  nullString(props.receipt?.businessCardId)
+)
+const businessCardLabel = computed(
+  () =>
+    businessCardStore.getCardLabel(nullString(props.receipt?.businessCardId)) ??
+    'Корпоративная карта'
+)
 
 const categoryIds = computed(() => props.receipt?.categoryIds ?? [])
 const categoryLabels = computed(() =>

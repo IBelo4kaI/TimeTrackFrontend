@@ -41,6 +41,7 @@
           <InputUi
             v-model="formData[field.name]"
             :type="field.type"
+            :mask="field.mask"
             :label="field.label"
             :required="field.required"
             :placeholder="field.placeholder"

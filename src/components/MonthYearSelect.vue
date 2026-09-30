@@ -43,7 +43,12 @@
       </div>
 
       <transition name="dropdown">
-        <div v-if="isOpen" class="select-dropdown month-year-dropdown">
+        <div
+          v-if="isOpen"
+          ref="dropdownRef"
+          class="select-dropdown month-year-dropdown"
+          :style="dropdownStyle"
+        >
           <div class="my-year">
             <button
               type="button"
@@ -98,7 +103,14 @@
 
 <script setup>
 import { MONTH_NAMES } from '@/constants/calendar.constants'
-import { computed, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+import {
+  autoUpdate,
+  computePosition,
+  flip,
+  offset,
+  shift,
+} from '@floating-ui/dom'
+import { computed, nextTick, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 
 const MONTHS_SHORT = MONTH_NAMES.map((name) => name.slice(0, 3))
 
@@ -139,6 +151,9 @@ const year = defineModel('year', { type: Number, required: true })
 
 const isOpen = ref(false)
 const selectRef = useTemplateRef('selectRef')
+const dropdownRef = useTemplateRef('dropdownRef')
+const dropdownStyle = ref({})
+let stopAutoUpdate = null
 
 // Год, который сейчас пролистан внутри открытой панели — листается стрелками
 // независимо от применённого фильтра, применяется только кликом по месяцу
@@ -178,18 +193,52 @@ const selectAllMonths = () => {
 const isCurrentMonth = (i) =>
   i === now.getMonth() && panelYear.value === now.getFullYear()
 
+// fixed-позиционирование: панель не обрезается overflow предков и
+// переворачивается/сдвигается, если не влезает в окно
+const updatePosition = async () => {
+  if (!selectRef.value || !dropdownRef.value) return
+  const { x, y } = await computePosition(selectRef.value, dropdownRef.value, {
+    strategy: 'fixed',
+    placement: 'bottom-start',
+    middleware: [
+      offset(props.variant === 'line' ? 0 : 8),
+      flip(),
+      shift({ padding: 8 }),
+    ],
+  })
+  dropdownStyle.value = { left: `${x}px`, top: `${y}px` }
+}
+
+const stopFloating = () => {
+  stopAutoUpdate?.()
+  stopAutoUpdate = null
+}
+
 const handleClickOutside = (event) => {
   if (selectRef.value && !selectRef.value.contains(event.target)) {
     closeDropdown()
   }
 }
 
-watch(isOpen, (open) => {
-  if (open) document.addEventListener('click', handleClickOutside)
-  else document.removeEventListener('click', handleClickOutside)
+watch(isOpen, async (open) => {
+  if (open) {
+    document.addEventListener('click', handleClickOutside)
+    await nextTick()
+    if (selectRef.value && dropdownRef.value) {
+      stopAutoUpdate = autoUpdate(
+        selectRef.value,
+        dropdownRef.value,
+        updatePosition
+      )
+    }
+  } else {
+    document.removeEventListener('click', handleClickOutside)
+    stopFloating()
+  }
 })
 
 onUnmounted(() => {
+  stopFloating()
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
@@ -268,8 +317,8 @@ onUnmounted(() => {
 }
 
 .select-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
+  position: fixed;
+  top: 0;
   left: 0;
   background-color: var(--foreground);
   border: 0.07rem solid var(--border-color);
@@ -306,7 +355,6 @@ onUnmounted(() => {
 }
 
 .custom-select--line .select-dropdown {
-  top: 100%;
   border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
 

@@ -9,6 +9,7 @@ import ReportPage from '@/pages/report/Index.vue'
 import VacationPage from '@/pages/vacation/Vacation.vue'
 import ReceiptPage from '@/pages/receipt/Index.vue'
 import ReceiptAddPage from '@/pages/receipt/ReceiptAdd.vue'
+import BusinessCardPage from '@/pages/receipt/BusinessCard.vue'
 import ReceiptViewPage from '@/pages/receipt/Receipt.vue'
 import SickLeavePage from '@/pages/sick_leave/Index.vue'
 import DocumentPage from '@/pages/document/Document.vue'
@@ -169,6 +170,13 @@ router.addRoute({
   name: 'receipt-create',
   component: ReceiptAddPage,
   meta: { title: 'Добавить чек', entity: 'receipts', action: 'create' },
+})
+
+router.addRoute({
+  path: '/receipts/cards/:id',
+  name: 'business-card',
+  component: BusinessCardPage,
+  meta: { title: 'Карта', entity: 'business_cards', action: 'read' },
 })
 
 router.addRoute({

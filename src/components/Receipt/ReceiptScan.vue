@@ -551,6 +551,15 @@
         @change="item.categoriesEdited = true"
       />
 
+      <SelectUI
+        v-if="businessCardStore.myActiveCardOptions.length"
+        v-model="item.businessCardId"
+        :options="businessCardStore.myActiveCardOptions"
+        label="Корпоративная карта"
+        placeholder="Не оплачено картой"
+        :disabled="isAddingAll"
+      />
+
       <div class="receipt-result__object">
         <Autocomplete
           v-model="item.objectId"
@@ -678,6 +687,7 @@ import { playSuccessSound } from '@/utils/sound.utils'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useFilePreviewStore } from '@/stores/filePreview'
 import { useNotificationStore } from '@/stores/notification'
+import { useBusinessCardStore } from '@/stores/businessCard'
 import { useReceiptStore } from '@/stores/receipt'
 import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user'
@@ -686,7 +696,9 @@ import { storeToRefs } from 'pinia'
 QrScanner.WORKER_PATH = QrScannerWorkerPath
 
 const receiptStore = useReceiptStore()
+const businessCardStore = useBusinessCardStore()
 onMounted(() => {
+  businessCardStore.fetchMyCards().catch(() => {})
   receiptStore.fetchCategories()
   receiptStore.fetchObjects()
 })
@@ -770,6 +782,7 @@ function addPending(data, extra = {}) {
     categoryPreviewLoading: true,
     // Объект Reference Service, на который потрачены деньги (необязателен)
     objectId: '',
+    businessCardId: '',
     itemsVisible: false,
     isAdding: false,
     addError: '',
@@ -1345,6 +1358,7 @@ const addOnePending = async (item, { silent = false } = {}) => {
       ...mapExternalReceipt(item.data, item.rawQr),
       hasPaper: item.hasPaper,
       objectId: item.objectId || null,
+      businessCardId: item.businessCardId || null,
       // nil на бэке = автоопределение; ручной выбор шлём только если менялся
       categoryIds: item.categoriesEdited ? item.categoryIds : undefined,
     }

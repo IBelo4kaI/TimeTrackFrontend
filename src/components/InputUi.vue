@@ -38,7 +38,8 @@
 </template>
 
 <script setup>
-import { computed, useTemplateRef } from 'vue'
+import { MaskInput } from 'maska'
+import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 
 const props = defineProps({
   type: {
@@ -81,6 +82,11 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  // Опции maska (mask, tokens, number...) — маска ввода; только для type text/tel
+  mask: {
+    type: Object,
+    default: null,
+  },
 })
 
 const model = defineModel()
@@ -91,6 +97,16 @@ const inputRef = useTemplateRef('inputRef')
 const inputId = computed(() => {
   return props.id || `input-${Math.random().toString(36).substring(2, 9)}`
 })
+
+let maskInput = null
+
+onMounted(() => {
+  if (props.mask && inputRef.value) {
+    maskInput = new MaskInput(inputRef.value, props.mask)
+  }
+})
+
+onBeforeUnmount(() => maskInput?.destroy())
 
 const handleBlur = (event) => {
   emit('blur', event)
