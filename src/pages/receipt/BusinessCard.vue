@@ -23,7 +23,7 @@
               v-tooltip="fullNumber ? 'Скрыть номер' : 'Показать номер'"
               @click="toggleNumber"
             />
-            <template v-if="isAdmin">
+            <template v-if="canEdit">
               <ButtonUI
                 type="muted"
                 icon="fa-regular fa-user-plus"
@@ -36,15 +36,16 @@
                 v-tooltip="'Редактировать'"
                 @click="openEditModal(card, onCardChanged)"
               />
-              <ButtonUI
-                type="destructive"
-                icon="fa-regular fa-trash-can-xmark"
-                v-tooltip="'Удалить карту'"
-                @click="confirmDelete(card, goToList)"
-              />
             </template>
             <ButtonUI
-              v-if="isAdmin && card.ownerId"
+              v-if="canDelete"
+              type="destructive"
+              icon="fa-regular fa-trash-can-xmark"
+              v-tooltip="'Удалить карту'"
+              @click="confirmDelete(card, goToList)"
+            />
+            <ButtonUI
+              v-if="canEdit && card.ownerId"
               type="muted"
               icon="fa-regular fa-user-minus"
               v-tooltip="'Снять с сотрудника'"
@@ -186,6 +187,12 @@ useHeaderTitleStore().setTitle('Карта', 'Корпоративная кар�
 const isAdmin = computed(() =>
   userStore.hasPermission('business_cards.all', 'read')
 )
+const canEdit = computed(() =>
+  userStore.hasPermission('business_cards.all', 'edit')
+)
+const canDelete = computed(() =>
+  userStore.hasPermission('business_cards.all', 'delete')
+)
 
 const card = ref(null)
 const cardReceipts = ref([])
@@ -209,7 +216,7 @@ const goToList = () => {
 async function onCardChanged(updated) {
   card.value = updated
   fullNumber.value = ''
-  history.value = await getBusinessCardHistory(updated.id)
+  if (isAdmin.value) history.value = await getBusinessCardHistory(updated.id)
 }
 
 function goBack() {
@@ -263,7 +270,9 @@ function onRelease() {
   confirmModalStore.open(async () => {
     try {
       card.value = await releaseBusinessCard(card.value.id)
-      history.value = await getBusinessCardHistory(card.value.id)
+      if (isAdmin.value) {
+        history.value = await getBusinessCardHistory(card.value.id)
+      }
     } catch (err) {
       notificationStore.addNotification(
         errorMessage(err, 'Не удалось снять карту'),

@@ -46,7 +46,7 @@
             v-tooltip="'Страница карты'"
             @click="openCard(row)"
           />
-          <template v-if="isAdmin">
+          <template v-if="canEdit">
             <ButtonUI
               type="muted-accent"
               icon="fa-regular fa-user-plus"
@@ -59,13 +59,14 @@
               v-tooltip="'Редактировать'"
               @click="openEditModal(row)"
             />
-            <ButtonUI
-              type="destructive"
-              icon="fa-regular fa-trash-can-xmark"
-              v-tooltip="'Удалить карту'"
-              @click="confirmDelete(row)"
-            />
           </template>
+          <ButtonUI
+            v-if="canDelete"
+            type="destructive"
+            icon="fa-regular fa-trash-can-xmark"
+            v-tooltip="'Удалить карту'"
+            @click="confirmDelete(row)"
+          />
         </div>
       </template>
     </AppTable>
@@ -96,6 +97,12 @@ const isAdmin = computed(() =>
 )
 const canCreate = computed(() =>
   userStore.hasPermission('business_cards.all', 'create')
+)
+const canEdit = computed(() =>
+  userStore.hasPermission('business_cards.all', 'edit')
+)
+const canDelete = computed(() =>
+  userStore.hasPermission('business_cards.all', 'delete')
 )
 
 const targets = [
