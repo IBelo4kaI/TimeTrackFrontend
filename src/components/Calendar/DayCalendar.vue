@@ -18,9 +18,10 @@
       </span>
       <template v-if="birthday.length > 0">
         <span class="day-number day-birthday">
-          <svg class="day-dot" viewBox="0 0 8 8" aria-hidden="true">
+          <!-- <svg class="day-dot" viewBox="0 0 8 8" aria-hidden="true">
             <circle cx="4" cy="4" r="4" />
-          </svg>
+          </svg> -->
+          {{ birthday[0].initials }}
         </span>
       </template>
     </div>
@@ -198,6 +199,7 @@ const dayStyle = computed(() => {
 
 .day-birthday {
   color: var(--accent);
+  font-size: 0.88rem;
 }
 
 .day-main {
