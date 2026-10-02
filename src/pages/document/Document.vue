@@ -5,6 +5,7 @@
   </div>
 </template>
 <script setup>
+import { useRoute } from 'vue-router'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSubmenuStore } from '@/stores/submenu'
 import ApplicationTemplates from '@/components/Document/ApplicationTemplates.vue'
@@ -21,7 +22,9 @@ submenuStore.setItems([
   { id: 'vacation-applications', label: 'Заявления на отпуск' },
   { id: 'application-templates', label: 'Шаблоны заявлений' },
 ])
-submenuStore.setActiveTab('vacation-applications')
+submenuStore.setActiveTab(
+  useRoute().query.template ? 'application-templates' : 'vacation-applications'
+)
 </script>
 <style scoped>
 .container {

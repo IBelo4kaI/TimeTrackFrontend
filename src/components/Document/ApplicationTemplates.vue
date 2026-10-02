@@ -26,36 +26,36 @@
         Вас нет в справочнике сотрудников — заполните поля вручную.
       </div>
 
+      <div v-if="selected.textTemplates?.length" class="templates__texts">
+        <span class="templates__label">Шаблон текста</span>
+        <button
+          v-for="t in selected.textTemplates"
+          :key="t.id"
+          type="button"
+          class="templates__text-btn"
+          :class="{ 'templates__text-btn--active': activeText?.id === t.id }"
+          @click="applyTextTemplate(t)"
+        >
+          {{ renderText(t) }}
+        </button>
+      </div>
+
       <template v-for="group in groups" :key="group.title">
         <div class="templates__group-title">{{ group.title }}</div>
 
         <div class="templates__grid">
           <template v-for="field in group.fields" :key="field.key">
-            <template v-if="field.type === 'textarea'">
-              <div
-                v-if="selected.textTemplates?.length"
-                class="templates__texts templates__field--wide"
-              >
-                <span class="templates__label">Шаблон текста</span>
-                <button
-                  v-for="t in selected.textTemplates"
-                  :key="t.id"
-                  type="button"
-                  class="templates__text-btn"
-                  @click="applyTextTemplate(t)"
-                >
-                  {{ renderText(t) }}
-                </button>
-              </div>
-              <label class="templates__field templates__field--wide">
-                <span class="templates__label">{{ field.label }}</span>
-                <textarea
-                  v-model="values[field.key]"
-                  rows="6"
-                  :placeholder="field.placeholder"
-                ></textarea>
-              </label>
-            </template>
+            <label
+              v-if="field.type === 'textarea'"
+              class="templates__field templates__field--wide"
+            >
+              <span class="templates__label">{{ field.label }}</span>
+              <textarea
+                v-model="values[field.key]"
+                rows="6"
+                :placeholder="field.placeholder"
+              ></textarea>
+            </label>
 
             <InputUi
               v-else
@@ -86,21 +86,33 @@ import {
 } from '@/constants/applicationTemplates'
 import { useApplicationTemplates } from '@/stores/applicationTemplates'
 import { formatDocDate } from '@/utils/docs.utils'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 const templatesStore = useApplicationTemplates()
 
 const selected = ref(null)
+const activeText = ref(null)
 const values = ref({})
 const employeeFound = ref(true)
 const fileName = ref('')
 const isLoading = ref(false)
 
+// Поля-параметры (param) видны, только когда выбрана заготовка текста с ними
+const visibleFields = computed(() => {
+  const template = selected.value
+  if (!template) return []
+  if (!template.textTemplates?.length) return template.fields
+  return template.fields.filter(
+    (f) => !f.param || activeText.value?.params.includes(f.key)
+  )
+})
+
 // Сначала то, что пользователь заполняет сам, ниже — подставленное автоматически
 const groups = computed(() =>
   selected.value
     ? [
-        { title: 'Заполните', fields: selected.value.fields },
+        { title: 'Заполните', fields: visibleFields.value },
         { title: 'Заполнено автоматически', fields: HEADER_FIELDS },
       ]
     : []
@@ -108,24 +120,33 @@ const groups = computed(() =>
 
 // Текст заготовки с подставленными датами (или прочерками, пока даты не выбраны)
 const renderText = (template) =>
-  template.text
-    .replaceAll(
-      '{dateFrom}',
-      values.value.dateFrom
-        ? formatDocDate(values.value.dateFrom)
-        : '__.__.____'
-    )
-    .replaceAll(
-      '{dateTo}',
-      values.value.dateTo ? formatDocDate(values.value.dateTo) : '__.__.____'
-    )
+  template.text.replace(/\{(\w+)\}/g, (_, key) =>
+    values.value[key] ? formatDocDate(values.value[key]) : '__.__.____'
+  )
+
+let lastRendered = ''
 
 const applyTextTemplate = (template) => {
-  values.value[selected.value.textField] = renderText(template)
+  activeText.value = template
+  lastRendered = renderText(template)
+  values.value[selected.value.textField] = lastRendered
 }
+
+// Меняем параметры — текст пересобирается, если его не правили руками
+watch(
+  () => activeText.value?.params.map((key) => values.value[key]),
+  () => {
+    const field = selected.value?.textField
+    if (!activeText.value || values.value[field] !== lastRendered) return
+    lastRendered = renderText(activeText.value)
+    values.value[field] = lastRendered
+  }
+)
 
 const select = async (template) => {
   selected.value = template
+  activeText.value = null
+  lastRendered = ''
   isLoading.value = true
   try {
     const result = await templatesStore.buildValues(template)
@@ -136,6 +157,24 @@ const select = async (template) => {
     isLoading.value = false
   }
 }
+
+// Переход из календаря: ?template=timeoff&dateFrom=...&dateTo=... — сразу
+// открываем шаблон с подставленными датами и подходящей заготовкой текста
+const route = useRoute()
+
+onMounted(async () => {
+  const { template: id, dateFrom, dateTo } = route.query
+  const template = APPLICATION_TEMPLATES.find((t) => t.id === id)
+  if (!template) return
+
+  await select(template)
+  if (dateFrom) values.value.dateFrom = dateFrom
+  if (dateTo) values.value.dateTo = dateTo
+
+  const textId = dateFrom && dateFrom !== dateTo ? 'time-off-period' : 'time-off-day'
+  const text = template.textTemplates?.find((t) => t.id === textId)
+  if (text) applyTextTemplate(text)
+})
 
 const onSubmit = async () => {
   try {
@@ -207,7 +246,8 @@ const onSubmit = async () => {
   cursor: pointer;
 }
 
-.templates__text-btn:hover {
+.templates__text-btn:hover,
+.templates__text-btn--active {
   border-color: var(--accent);
 }
 

@@ -16,9 +16,16 @@ export const APPLICATION_TEMPLATES = [
     title: 'Заявление на отгул',
     path: '/timeoff.docx',
     fields: [
-      // Только для подстановки в текст, в сам шаблон не попадает
-      { key: 'dateFrom', label: 'Дата начала', type: 'date' },
-      { key: 'dateTo', label: 'Дата окончания', type: 'date' },
+      // param: поле показывается, когда выбрана заготовка текста с этим параметром;
+      // в сам шаблон не попадает
+      { key: 'dateFrom', label: 'Дата начала', type: 'date', param: true },
+      { key: 'dateTo', label: 'Дата окончания', type: 'date', param: true },
+      {
+        key: 'workDate',
+        label: 'Дата работы в выходной день',
+        type: 'date',
+        param: true,
+      },
       {
         key: 'textTimeOff',
         label: 'Текст заявления',
@@ -26,12 +33,33 @@ export const APPLICATION_TEMPLATES = [
         placeholder: 'Прошу предоставить отгул ...',
       },
     ],
-    // Заготовки текста для поля textField; {dateFrom}/{dateTo} — из полей дат
+    // Заготовки текста для поля textField; params — какие поля дат нужны заготовке, {key} в тексте — из них
     textField: 'textTimeOff',
     textTemplates: [
       {
         id: 'unpaid-leave',
+        params: ['dateFrom', 'dateTo'],
         text: 'Прошу предоставить мне отпуск без сохранения заработной платы с {dateFrom} по {dateTo}.',
+      },
+      {
+        id: 'unpaid-leave-day',
+        params: ['dateFrom'],
+        text: 'Прошу предоставить мне отпуск без сохранения заработной платы на {dateFrom}.',
+      },
+      {
+        id: 'day-off-for-weekend-work',
+        params: ['dateFrom', 'workDate'],
+        text: 'Прошу предоставить мне день отдыха {dateFrom} в качестве компенсации за работу в выходной (праздничный) день {workDate}.',
+      },
+      {
+        id: 'time-off-day',
+        params: ['dateFrom'],
+        text: 'Прошу предоставить мне отгул {dateFrom} с последующей отработкой.',
+      },
+      {
+        id: 'time-off-period',
+        params: ['dateFrom', 'dateTo'],
+        text: 'Прошу предоставить мне отгул с {dateFrom} по {dateTo} с последующей отработкой.',
       },
     ],
   },
