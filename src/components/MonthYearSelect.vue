@@ -47,6 +47,7 @@
           v-if="isOpen"
           ref="dropdownRef"
           class="select-dropdown month-year-dropdown"
+          :class="{ 'select-dropdown--top': placementSide === 'top' }"
           :style="dropdownStyle"
         >
           <div class="my-year">
@@ -109,6 +110,7 @@ import {
   flip,
   offset,
   shift,
+  size,
 } from '@floating-ui/dom'
 import { computed, nextTick, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 
@@ -152,7 +154,10 @@ const year = defineModel('year', { type: Number, required: true })
 const isOpen = ref(false)
 const selectRef = useTemplateRef('selectRef')
 const dropdownRef = useTemplateRef('dropdownRef')
-const dropdownStyle = ref({})
+// До первого расчёта позиции панель скрыта, чтобы не мигать в углу окна
+const HIDDEN_STYLE = { visibility: 'hidden' }
+const dropdownStyle = ref(HIDDEN_STYLE)
+const placementSide = ref('bottom')
 let stopAutoUpdate = null
 
 // Год, который сейчас пролистан внутри открытой панели — листается стрелками
@@ -171,7 +176,10 @@ const displayValue = computed(() =>
 const toggleDropdown = () => {
   if (props.disabled) return
   isOpen.value = !isOpen.value
-  if (isOpen.value) panelYear.value = year.value
+  if (isOpen.value) {
+    panelYear.value = year.value
+    dropdownStyle.value = HIDDEN_STYLE
+  }
 }
 
 const closeDropdown = () => {
@@ -193,20 +201,42 @@ const selectAllMonths = () => {
 const isCurrentMonth = (i) =>
   i === now.getMonth() && panelYear.value === now.getFullYear()
 
-// fixed-позиционирование: панель не обрезается overflow предков и
-// переворачивается/сдвигается, если не влезает в окно
+// fixed-позиционирование: панель не обрезается overflow предков,
+// переворачивается/сдвигается, если не влезает в окно, и получает
+// max-height по свободному месту, если не помещается ни сверху, ни снизу
+const MIN_PANEL_HEIGHT = 160
+const VIEWPORT_PADDING = 8
+
 const updatePosition = async () => {
   if (!selectRef.value || !dropdownRef.value) return
-  const { x, y } = await computePosition(selectRef.value, dropdownRef.value, {
-    strategy: 'fixed',
-    placement: 'bottom-start',
-    middleware: [
-      offset(props.variant === 'line' ? 0 : 8),
-      flip(),
-      shift({ padding: 8 }),
-    ],
-  })
-  dropdownStyle.value = { left: `${x}px`, top: `${y}px` }
+  let maxHeight = null
+  const { x, y, placement } = await computePosition(
+    selectRef.value,
+    dropdownRef.value,
+    {
+      strategy: 'fixed',
+      placement: 'bottom-start',
+      middleware: [
+        offset(props.variant === 'line' ? 0 : 8),
+        flip({ padding: VIEWPORT_PADDING }),
+        shift({ padding: VIEWPORT_PADDING }),
+        size({
+          padding: VIEWPORT_PADDING,
+          apply({ availableHeight }) {
+            maxHeight = Math.max(availableHeight, MIN_PANEL_HEIGHT)
+          },
+        }),
+      ],
+    }
+  )
+  placementSide.value = placement.startsWith('top') ? 'top' : 'bottom'
+  dropdownStyle.value = {
+    left: `${x}px`,
+    top: `${y}px`,
+    maxHeight: maxHeight ? `${maxHeight}px` : undefined,
+    // направление появления: от поля к панели
+    '--dd-shift': placementSide.value === 'top' ? '10px' : '-10px',
+  }
 }
 
 const stopFloating = () => {
@@ -332,17 +362,19 @@ onUnmounted(() => {
 /* Анимация выпадающей панели — как у SelectUI.vue */
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: all 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .dropdown-enter-from {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(var(--dd-shift, -10px));
 }
 
 .dropdown-leave-to {
   opacity: 0;
-  transform: translateY(-5px);
+  transform: translateY(calc(var(--dd-shift, -10px) / 2));
 }
 
 /* variant: line */
@@ -356,6 +388,10 @@ onUnmounted(() => {
 
 .custom-select--line .select-dropdown {
   border-radius: 0 0 var(--border-radius) var(--border-radius);
+}
+
+.custom-select--line .select-dropdown--top {
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
 .select-trigger--line:hover:not(.select-trigger--disabled) {
@@ -374,6 +410,7 @@ onUnmounted(() => {
 
 .month-year-dropdown {
   width: 15.5rem;
+  overflow-y: auto;
   padding: 0.8rem;
   display: flex;
   flex-direction: column;
