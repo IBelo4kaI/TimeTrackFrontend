@@ -23,6 +23,7 @@
           placeholder="Все статусы"
         />
         <Autocomplete
+          v-if="target == 'all'"
           v-model="filters.ownerId"
           :options="ownerOptions"
           label-key="label"
@@ -34,6 +35,7 @@
           class="filters-person"
         />
         <Autocomplete
+          v-if="target == 'all'"
           v-model="filters.uploadedById"
           :options="uploaderOptions"
           label-key="label"
@@ -140,6 +142,7 @@
       full-width
     />
     <Autocomplete
+      v-if="target == 'all'"
       v-model="filters.ownerId"
       :options="ownerOptions"
       label-key="label"
@@ -150,6 +153,7 @@
       empty-text="Сотрудник не найден"
     />
     <Autocomplete
+      v-if="target == 'all'"
       v-model="filters.uploadedById"
       :options="uploaderOptions"
       label-key="label"
@@ -189,7 +193,10 @@ import InputUi from '../InputUi.vue'
 import MobileFilterDrawer from '../MobileFilterDrawer.vue'
 import SelectUI from '../SelectUI.vue'
 import { deleteFile, getEntityTypeFiles } from '@/services/files.api'
-import { getAllUserVacationsByYear } from '@/services/vacation.api'
+import {
+  getAllUserVacationsByYear,
+  getVacationsByYear,
+} from '@/services/vacation.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
 import { useThemeStore } from '@/stores/themes'
@@ -213,12 +220,16 @@ const years = computed(() => [
   selectedYear.value + 1,
 ])
 
+// С vacation.all:read — документы всех сотрудников, иначе только привязанные к вам
+const isAdmin = computed(() => userStore.hasPermission('vacation.all', 'read'))
+const target = computed(() => (isAdmin.value ? 'all' : 'my'))
+
 const files = ref([])
 // entityId (id отпуска) -> сам отпуск, за выбранный год
 const vacationByEntityId = ref({})
 const isLoading = ref(false)
 
-const headers = [
+const allHeaders = [
   { valueKey: 'fileName', title: 'Файл' },
   { valueKey: 'ownerName', title: 'Сотрудник' },
   { valueKey: 'period', title: 'Период отпуска' },
@@ -230,6 +241,12 @@ const headers = [
     format: (value) => (value ? new Date(value).toLocaleDateString() : '—'),
   },
 ]
+
+const headers = computed(() =>
+  target.value == 'all'
+    ? allHeaders
+    : allHeaders.filter((h) => h.valueKey !== 'ownerName')
+)
 
 const rows = computed(() =>
   files.value.map((file) => {
@@ -388,9 +405,13 @@ function buildPeriod(vacation) {
 async function load() {
   isLoading.value = true
   try {
+    const isAll = target.value == 'all'
     const [filesResult, vacationsResult] = await Promise.all([
-      getEntityTypeFiles('vacation', selectedYear.value),
-      getAllUserVacationsByYear(selectedYear.value).catch(() => []),
+      getEntityTypeFiles('vacation', selectedYear.value, target.value),
+      (isAll
+        ? getAllUserVacationsByYear(selectedYear.value)
+        : getVacationsByYear(selectedYear.value, userStore.user.id)
+      ).catch(() => []),
     ])
 
     files.value = filesResult ?? []

@@ -10,9 +10,11 @@ export const getEntityFiles = async (entityType, entityId, year) => {
   return response.data
 }
 
-export const getEntityTypeFiles = async (entityType, year) => {
+// scope: 'my' — только привязанные к вызывающему (его отпуск/чек/больничный),
+// 'all' — все (нужно право на чужие), без scope — всё, что доступно по правам.
+export const getEntityTypeFiles = async (entityType, year, scope) => {
   const response = await timeTrackApi.get(`/files/entity/${entityType}`, {
-    params: year ? { year } : undefined,
+    params: { ...(year && { year }), ...(scope && { scope }) },
   })
   return response.data
 }
