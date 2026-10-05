@@ -3,8 +3,10 @@ import {
   getSickLeavesByYear,
   getSickLeaveStats,
 } from '@/services/sick_leave.api'
+import { getEntityTypeFiles } from '@/services/files.api'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useNotificationStore } from './notification'
 import { useUserStore } from './user'
 
 const createEmptyStats = () => ({
@@ -20,6 +22,8 @@ export const useSickLeaveStore = defineStore('sick-leave', () => {
   const sickLeaves = ref([])
   const sickLeaveStats = ref(createEmptyStats())
   const isLoading = ref(false)
+  // id больничного -> прикреплённые файлы
+  const filesBySickLeaveId = ref({})
 
   const userStore = useUserStore()
 
@@ -28,33 +32,55 @@ export const useSickLeaveStore = defineStore('sick-leave', () => {
     return sickLeaves.value.filter((i) => i.status === filter.value)
   })
 
+  // Номер последней загрузки — ответы устаревших загрузок отбрасываем
+  let fetchSeq = 0
+
   const fetchSickLeaves = async () => {
-    if (target.value === 'all') await fetchAllUsersSickLeaves()
-    else await fetchUserSickLeaves()
-  }
-
-  const fetchUserSickLeaves = async () => {
+    const seq = ++fetchSeq
     isLoading.value = true
-    const [stats, list] = await Promise.all([
-      getSickLeaveStats(selectedYear.value, userStore.user.id),
-      getSickLeavesByYear(selectedYear.value, userStore.user.id),
-    ])
-    sickLeaveStats.value = stats ?? createEmptyStats()
-    sickLeaves.value = list ?? []
-    isLoading.value = false
-  }
+    try {
+      const isAll = target.value === 'all'
+      const userId = userStore.user.id
 
-  const fetchAllUsersSickLeaves = async () => {
-    isLoading.value = true
-    const list = await getAllUsersSickLeavesByYear(selectedYear.value)
-    sickLeaves.value = list ?? []
-    isLoading.value = false
+      const [list, stats, files] = await Promise.all([
+        isAll
+          ? getAllUsersSickLeavesByYear(selectedYear.value)
+          : getSickLeavesByYear(selectedYear.value, userId),
+        isAll
+          ? Promise.resolve(null)
+          : getSickLeaveStats(selectedYear.value, userId),
+        // Файлы одним запросом на весь список, а не по запросу на строку
+        getEntityTypeFiles('sick_leave', undefined, isAll ? 'all' : 'my').catch(
+          () => []
+        ),
+      ])
+      if (seq !== fetchSeq) return
+
+      sickLeaves.value = list ?? []
+      if (!isAll) sickLeaveStats.value = stats ?? createEmptyStats()
+      filesBySickLeaveId.value = (files ?? []).reduce((acc, f) => {
+        ;(acc[f.entityId] ??= []).push(f)
+        return acc
+      }, {})
+    } catch (error) {
+      if (seq !== fetchSeq) return
+      console.error('Ошибка загрузки больничных:', error)
+      sickLeaves.value = []
+      useNotificationStore().addNotification(
+        'Не удалось загрузить больничные',
+        'error'
+      )
+    } finally {
+      if (seq === fetchSeq) isLoading.value = false
+    }
   }
 
   watch(selectedYear, fetchSickLeaves)
   watch(target, async () => {
     await fetchSickLeaves()
-    if (target.value === 'all') await userStore.userAllFetch()
+    if (target.value === 'all' && !userStore.usersAll.length) {
+      await userStore.userAllFetch()
+    }
   })
 
   return {
@@ -64,9 +90,8 @@ export const useSickLeaveStore = defineStore('sick-leave', () => {
     sickLeaves,
     sickLeaveStats,
     isLoading,
+    filesBySickLeaveId,
     filteredSickLeaves,
     fetchSickLeaves,
-    fetchUserSickLeaves,
-    fetchAllUsersSickLeaves,
   }
 })

@@ -7,19 +7,17 @@
           Сотрудник
           <span class="required">*</span>
         </label>
-        <SelectUI
+        <Autocomplete
           v-model="formData.userId"
-          :options="userOptions"
-          label-key="label"
-          value-key="value"
-          placeholder="Не выбрано"
+          :options="userStore.usersAll"
+          :label-key="['surname', 'name']"
+          value-key="id"
+          :is-show-button="false"
+          placeholder="Найти сотрудника"
+          empty-text="Сотрудник не найден"
           :disabled="isLoading"
-          :error="errors.userId != null"
-          style="width: 100%"
+          :error="errors.userId ?? ''"
         />
-        <span v-if="errors.userId" class="error-message">
-          {{ errors.userId }}
-        </span>
       </div>
     </template>
 
@@ -82,6 +80,7 @@
 </template>
 
 <script setup>
+import Autocomplete from '@/components/Autocomplete.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
 import SelectUI from '@/components/SelectUI.vue'
@@ -96,8 +95,6 @@ import { computed, reactive, ref } from 'vue'
 const props = defineProps({
   isAdmin: { type: Boolean, default: false },
 })
-
-const emit = defineEmits(['success'])
 
 const userStore = useUserStore()
 const sickLeaveStore = useSickLeaveStore()
@@ -119,13 +116,6 @@ const errors = reactive({
 
 const isSubmitting = ref(false)
 const isLoading = computed(() => isSubmitting.value)
-
-const userOptions = computed(() =>
-  userStore.usersAll.map((u) => ({
-    value: u.id,
-    label: [u.name, u.surname].filter(Boolean).join(' '),
-  }))
-)
 
 const statusOptions = [
   { value: 'unofficial', label: 'Неофициальный' },
@@ -198,10 +188,14 @@ const handleSubmit = async () => {
     formData.endDate = ''
     formData.description = ''
 
-    emit('success')
   } catch (error) {
     console.error('Ошибка при сохранении:', error)
-    notificationStore.addNotification('Не удалось добавить больничный', 'error')
+    notificationStore.addNotification(
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Не удалось добавить больничный',
+      'error'
+    )
   } finally {
     isSubmitting.value = false
   }

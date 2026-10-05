@@ -1,7 +1,7 @@
 <template>
   <AppTable
     :headers="headers"
-    :rows="rows"
+    :rows="items ?? []"
     row-key="id"
     :loading="isLoading"
     empty-text="Больничные не найдены"
@@ -42,7 +42,7 @@
 
     <template #actions="{ row }">
       <div class="actions">
-        <template v-if="isAdmin && userStore.hasPermission('sick_leaves', 'edit')">
+        <template v-if="isAdmin && userStore.hasPermission('sick_leaves.all', 'edit')">
           <ButtonUI
             v-if="row.status !== 'official'"
             type="success"
@@ -60,30 +60,31 @@
         </template>
 
         <ButtonUI
+          v-if="can('delete')"
           type="destructive"
           icon="fa-regular fa-trash-can-xmark"
           v-tooltip="'Удалить'"
           @click="confirmModalStore.open(() => onDeleted(row.id), 'Удалить больничный? Записи в табеле также будут удалены.')"
         />
 
-        <template v-if="filesMap[row.id]?.length">
+        <template v-if="filesOf(row.id).length">
           <ButtonUI
             type="muted-accent"
             icon="fa-regular fa-file-export"
             v-tooltip="'Скачать прикрепленный файл'"
-            @click="onDownloadFile(filesMap[row.id][0])"
+            @click="onDownloadFile(filesOf(row.id)[0])"
           />
           <ButtonUI
             v-if="userStore.hasPermission('files', 'delete')"
             type="destructive"
             icon="fa-regular fa-file-circle-xmark"
             v-tooltip="'Удалить прикрепленный файл'"
-            @click="onDeleteFile(filesMap[row.id][0], row.id)"
+            @click="onDeleteFile(filesOf(row.id)[0])"
           />
         </template>
 
         <template v-else>
-          <div class="file-upload" v-if="userStore.hasPermission('sick_leaves', 'edit')">
+          <div class="file-upload" v-if="can('edit')">
             <ButtonUI
               icon="fa-regular fa-file-import"
               type="success"
@@ -104,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import AppTable from '@/components/AppTable.vue'
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
@@ -131,8 +132,15 @@ const notificationStore = useNotificationStore()
 const sickLeaveStore = useSickLeaveStore()
 
 const fileInputs = ref({})
-const filesMap = ref({})
-const rows = computed(() => props.items ?? [])
+
+// Своё — по базовому праву, чужое (вкладка "Все") — по sick_leaves.all
+const can = (action) =>
+  userStore.hasPermission(props.isAdmin ? 'sick_leaves.all' : 'sick_leaves', action)
+
+const filesOf = (id) => sickLeaveStore.filesBySickLeaveId[id] ?? []
+
+const errorText = (error, fallback) =>
+  error.response?.data?.error || error.response?.data?.message || fallback
 
 const targets = [
   { id: 'my', label: 'Мои' },
@@ -147,23 +155,6 @@ const filterTabs = [
 
 const currentYear = new Date().getFullYear()
 const years = [currentYear - 1, currentYear, currentYear + 1]
-
-async function loadFiles() {
-  const items = props.items ?? []
-  const results = await Promise.all(
-    items.map(async (item) => {
-      try {
-        const files = await getEntityFiles('sick_leave', item.id)
-        return [item.id, files ?? []]
-      } catch {
-        return [item.id, []]
-      }
-    })
-  )
-  filesMap.value = Object.fromEntries(results)
-}
-
-watch(() => props.items, loadFiles, { immediate: true })
 
 const headers = computed(() => {
   const cols = []
@@ -197,8 +188,11 @@ async function onStatus(id, status) {
     await updateSickLeaveStatus(id, status)
     notificationStore.addNotification('Статус обновлён', 'success')
     await sickLeaveStore.fetchSickLeaves()
-  } catch {
-    notificationStore.addNotification('Ошибка при обновлении статуса', 'error')
+  } catch (error) {
+    notificationStore.addNotification(
+      errorText(error, 'Ошибка при обновлении статуса'),
+      'error'
+    )
   }
 }
 
@@ -207,14 +201,28 @@ async function onDeleted(id) {
     await deleteSickLeave(id)
     notificationStore.addNotification('Больничный удалён', 'success')
     await sickLeaveStore.fetchSickLeaves()
-  } catch {
-    notificationStore.addNotification('Ошибка при удалении', 'error')
+  } catch (error) {
+    notificationStore.addNotification(
+      errorText(error, 'Ошибка при удалении'),
+      'error'
+    )
   }
 }
+
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.heic']
 
 async function onFileSelected(event, id) {
   const file = event.target.files[0]
   if (!file) return
+
+  if (!ALLOWED_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) {
+    notificationStore.addNotification(
+      'Недопустимый тип файла. Разрешены: PDF, JPG, PNG, HEIC',
+      'error'
+    )
+    event.target.value = ''
+    return
+  }
 
   if (file.size > 10 * 1024 * 1024) {
     notificationStore.addNotification('Файл слишком большой. Максимум: 10MB', 'error')
@@ -226,8 +234,11 @@ async function onFileSelected(event, id) {
     await uploadSickLeaveFile(id, file)
     notificationStore.addNotification('Файл прикреплён', 'success')
     await sickLeaveStore.fetchSickLeaves()
-  } catch {
-    notificationStore.addNotification('Ошибка при загрузке файла', 'error')
+  } catch (error) {
+    notificationStore.addNotification(
+      errorText(error, 'Ошибка при загрузке файла'),
+      'error'
+    )
   }
   event.target.value = ''
 }
@@ -247,7 +258,7 @@ async function onDownloadFile(file) {
   }
 }
 
-async function onDeleteFile(file, sickLeaveId) {
+async function onDeleteFile(file) {
   confirmModalStore.open(async () => {
     try {
       await deleteFile(file.id)
