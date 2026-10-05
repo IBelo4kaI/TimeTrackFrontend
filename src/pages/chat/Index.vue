@@ -14,7 +14,7 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUniversalModalStore } from '@/stores/modal'
 import { useNotificationStore } from '@/stores/notification'
 import { onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Чаты', 'Личные и групповые обсуждения')
@@ -23,6 +23,7 @@ const chatStore = useChatStore()
 const modalStore = useUniversalModalStore()
 const notificationStore = useNotificationStore()
 const route = useRoute()
+const router = useRouter()
 
 function openNewChatModal() {
   modalStore.open({
@@ -64,9 +65,15 @@ function openNewChatModal() {
 // ?open=<chatId> — глубокая ссылка на конкретный чат (используется, например,
 // VK-уведомлениями, см. internal/vk/service.go на бэке).
 onMounted(async () => {
-  await chatStore.loadChats()
+  // Список чатов уже грузит App.vue — повторно только если он ещё не пришёл
+  if (!chatStore.chats.length && !chatStore.isLoadingChats) {
+    await chatStore.loadChats()
+  }
   if (route.query.open) {
-    chatStore.openChat(route.query.open)
+    await chatStore.openChat(route.query.open)
+    // Параметр одноразовый — не оставляем в адресе, иначе обновление страницы
+    // снова откроет этот чат
+    router.replace({ name: 'chats' })
   }
 })
 

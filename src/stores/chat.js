@@ -42,6 +42,8 @@ export const useChatStore = defineStore('chat', () => {
 
   const messagesByChat = ref({}) // chatId -> ChatMessage[]
   const isLoadingMessages = ref(false)
+  const hasMoreByChat = ref({}) // chatId -> есть ли более старые сообщения
+  const isLoadingOlder = ref(false)
 
   const participantsByChat = ref({}) // chatId -> ChatParticipant[]
 
@@ -51,9 +53,12 @@ export const useChatStore = defineStore('chat', () => {
   const typingTimers = new Map() // не реактивно, просто таймеры очистки
 
   let eventSource = null
+  let openSeq = 0 // номер последнего openChat — устаревшие ответы отбрасываем
+  let hasConnectedBefore = false
 
   const activeChat = computed(() => chats.value.find((c) => c.id === activeChatId.value) ?? null)
   const activeMessages = computed(() => messagesByChat.value[activeChatId.value] ?? [])
+  const hasMoreMessages = computed(() => !!hasMoreByChat.value[activeChatId.value])
   const activeParticipants = computed(
     () => participantsByChat.value[activeChatId.value] ?? []
   )
@@ -64,6 +69,16 @@ export const useChatStore = defineStore('chat', () => {
   const totalUnread = computed(
     () => chats.value.filter((c) => (c.unreadCount ?? 0) > 0).length
   )
+
+  const PAGE_SIZE = 50
+
+  // Склейка по id в хронологическом порядке: страница с сервера и сообщения,
+  // пришедшие по SSE, пока она грузилась, не должны давать дублей
+  function mergeById(a, b) {
+    const byId = new Map()
+    for (const m of [...a, ...b]) byId.set(m.id, m)
+    return [...byId.values()].sort((x, y) => Number(x.id) - Number(y.id))
+  }
 
   // --- Чаты ---
 
@@ -96,28 +111,63 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  // Свежие сообщения чата с сервера (последняя страница), слитые с тем, что уже есть
+  async function loadLatestMessages(chatId) {
+    const page = (await getChatMessages(chatId, { limit: PAGE_SIZE })) ?? []
+    // Бэк отдаёт последние сообщения по убыванию id (для пагинации назад) —
+    // для показа в ленте нужен хронологический порядок.
+    messagesByChat.value[chatId] = mergeById(
+      messagesByChat.value[chatId] ?? [],
+      [...page].reverse()
+    )
+    if (hasMoreByChat.value[chatId] === undefined) {
+      hasMoreByChat.value[chatId] = page.length >= PAGE_SIZE
+    }
+  }
+
   async function openChat(chatId) {
+    const seq = ++openSeq
     activeChatId.value = chatId
     setViewingChat(chatId)
 
     if (!participantsByChat.value[chatId]) {
       await loadParticipants(chatId)
     }
+    if (seq !== openSeq) return
 
     isLoadingMessages.value = true
     try {
-      const page = (await getChatMessages(chatId, { limit: 50 })) ?? []
-      // Бэк отдаёт последние сообщения по убыванию id (для пагинации назад) —
-      // для показа в ленте нужен хронологический порядок.
-      messagesByChat.value[chatId] = [...page].reverse()
+      await loadLatestMessages(chatId)
     } catch {
+      if (seq !== openSeq) return
       notificationStore.addNotification('Не удалось загрузить сообщения', 'error')
-      messagesByChat.value[chatId] = []
+      messagesByChat.value[chatId] = messagesByChat.value[chatId] ?? []
     } finally {
-      isLoadingMessages.value = false
+      if (seq === openSeq) isLoadingMessages.value = false
     }
 
+    // Пользователь уже ушёл в другой чат — этот прочитанным не помечаем
+    if (seq !== openSeq) return
     await markAsRead(chatId)
+  }
+
+  // Более старые сообщения (кнопка "Загрузить ранее")
+  async function loadOlderMessages() {
+    const chatId = activeChatId.value
+    const list = messagesByChat.value[chatId]
+    if (!chatId || !list?.length || isLoadingOlder.value) return
+
+    isLoadingOlder.value = true
+    try {
+      const page =
+        (await getChatMessages(chatId, { beforeId: list[0].id, limit: PAGE_SIZE })) ?? []
+      messagesByChat.value[chatId] = mergeById([...page].reverse(), messagesByChat.value[chatId] ?? [])
+      hasMoreByChat.value[chatId] = page.length >= PAGE_SIZE
+    } catch {
+      notificationStore.addNotification('Не удалось загрузить предыдущие сообщения', 'error')
+    } finally {
+      isLoadingOlder.value = false
+    }
   }
 
   // "Антивыбор" — закрыть открытый чат, ничего не выбирая взамен.
@@ -135,9 +185,13 @@ export const useChatStore = defineStore('chat', () => {
 
   async function renameActiveChat(name) {
     if (!activeChatId.value) return
-    await renameChat(activeChatId.value, name)
-    const chat = chats.value.find((c) => c.id === activeChatId.value)
-    if (chat) chat.name = { String: name, Valid: name !== '' }
+    try {
+      await renameChat(activeChatId.value, name)
+      const chat = chats.value.find((c) => c.id === activeChatId.value)
+      if (chat) chat.name = { String: name, Valid: name !== '' }
+    } catch {
+      notificationStore.addNotification('Не удалось переименовать чат', 'error')
+    }
   }
 
   // Личное для текущего пользователя (не влияет на остальных участников) —
@@ -175,8 +229,14 @@ export const useChatStore = defineStore('chat', () => {
 
   async function addParticipant(userId) {
     if (!activeChatId.value) return
-    await addChatParticipant(activeChatId.value, userId)
-    await loadParticipants(activeChatId.value)
+    try {
+      await addChatParticipant(activeChatId.value, userId)
+      await loadParticipants(activeChatId.value)
+      return true
+    } catch {
+      notificationStore.addNotification('Не удалось добавить участника', 'error')
+      return false
+    }
   }
 
   // userId === себе — это и есть "выйти из чата" (бэк это разрешает всем
@@ -214,22 +274,29 @@ export const useChatStore = defineStore('chat', () => {
     delete messagesByChat.value[chatId]
     delete participantsByChat.value[chatId]
     delete typingByChat.value[chatId]
-    if (activeChatId.value === chatId) activeChatId.value = null
+    delete hasMoreByChat.value[chatId]
+    if (activeChatId.value === chatId) {
+      activeChatId.value = null
+      clearViewingChat()
+    }
   }
 
   // --- Сообщения ---
 
+  // true — сообщение принято сервером; false — не ушло (черновик вернёт вызывающий)
   async function sendMessage(body, entityRef = null) {
     const chatId = activeChatId.value
-    if (!chatId || (!body.trim() && !entityRef)) return
+    if (!chatId || (!body.trim() && !entityRef)) return true
 
     try {
       // Сообщение в ленту добавит SSE-событие message_created (в т.ч. для
       // собственных сообщений — бэк рассылает всем участникам без
       // исключения отправителя, это упрощает синхронизацию между вкладками).
       await sendChatMessage(chatId, body.trim(), entityRef, getSelfFullName(userStore.user))
+      return true
     } catch {
       notificationStore.addNotification('Не удалось отправить сообщение', 'error')
+      return false
     }
   }
 
@@ -239,15 +306,17 @@ export const useChatStore = defineStore('chat', () => {
   async function sendFileMessage(files, caption = '') {
     const chatId = activeChatId.value
     const list = Array.isArray(files) ? files : [files].filter(Boolean)
-    if (!chatId || !list.length) return
+    if (!chatId || !list.length) return true
 
     isSendingFile.value = true
     try {
       // Как и с текстом — в ленту сообщение попадёт по SSE message_created
       // (рассылается всем участникам, включая отправителя).
       await sendChatFileMessage(chatId, list, caption.trim(), getSelfFullName(userStore.user))
+      return true
     } catch {
       notificationStore.addNotification('Не удалось отправить файл', 'error')
+      return false
     } finally {
       isSendingFile.value = false
     }
@@ -302,6 +371,7 @@ export const useChatStore = defineStore('chat', () => {
     eventSource.addEventListener('message_created', (e) => {
       const message = JSON.parse(e.data)
       const list = messagesByChat.value[message.chatId] ?? []
+      if (list.some((m) => m.id === message.id)) return
       messagesByChat.value[message.chatId] = [...list, message]
 
       touchChatOrder(message.chatId, message.createdAt)
@@ -343,11 +413,6 @@ export const useChatStore = defineStore('chat', () => {
       )
     })
 
-    eventSource.addEventListener('read_receipt', () => {
-      // Пока нигде в UI не показываем "прочитано собеседником" отдельно —
-      // задел на будущее, событие уже долетает.
-    })
-
     eventSource.addEventListener('chat_deleted', (e) => {
       const { chatId } = JSON.parse(e.data)
       // Один и тот же ивент шлётся и при удалении чата (личного/группового),
@@ -379,14 +444,34 @@ export const useChatStore = defineStore('chat', () => {
       await loadChats()
     })
 
+    // EventSource переподключается сам, но события за время разрыва не
+    // приходят — после повторного соединения подтягиваем состояние заново
+    eventSource.onopen = () => {
+      if (hasConnectedBefore) resync()
+      hasConnectedBefore = true
+    }
+
     eventSource.onerror = () => {
       // EventSource сам переподключается — тут ничего специально делать не нужно.
     }
   }
 
+  async function resync() {
+    await loadChats()
+    const chatId = activeChatId.value
+    if (!chatId) return
+    try {
+      await loadLatestMessages(chatId)
+    } catch {
+      // не критично — подтянется при следующем открытии чата
+    }
+    if (isViewingChat(chatId)) markAsRead(chatId)
+  }
+
   function disconnect() {
     eventSource?.close()
     eventSource = null
+    hasConnectedBefore = false
     typingTimers.forEach((t) => clearTimeout(t))
     typingTimers.clear()
   }
@@ -394,7 +479,11 @@ export const useChatStore = defineStore('chat', () => {
   // "Смотрит" — не просто activeChatId совпал (это состояние переживает уход
   // со страницы), а реально открыта страница чатов именно с этим чатом.
   function isViewingChat(chatId) {
-    return router.currentRoute.value.name === 'chats' && activeChatId.value === chatId
+    return (
+      router.currentRoute.value.name === 'chats' &&
+      activeChatId.value === chatId &&
+      document.visibilityState === 'visible'
+    )
   }
 
   function clearTyping(chatId, userId) {
@@ -403,6 +492,12 @@ export const useChatStore = defineStore('chat', () => {
     delete next[userId]
     typingByChat.value[chatId] = next
   }
+
+  // Вернулись на вкладку — открытый чат считается прочитанным
+  document.addEventListener('visibilitychange', () => {
+    const chatId = activeChatId.value
+    if (chatId && isViewingChat(chatId)) markAsRead(chatId)
+  })
 
   function touchChatOrder(chatId, lastMessageAt) {
     const chat = chats.value.find((c) => c.id === chatId)
@@ -420,12 +515,15 @@ export const useChatStore = defineStore('chat', () => {
     activeParticipants,
     activeTypingUserIds,
     isLoadingMessages,
+    isLoadingOlder,
+    hasMoreMessages,
     totalUnread,
     participantsByChat,
 
     loadChats,
     loadParticipants,
     openChat,
+    loadOlderMessages,
     closeChat,
     createNewChat,
     renameActiveChat,

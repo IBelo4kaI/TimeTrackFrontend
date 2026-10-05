@@ -83,6 +83,16 @@
           Сообщений пока нет — напишите первым
         </div>
 
+        <button
+          v-if="chatStore.hasMoreMessages && chatStore.activeMessages.length"
+          type="button"
+          class="thread__load-older"
+          :disabled="chatStore.isLoadingOlder"
+          @click="onLoadOlder"
+        >
+          {{ chatStore.isLoadingOlder ? 'Загружаем...' : 'Загрузить ранее' }}
+        </button>
+
         <template v-for="entry in messagesWithDateSeparators" :key="entry.key">
           <div v-if="entry.type === 'date'" class="thread__date-separator">
             <span>{{ entry.label }}</span>
@@ -295,10 +305,16 @@ async function send() {
   attachedFiles.value = []
   attachedEntity.value = null
 
-  if (files.length) {
-    await chatStore.sendFileMessage(files, body)
-  } else {
-    await chatStore.sendMessage(body, entityRef)
+  const sent = files.length
+    ? await chatStore.sendFileMessage(files, body)
+    : await chatStore.sendMessage(body, entityRef)
+
+  // Не ушло — возвращаем набранное, чтобы не вводить заново (если пока
+  // ждали, пользователь уже начал новое сообщение, его не перезаписываем)
+  if (!sent) {
+    if (!draft.value) draft.value = body
+    if (!attachedFiles.value.length) attachedFiles.value = files
+    if (!attachedEntity.value) attachedEntity.value = entityRef
   }
 }
 
@@ -461,7 +477,12 @@ function openNotificationsMenu(event) {
   })
 }
 
-// --- Автоскролл вниз при новых сообщениях/открытии чата ---
+// --- Автоскролл: вниз при открытии чата, своём сообщении и когда лента уже
+// внизу; если пользователь читает историю выше — не дёргаем ---
+const NEAR_BOTTOM_PX = 120
+let stickToBottom = true // новый чат — сначала всегда вниз
+let prevCount = 0
+
 function scrollToBottom() {
   nextTick(() => {
     if (messagesEl.value)
@@ -469,8 +490,56 @@ function scrollToBottom() {
   })
 }
 
-watch(() => chatStore.activeChatId, scrollToBottom)
-watch(() => chatStore.activeMessages.length, scrollToBottom)
+const isNearBottom = () => {
+  const el = messagesEl.value
+  return !el || el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+}
+
+watch(
+  () => chatStore.activeChatId,
+  () => {
+    stickToBottom = true
+    prevCount = 0
+  }
+)
+
+// flush 'pre' — читаем положение ленты до того, как DOM пополнится
+watch(
+  () => chatStore.activeMessages.length,
+  (count) => {
+    const messages = chatStore.activeMessages
+    const last = messages[messages.length - 1]
+    const grew = count > prevCount
+    const isOwn = last?.senderUserId === userStore.user?.id
+    const loadedOlder = isLoadingOlderFlag
+    prevCount = count
+
+    if (count && stickToBottom) {
+      stickToBottom = false
+      scrollToBottom()
+    } else if (grew && !loadedOlder && (isOwn || isNearBottom())) {
+      scrollToBottom()
+    }
+  },
+  { flush: 'pre' }
+)
+
+// Подгрузка старых сообщений: позицию ленты сохраняем, чтобы она не уехала
+let isLoadingOlderFlag = false
+
+async function onLoadOlder() {
+  const el = messagesEl.value
+  const prevHeight = el?.scrollHeight ?? 0
+  const prevTop = el?.scrollTop ?? 0
+
+  isLoadingOlderFlag = true
+  await chatStore.loadOlderMessages()
+  await nextTick()
+  isLoadingOlderFlag = false
+
+  if (el) el.scrollTop = prevTop + (el.scrollHeight - prevHeight)
+}
+
 // Переключились на другой чат — модалка участников, если была открыта,
 // относилась к предыдущему.
 watch(() => chatStore.activeChatId, () => (showParticipants.value = false))
@@ -493,6 +562,28 @@ watch(() => chatStore.activeChatId, () => (showParticipants.value = false))
 }
 
 .thread__empty,
+.thread__load-older {
+  align-self: center;
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--muted-text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.thread__load-older:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.thread__load-older:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .thread__empty-messages {
   flex: 1;
   display: flex;
