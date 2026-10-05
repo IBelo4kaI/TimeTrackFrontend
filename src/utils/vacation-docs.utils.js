@@ -24,7 +24,7 @@ import { incline, getGender } from 'lvovich'
  * "Мишукова Кристина"              → { last, first }
  */
 function parseName(fullName) {
-  const [last = '', first = '', middle] = fullName.trim().split(/\s+/)
+  const [last = '', first = '', middle] = (fullName ?? '').trim().split(/\s+/)
   return { last, first, ...(middle ? { middle } : {}) }
 }
 
@@ -76,7 +76,7 @@ export function formatNameFull(fullName, declension) {
 // lvovich работает только с именами, поэтому должности
 // склоняем по правилам русских окончаний.
 
-function inflectPosition(position, declension) {
+function inflectPosition(position = '', declension) {
   if (declension !== 'genitive' && declension !== 'dative') return position
 
   // Составные через дефис: "техник-проектировщик" → склоняем каждую часть
@@ -106,7 +106,6 @@ function inflectWord(word, declension) {
 function applyDative(word, w) {
   // Прилагательные (генеральный → генеральному)
   if (w.endsWith('ный')) return word.replace(/ный$/i, 'ному')
-  if (w.endsWith('ьный')) return word.replace(/ный$/i, 'ному')
   if (w.endsWith('дший')) return word.replace(/дший$/i, 'дшему')
   if (w.endsWith('щий')) return word.replace(/щий$/i, 'щему')
 
@@ -143,7 +142,6 @@ function applyDative(word, w) {
 function applyGenitive(word, w) {
   // Прилагательные (генеральный → генерального)
   if (w.endsWith('ный')) return word.replace(/ный$/i, 'ного')
-  if (w.endsWith('ьный')) return word.replace(/ный$/i, 'ного')
   if (w.endsWith('дший')) return word.replace(/дший$/i, 'дшего')
   if (w.endsWith('щий')) return word.replace(/щий$/i, 'щего')
 
@@ -179,7 +177,7 @@ function applyGenitive(word, w) {
 
 // ─── Утилиты ────────────────────────────────────────────────────────────────
 
-function formatCompany(company) {
+function formatCompany(company = '') {
   return company.replace(/\\?"([^"\\]+)\\?"/g, '«$1»')
 }
 
@@ -205,16 +203,16 @@ function todayFormatted() {
 export function buildDocumentHeader(user) {
   return {
     // "Директор" → "Директору"
-    directorPositionDat: inflectPosition(user.director_position, 'dative'),
+    directorPositionDat: inflectPosition(user.director_position ?? '', 'dative'),
 
     // ООО "..." → ООО «...»
-    company: formatCompany(user.company),
+    company: formatCompany(user.company ?? ''),
 
     // "Степановский Виктор Викторович" → "Степановскому В.В."
     directorShort: formatNameShort(user.director, 'dative'),
 
     // "Техник-проектировщик" → "техника-проектировщика"
-    fromPositionGen: inflectPosition(user.position, 'genitive').toLowerCase(),
+    fromPositionGen: inflectPosition(user.position ?? '', 'genitive').toLowerCase(),
 
     // "Мишукова Кристина" → "Мишуковой К."
     fromNameGen: formatNameShort(user.full_name, 'genitive'),

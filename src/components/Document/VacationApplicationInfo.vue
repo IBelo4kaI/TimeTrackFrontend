@@ -233,7 +233,7 @@ async function loadVacationTypes() {
 
 async function onApprove() {
   await runMutation(
-    () => approvedVacationStatus(props.vacation.id, employeeName.value),
+    () => approvedVacationStatus(props.vacation.id),
     'Отпуск утверждён',
     'Ошибка при утверждении отпуска'
   )
@@ -241,7 +241,7 @@ async function onApprove() {
 
 async function onStatus(newStatus) {
   await runMutation(
-    () => updateVacationStatus(props.vacation.id, newStatus, employeeName.value),
+    () => updateVacationStatus(props.vacation.id, newStatus),
     'Статус обновлён',
     'Ошибка при обновлении статуса'
   )
@@ -266,8 +266,11 @@ async function runMutation(action, successMessage, errorMessage, onError) {
     await action()
     notificationStore.addNotification(successMessage, 'success')
     emit('changed')
-  } catch {
-    notificationStore.addNotification(errorMessage, 'error')
+  } catch (error) {
+    notificationStore.addNotification(
+      error.response?.data?.error || error.response?.data?.message || errorMessage,
+      'error'
+    )
     onError?.()
   } finally {
     isMutating.value = false

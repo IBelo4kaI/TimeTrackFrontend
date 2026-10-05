@@ -51,11 +51,12 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ButtonUI from '@/components/ButtonUI.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
-import { getEntityFiles, openFile } from '@/services/files.api'
+import { useFileBlobPreview } from '@/helpers/filePreview.helpers'
+import { getEntityFiles } from '@/services/files.api'
 import { useNotificationStore } from '@/stores/notification'
 
 const route = useRoute()
@@ -81,8 +82,7 @@ const files = ref([])
 const file = ref(null)
 const isLoading = ref(false)
 
-const previewUrl = ref(null)
-let previewBlobUrl = null
+const { previewUrl } = useFileBlobPreview(file)
 
 async function loadFile() {
   isLoading.value = true
@@ -98,36 +98,18 @@ async function loadFile() {
   }
 }
 
-async function loadPreview() {
-  releasePreview()
-  if (!file.value) return
-
-  try {
-    const blob = await openFile(file.value.id)
-    previewBlobUrl = URL.createObjectURL(blob)
-    previewUrl.value = previewBlobUrl
-  } catch {
-    notificationStore.addNotification('Ошибка при открытии файла', 'error')
-  }
-}
-
-function releasePreview() {
-  if (previewBlobUrl) {
-    URL.revokeObjectURL(previewBlobUrl)
-    previewBlobUrl = null
-  }
-  previewUrl.value = null
-}
-
 function onOpenInNewTab() {
   if (previewUrl.value) window.open(previewUrl.value, '_blank')
 }
 
-watch(file, loadPreview)
-watch(() => route.params.id, loadFile)
+watch(
+  () => route.params.id,
+  (id) => {
+    if (id && route.name === 'vacation-file-viewer') loadFile()
+  }
+)
 
 onMounted(loadFile)
-onUnmounted(releasePreview)
 </script>
 
 <style scoped>

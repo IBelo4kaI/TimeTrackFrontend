@@ -73,10 +73,10 @@ async function load() {
   } catch (err) {
     vacation.value = null
 
-    // Бэк отдаёт 403, если заявка чужая и нет vacation.all:read. Тост про
-    // "Нет доступа к действию" уже показывает общий перехватчик в api.js —
-    // тут только уводим со сломанной пустой страницы.
+    // Бэк отдаёт 403, если заявка чужая и нет vacation.all:read — сообщаем и
+    // уводим со сломанной пустой страницы
     if (err?.response?.status === 403) {
+      notificationStore.addNotification('Нет доступа к этой заявке', 'error')
       router.push({ name: 'docs' })
       return
     }
@@ -90,7 +90,13 @@ async function load() {
   }
 }
 
-watch(() => route.params.id, load)
+// При уходе со страницы params.id тоже пропадает — тогда не грузим
+watch(
+  () => route.params.id,
+  (id) => {
+    if (id && route.name === 'vacation-application') load()
+  }
+)
 onMounted(load)
 </script>
 

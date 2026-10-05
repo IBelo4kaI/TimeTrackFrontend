@@ -5,6 +5,7 @@
   </div>
 </template>
 <script setup>
+import { watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSubmenuStore } from '@/stores/submenu'
@@ -14,16 +15,25 @@ import VacationApplications from '@/components/Document/VacationList.vue'
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Документы', 'Файлы и заявления сотрудников')
 
-// Сброс вкладок при уходе со страницы делает router.beforeEach (router/index.js)
-// централизованно, до монтирования следующей страницы — здесь его дублировать
-// не нужно.
+// Заголовок и вкладки выставляем при каждой смене адреса: на /docs и
+// /docs?template=... один и тот же экземпляр страницы, а router.beforeEach
+// сбрасывает сабменю на каждой навигации
+const route = useRoute()
 const submenuStore = useSubmenuStore()
-submenuStore.setItems([
-  { id: 'vacation-applications', label: 'Заявления на отпуск' },
-  { id: 'application-templates', label: 'Шаблоны заявлений' },
-])
-submenuStore.setActiveTab(
-  useRoute().query.template ? 'application-templates' : 'vacation-applications'
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (route.name !== 'docs') return
+    submenuStore.setItems([
+      { id: 'vacation-applications', label: 'Заявления на отпуск' },
+      { id: 'application-templates', label: 'Шаблоны заявлений' },
+    ])
+    submenuStore.setActiveTab(
+      route.query.template ? 'application-templates' : 'vacation-applications'
+    )
+  },
+  { immediate: true }
 )
 </script>
 <style scoped>

@@ -69,10 +69,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import ButtonUI from '../ButtonUI.vue'
 import LoaderTitle from '../Loader/LoaderTitle.vue'
-import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
+import { useFileBlobPreview } from '@/helpers/filePreview.helpers'
+import { deleteFile, getEntityFiles } from '@/services/files.api'
 import { uploadVacationFile } from '@/services/vacation.api'
 import { useConfirmModal } from '@/stores/confirmModal'
 import { useNotificationStore } from '@/stores/notification'
@@ -105,11 +106,8 @@ const file = computed(() => files.value[0] ?? null)
 const isLoading = ref(false)
 const fileInput = ref(null)
 
-// Object URL для встроенного просмотра (стандартный PDF-вьюер браузера в
-// iframe) и «открыть в новой вкладке» — используются оба из одного и того
-// же URL.
-const previewUrl = ref(null)
-let previewBlobUrl = null
+// Object URL для встроенного просмотра (iframe) и «открыть в новой вкладке»
+const { previewUrl } = useFileBlobPreview(file)
 
 async function loadFiles() {
   isLoading.value = true
@@ -126,35 +124,14 @@ async function loadFiles() {
   }
 }
 
-async function loadPreview() {
-  releasePreview()
-  if (!file.value) return
-
-  try {
-    const blob = await openFile(file.value.id)
-    previewBlobUrl = URL.createObjectURL(blob)
-    previewUrl.value = previewBlobUrl
-  } catch {
-    notificationStore.addNotification('Ошибка при открытии файла', 'error')
-  }
-}
-
-function releasePreview() {
-  if (previewBlobUrl) {
-    URL.revokeObjectURL(previewBlobUrl)
-    previewBlobUrl = null
-  }
-  previewUrl.value = null
-}
-
-watch(file, loadPreview)
 watch(
   () => props.vacationId,
-  () => loadFiles()
+  (id) => {
+    if (id) loadFiles()
+  }
 )
 
 onMounted(loadFiles)
-onUnmounted(releasePreview)
 
 function onOpenInNewTab() {
   if (previewUrl.value) window.open(previewUrl.value, '_blank')

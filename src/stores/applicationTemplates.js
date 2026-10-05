@@ -9,11 +9,16 @@ export const useApplicationTemplates = defineStore(
   () => {
     const userStore = useUserStore()
 
-    // Значения полей шаблона: шапку заполняем из справочника, остальное — пусто
-    const buildValues = async (template) => {
+    const emptyValues = (template) => {
       const values = {}
       HEADER_FIELDS.forEach((f) => (values[f.key] = ''))
       template.fields.forEach((f) => (values[f.key] = f.value ?? ''))
+      return values
+    }
+
+    // Значения полей шаблона: шапку заполняем из справочника, остальное — пусто
+    const buildValues = async (template) => {
+      const values = emptyValues(template)
 
       const employee = await findEmployeeByUserId(userStore.user?.id)
       if (!employee) return { values, employeeFound: false }
@@ -29,6 +34,6 @@ export const useApplicationTemplates = defineStore(
         `${template.title}${fileName ? ` — ${fileName}` : ''}.docx`
       )
 
-    return { buildValues, generate }
+    return { emptyValues, buildValues, generate }
   }
 )

@@ -13,6 +13,8 @@ export const useFilePreviewStore = defineStore('file-preview', () => {
   const error = ref('')
 
   let revokeUrl = null
+  // Номер последнего открытия — ответы устаревших открытий отбрасываем
+  let openSeq = 0
 
   function releaseUrl() {
     if (revokeUrl) {
@@ -28,6 +30,7 @@ export const useFilePreviewStore = defineStore('file-preview', () => {
   // f: { url, originalName, mimeType } — готовый blob-url, сетевой запрос не
   // нужен; чистит его тогда сам вызывающий код, а не этот стор.
   async function open(f) {
+    const seq = ++openSeq
     releaseUrl()
     file.value = f
     isOpen.value = true
@@ -42,17 +45,20 @@ export const useFilePreviewStore = defineStore('file-preview', () => {
     isLoading.value = true
     try {
       const blob = await openFile(f.id)
+      if (seq !== openSeq) return
       const url = URL.createObjectURL(blob)
       revokeUrl = url
       blobUrl.value = url
     } catch {
-      error.value = 'Не удалось открыть файл'
+      if (seq === openSeq) error.value = 'Не удалось открыть файл'
     } finally {
-      isLoading.value = false
+      if (seq === openSeq) isLoading.value = false
     }
   }
 
   function close() {
+    openSeq++
+    isLoading.value = false
     isOpen.value = false
     file.value = null
     error.value = ''

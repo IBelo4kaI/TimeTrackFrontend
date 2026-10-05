@@ -43,12 +43,18 @@ export const fillAndDownload = async (templatePath, data, filename) => {
   downloadBlob(blob, filename)
 }
 
+// Открывает результат в новой вкладке; если браузер блокирует окно (вызов
+// идёт после асинхронной загрузки шаблона) — скачивает файл
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob)
-  // const a = document.createElement('a')
-  // a.href = url
-  // a.download = name
-  // a.click()
-  window.open(url, '_blank')
+  const opened = window.open(url, '_blank')
+
+  if (!opened) {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    a.click()
+  }
+
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }

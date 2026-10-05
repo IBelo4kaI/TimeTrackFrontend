@@ -85,11 +85,13 @@ import {
   HEADER_FIELDS,
 } from '@/constants/applicationTemplates'
 import { useApplicationTemplates } from '@/stores/applicationTemplates'
+import { useNotificationStore } from '@/stores/notification'
 import { formatDocDate } from '@/utils/docs.utils'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const templatesStore = useApplicationTemplates()
+const notificationStore = useNotificationStore()
 
 const selected = ref(null)
 const activeText = ref(null)
@@ -153,6 +155,12 @@ const select = async (template) => {
     values.value = result.values
     employeeFound.value = result.employeeFound
     fileName.value = result.fileName ?? ''
+  } catch (error) {
+    // Справочник недоступен или данные неполные — форму можно заполнить вручную
+    console.error('Не удалось подставить данные сотрудника:', error)
+    values.value = templatesStore.emptyValues(template)
+    employeeFound.value = false
+    fileName.value = ''
   } finally {
     isLoading.value = false
   }
@@ -181,7 +189,10 @@ const onSubmit = async () => {
     await templatesStore.generate(selected.value, values.value, fileName.value)
   } catch (error) {
     console.error('Ошибка при создании заявления:', error)
-    alert('Не удалось сформировать заявление')
+    notificationStore.addNotification(
+      'Не удалось сформировать заявление',
+      'error'
+    )
   }
 }
 </script>

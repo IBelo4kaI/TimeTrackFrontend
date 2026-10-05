@@ -402,29 +402,43 @@ function buildPeriod(vacation) {
   return `${getDateNamed(start)} – ${getDateNamed(end)} ${end.getFullYear()}`
 }
 
+// Номер последней загрузки — ответы устаревших загрузок отбрасываем
+let loadSeq = 0
+
 async function load() {
+  const seq = ++loadSeq
   isLoading.value = true
   try {
     const isAll = target.value == 'all'
+    let vacationsFailed = false
     const [filesResult, vacationsResult] = await Promise.all([
-      getEntityTypeFiles('vacation', selectedYear.value, target.value),
+      // Без года: год файла — это год загрузки, а не год отпуска
+      getEntityTypeFiles('vacation', undefined, target.value),
       (isAll
         ? getAllUserVacationsByYear(selectedYear.value)
         : getVacationsByYear(selectedYear.value, userStore.user.id)
-      ).catch(() => []),
+      ).catch(() => {
+        vacationsFailed = true
+        return []
+      }),
     ])
+    if (seq !== loadSeq) return
 
-    files.value = filesResult ?? []
-    vacationByEntityId.value = Object.fromEntries(
-      (vacationsResult ?? []).map((v) => [v.id, v])
+    const byId = Object.fromEntries((vacationsResult ?? []).map((v) => [v.id, v]))
+    vacationByEntityId.value = byId
+    // Только файлы отпусков выбранного года; если отпуска не загрузились,
+    // показываем всё без периода и статуса
+    files.value = (filesResult ?? []).filter(
+      (f) => vacationsFailed || byId[f.entityId]
     )
   } catch {
+    if (seq !== loadSeq) return
     notificationStore.addNotification(
       'Не удалось загрузить заявления на отпуск',
       'error'
     )
   } finally {
-    isLoading.value = false
+    if (seq === loadSeq) isLoading.value = false
   }
 }
 
