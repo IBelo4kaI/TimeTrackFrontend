@@ -27,22 +27,7 @@ import { computed } from 'vue'
 
 const vacationStore = useVacationStore()
 
-const nextVacation = computed(() => {
-  return getNextVacation(vacationStore.vacations)
-})
-
-function getNextVacation(vacations) {
-  const now = new Date()
-
-  return (
-    vacations
-      .filter((v) => v.status === 'approved' && new Date(v.startDate) >= now)
-      .sort(
-        (a, b) =>
-          new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-      )[0] ?? null
-  )
-}
+const nextVacation = computed(() => vacationStore.nextVacation)
 </script>
 
 <style scoped>

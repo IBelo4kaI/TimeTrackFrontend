@@ -53,7 +53,9 @@ import NextVacationCard from './NextVacationCard.vue'
 
 const vacationStore = useVacationStore()
 
-const percent = (num, all) => Math.abs((num / all) * 100)
+// Баланс 0 (нет отпускных дней) — прогресс 0, а не NaN%
+const percent = (num, all) =>
+  all > 0 ? Math.min(100, Math.abs((num / all) * 100)) : 0
 </script>
 
 <style scoped>

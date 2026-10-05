@@ -77,7 +77,7 @@ import VacationEmployee from './VacationEmployee.vue'
 import VacationGroup from './VacationGroup.vue'
 import VacationHeader from './VacationHeader.vue'
 import VacationMonthView from './VacationMonthView.vue'
-import { toDateStr } from './vacationUtils.js'
+import { parseLocalDate, toDateStr } from './vacationUtils.js'
 import VacationYearView from './VacationYearView.vue'
 
 const store = useVacationOther()
@@ -135,12 +135,6 @@ function getEmployeeVacations(employeeId) {
     const end = parseLocalDate(v.endDate ?? v.end_date)
     return start <= rangeEnd.value && end >= rangeStart.value
   })
-}
-
-// Парсим "2024-03-01" как локальную дату, а не UTC.
-function parseLocalDate(str) {
-  const [y, m, d] = str.slice(0, 10).split('-').map(Number)
-  return new Date(y, m - 1, d)
 }
 
 // ─── Сворачивание ФИО до инициалов при скролле ─────────────────────────────────

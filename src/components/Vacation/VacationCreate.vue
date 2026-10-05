@@ -142,9 +142,10 @@ import {
   calculateVacationDays,
   calculateVacationEndDate,
   createVacation,
+  getVacationStats,
 } from '@/services/vacation.api'
 import { getActiveVacationTypes } from '@/services/vacationTypes.api'
-import { existsFreeVacation, startDateBeforeEnd } from '@/utils/modal.utils'
+import { startDateBeforeEnd } from '@/utils/modal.utils'
 import { formatStats } from '@/utils/vacation.utils'
 
 const emit = defineEmits(['success'])
@@ -228,10 +229,13 @@ const endModeTabs = [
 // calendar_events), простым end-start+1 это не посчитать.
 const daysCount = ref(null)
 
+let daysSeq = 0
+
 watch(
   () => [formData.startDate, formData.endDate, endMode.value],
   async ([start, end, mode]) => {
     if (mode !== 'date') return
+    const seq = ++daysSeq
     if (!start || !end || new Date(end) < new Date(start)) {
       daysCount.value = null
       return
@@ -239,21 +243,24 @@ watch(
 
     try {
       const result = await calculateVacationDays(start, end)
-      daysCount.value = result?.totalVacationDays ?? null
+      if (seq === daysSeq) daysCount.value = result?.totalVacationDays ?? null
     } catch {
-      daysCount.value = null
+      if (seq === daysSeq) daysCount.value = null
     }
   }
 )
+
+let endDateSeq = 0
 
 watch(
   () => [formData.startDate, daysInput.value, endMode.value],
   async ([start, days, mode]) => {
     if (mode !== 'days' || !start || !days || Number(days) < 1) return
 
+    const seq = ++endDateSeq
     try {
       const result = await calculateVacationEndDate(start, Number(days))
-      if (result?.endDate) {
+      if (seq === endDateSeq && result?.endDate) {
         // ISO-строка с бэка ("2025-08-15T00:00:00Z") → формат <input type="date">
         formData.endDate = result.endDate.slice(0, 10)
       }
@@ -263,6 +270,46 @@ watch(
   }
 )
 
+// Остаток отпускных дней за год начала отпуска — для проверки у обычных
+// сотрудников (админу лимит не мешает). Грузим явно, а не берём из стора
+// списка: тот показывает свой, выбранный пользователем год.
+const freeDays = ref(null)
+let freeSeq = 0
+
+watch(
+  () => [formData.startDate, formData.userId],
+  async ([start, userId]) => {
+    freeDays.value = null
+    if (isAdmin || !start || !userId) return
+
+    const seq = ++freeSeq
+    try {
+      const stats = await getVacationStats(new Date(start).getFullYear(), userId)
+      if (seq === freeSeq) freeDays.value = stats?.free ?? null
+    } catch {
+      // без остатка проверку пропускаем — сервер примет заявку в любом случае
+    }
+  }
+)
+
+// Сколько дней отпуска запрашивается: в режиме "дни" — введённое число, иначе
+// расчёт бэка (без праздников), а пока его нет — календарная разница
+const requestedDays = () => {
+  if (endMode.value === 'days') return Number(daysInput.value) || 0
+  if (daysCount.value != null) return daysCount.value
+  if (!formData.startDate || !formData.endDate) return 0
+  const diff = new Date(formData.endDate) - new Date(formData.startDate)
+  return Math.round(diff / 86400000) + 1
+}
+
+const checkFreeDays = () => {
+  const need = requestedDays()
+  if (freeDays.value == null || !need) return null
+  return freeDays.value < need
+    ? `Не хватает свободных отпускных дней: ${need} / ${freeDays.value}`
+    : null
+}
+
 // При переключении режима старое значение из другого режима не должно
 // мешать валидации того, в который перешли.
 watch(endMode, () => {
@@ -270,7 +317,6 @@ watch(endMode, () => {
 })
 
 const checkDateValidator = startDateBeforeEnd('startDate', 'endDate')
-const checkFreeVacation = existsFreeVacation(vacationStore)
 
 const validate = () => {
   let valid = true
@@ -293,11 +339,7 @@ const validate = () => {
     errors.startDate = 'Поле обязательно'
     valid = false
   } else {
-    const dateErr = checkDateValidator(formData.startDate, formData)
-    const freeErr = !isAdmin
-      ? checkFreeVacation(formData.startDate, formData)
-      : null
-    errors.startDate = dateErr || freeErr || null
+    errors.startDate = checkDateValidator(formData.startDate, formData) || null
     if (errors.startDate) valid = false
   }
 
@@ -312,9 +354,7 @@ const validate = () => {
     valid = false
   } else {
     const dateErr = checkDateValidator(formData.endDate, formData)
-    const freeErr = !isAdmin
-      ? checkFreeVacation(formData.endDate, formData)
-      : null
+    const freeErr = !isAdmin ? checkFreeDays() : null
     errors.endDate = dateErr || freeErr || null
     if (errors.endDate) valid = false
   }
@@ -341,10 +381,22 @@ const handleSubmit = async () => {
 
     notificationStore.addNotification('Заявка на отпуск создана!', 'success')
 
+    // Форма очищается, иначе повторный клик создаст дубль заявки
+    formData.startDate = ''
+    formData.endDate = ''
+    formData.description = ''
+    daysInput.value = ''
+    daysCount.value = null
+
     emit('success')
   } catch (error) {
     console.error('Ошибка при сохранении:', error)
-    notificationStore.addNotification('Не удалось создать заявку', 'error')
+    notificationStore.addNotification(
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Не удалось создать заявку',
+      'error'
+    )
   } finally {
     isSubmitting.value = false
   }

@@ -15,7 +15,7 @@
     <td style="width: 100%">
       <div class="vacation-item__column">
         <div class="vacation-item__user" v-if="isAdmin">
-          {{ user.surname }} {{ user.name }} {{ user.patronymic }}
+          {{ userName }}
         </div>
         <div class="vacation-item__dates">
           {{ getDateNamed(parseDate(item.startDate)) }} -
@@ -126,29 +126,8 @@
         >
           Получить шаблон заявления
         </ButtonUI>
-
-        <!-- <template v-if="files.length">
-          <ButtonUI
-            @click="onDownloadFile(files[0])"
-            type="muted-accent"
-            icon="fa-regular fa-file-export"
-            v-tooltip="'Получить прикрепленный файл'"
-          >
-            Получить прикрепленный файл
-          </ButtonUI>
-          <ButtonUI
-            v-if="userStore.hasPermission('files', 'delete')"
-            @click="onDeleteFile(files[0])"
-            icon="fa-regular fa-file-circle-xmark"
-            type="destructive"
-            v-tooltip="'Удалить прикрепленный файл'"
-          >
-            Удалить прикрепленный файл
-          </ButtonUI>
-        </template> -->
-
         <template
-          v-if="!files.length && userStore.hasPermission('vacation', 'edit')"
+          v-if="!hasFile && userStore.hasPermission('vacation', 'edit')"
         >
           <ButtonUI
             icon="fa-regular fa-file-import"
@@ -174,7 +153,6 @@
 <script setup>
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
-import { deleteFile, getEntityFiles, openFile } from '@/services/files.api'
 import {
   approvedVacationStatus,
   deleteVacation,
@@ -189,7 +167,7 @@ import { useVacationDocs } from '@/stores/vacationDocs'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
 import { formatStats } from '@/utils/vacation.utils'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
@@ -205,18 +183,8 @@ const onOpen = () => {
   router.push({ name: 'vacation-application', params: { id: item.id } })
 }
 
-// Прикрепленные файлы отпуска (через общий файловый API)
-const files = ref([])
-
-const loadFiles = async () => {
-  try {
-    files.value = (await getEntityFiles('vacation', item.id)) ?? []
-  } catch {
-    files.value = []
-  }
-}
-
-watch(() => item.id, loadFiles, { immediate: true })
+// Файлы грузит стор одним запросом на весь список (см. fetchVacations)
+const hasFile = computed(() => vacationStore.vacationIdsWithFiles.has(item.id))
 
 const user = computed(() => {
   if (isAdmin && userStore.usersAll)
@@ -224,23 +192,41 @@ const user = computed(() => {
   else return null
 })
 
-const onApproved = async () => {
-  const resp = await approvedVacationStatus(item.id)
-  notificationStore.addNotification(resp.message, 'success')
-  await vacationStore.fetchVacations()
+const userName = computed(() =>
+  user.value
+    ? [user.value.surname, user.value.name, user.value.patronymic]
+        .filter(Boolean)
+        .join(' ')
+    : '—'
+)
+
+// Действие над заявкой: показываем ответ сервера или его текст ошибки
+const runAction = async (action, fallbackError) => {
+  try {
+    const resp = await action()
+    notificationStore.addNotification(resp.message, 'success')
+    await vacationStore.fetchVacations()
+  } catch (error) {
+    notificationStore.addNotification(
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        fallbackError,
+      'error'
+    )
+  }
 }
 
-const onDeleted = async () => {
-  const resp = await deleteVacation(item.id)
-  notificationStore.addNotification(resp.message, 'success')
-  await vacationStore.fetchVacations()
-}
+const onApproved = () =>
+  runAction(() => approvedVacationStatus(item.id), 'Не удалось утвердить')
 
-const onStatus = async (status) => {
-  const resp = await updateVacationStatus(item.id, status)
-  notificationStore.addNotification(resp.message, 'success')
-  await vacationStore.fetchVacations()
-}
+const onDeleted = () =>
+  runAction(() => deleteVacation(item.id), 'Не удалось удалить')
+
+const onStatus = (status) =>
+  runAction(
+    () => updateVacationStatus(item.id, status),
+    'Не удалось изменить статус'
+  )
 
 const onFileSelected = async (event) => {
   const file = event.target.files[0]
@@ -276,41 +262,13 @@ const onFileSelected = async (event) => {
   try {
     await uploadVacationFile(item.id, file)
     notificationStore.addNotification('Файл прикреплён', 'success')
-    await loadFiles()
+    await vacationStore.fetchVacations()
   } catch {
     notificationStore.addNotification('Ошибка при загрузке файла', 'error')
   }
 
   // Сброс input для возможности повторной загрузки того же файла
   event.target.value = ''
-}
-
-const onDownloadFile = async (file) => {
-  try {
-    const blob = await openFile(file.id)
-    const url = URL.createObjectURL(blob)
-    // const a = document.createElement('a')
-    // a.href = url
-    // a.download = file.originalName
-    // a.click()
-    window.open(url, '_blank')
-
-    setTimeout(() => URL.revokeObjectURL(url), 10_000)
-  } catch {
-    notificationStore.addNotification('Ошибка при открытии файла', 'error')
-  }
-}
-
-const onDeleteFile = async (file) => {
-  confirmModalStore.open(async () => {
-    try {
-      await deleteFile(file.id)
-      notificationStore.addNotification('Файл удалён', 'success')
-      await loadFiles()
-    } catch {
-      notificationStore.addNotification('Ошибка при удалении файла', 'error')
-    }
-  }, 'Вы действительно хотите удалить файл?')
 }
 
 const statusC = computed(() =>

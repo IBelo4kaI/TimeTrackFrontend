@@ -3,9 +3,11 @@ import {
   getVacationsByYear,
   getVacationStats,
 } from '@/services/vacation.api'
+import { getEntityTypeFiles } from '@/services/files.api'
 import { parseDate } from '@/utils/date.utils'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useNotificationStore } from './notification'
 import { useUserStore } from './user'
 
 const createEmptyStats = () => ({
@@ -23,6 +25,9 @@ export const useVacationStore = defineStore('vacation', () => {
 
   const vacations = ref([])
   const vacationStats = ref(createEmptyStats())
+  const upcomingVacations = ref([])
+  // id отпусков, к которым прикреплён файл
+  const vacationIdsWithFiles = ref(new Set())
 
   const isLoading = ref(false)
   const userStore = useUserStore()
@@ -47,45 +52,71 @@ export const useVacationStore = defineStore('vacation', () => {
     })
   })
 
+  // Номер последней загрузки — ответы устаревших загрузок отбрасываем
+  let fetchSeq = 0
+
   const fetchVacations = async () => {
-    if (target.value == 'all') await fetchAllUserVacations()
-    else if (target.value == 'my') await fetchUserVacations()
-  }
-
-  /* ================== fetch ================== */
-  const fetchUserVacations = async () => {
+    const seq = ++fetchSeq
     isLoading.value = true
-    const [stats, list] = await Promise.all([
-      getVacationStats(selectedYear.value, userStore.user.id),
-      getVacationsByYear(selectedYear.value, userStore.user.id),
-    ])
+    try {
+      const isAll = target.value == 'all'
+      const nowYear = new Date().getFullYear()
+      const userId = userStore.user.id
 
-    vacationStats.value = stats ?? createEmptyStats()
-    vacations.value = list ?? []
-    isLoading.value = false
+      const [list, stats, upcoming, files] = await Promise.all([
+        isAll
+          ? getAllUserVacationsByYear(selectedYear.value)
+          : getVacationsByYear(selectedYear.value, userId),
+        isAll
+          ? Promise.resolve(null)
+          : getVacationStats(selectedYear.value, userId),
+        // Ближайший отпуск не зависит от выбранного в списке года
+        Promise.all([
+          getVacationsByYear(nowYear, userId),
+          getVacationsByYear(nowYear + 1, userId),
+        ]).catch(() => []),
+        // Файлы грузим один раз на весь список, а не по запросу на строку;
+        // без года: год файла — это год загрузки, а не год отпуска
+        getEntityTypeFiles('vacation', undefined, isAll ? 'all' : 'my').catch(
+          () => []
+        ),
+      ])
+      if (seq !== fetchSeq) return
+
+      vacations.value = list ?? []
+      if (!isAll) vacationStats.value = stats ?? createEmptyStats()
+      upcomingVacations.value = (upcoming ?? []).flatMap((l) => l ?? [])
+      vacationIdsWithFiles.value = new Set((files ?? []).map((f) => f.entityId))
+    } catch (error) {
+      if (seq !== fetchSeq) return
+      console.error('Ошибка загрузки отпусков:', error)
+      vacations.value = []
+      useNotificationStore().addNotification(
+        'Не удалось загрузить отпуска',
+        'error'
+      )
+    } finally {
+      if (seq === fetchSeq) isLoading.value = false
+    }
   }
 
-  const fetchAllUserVacations = async () => {
-    isLoading.value = true
-    const list = await getAllUserVacationsByYear(selectedYear.value)
-    console.log(list)
-
-    vacations.value = list ?? []
-    isLoading.value = false
-  }
-
-  /* ================== actions ================== */
-  const changeVacationStatus = async (id, action) => {}
-
-  const removeVacation = async (id) => {}
-
-  watch(selectedYear, async () => {
-    await fetchVacations()
+  // Ближайший утверждённый отпуск текущего пользователя
+  const nextVacation = computed(() => {
+    const now = new Date()
+    return (
+      upcomingVacations.value
+        .filter((v) => v.status === 'approved' && parseDate(v.startDate) >= now)
+        .sort((a, b) => parseDate(a.startDate) - parseDate(b.startDate))[0] ??
+      null
+    )
   })
 
+  watch(selectedYear, fetchVacations)
   watch(target, async () => {
     await fetchVacations()
-    if (target.value == 'all') await userStore.userAllFetch()
+    if (target.value == 'all' && !userStore.usersAll.length) {
+      await userStore.userAllFetch()
+    }
   })
 
   return {
@@ -99,11 +130,10 @@ export const useVacationStore = defineStore('vacation', () => {
     filter,
     target,
 
+    nextVacation,
+    vacationIdsWithFiles,
+
     // actions
     fetchVacations,
-    fetchAllUserVacations,
-    fetchUserVacations,
-    changeVacationStatus,
-    removeVacation,
   }
 })
