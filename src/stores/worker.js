@@ -317,7 +317,11 @@ export const useWorkerStore = defineStore('worker', () => {
     }
   }
 
+  // Номер последней загрузки — ответы устаревших load() отбрасываем
+  let loadSeq = 0
+
   const load = async (id) => {
+    const seq = ++loadSeq
     employeeId.value = id
     isLoading.value = true
     isLoaded.value = false
@@ -331,6 +335,7 @@ export const useWorkerStore = defineStore('worker', () => {
 
     if (!userStore.usersAll.length) {
       await userStore.userAllFetch()
+      if (seq !== loadSeq) return
     }
 
     const gender = parseGenderId(profile.value)
@@ -346,6 +351,8 @@ export const useWorkerStore = defineStore('worker', () => {
         getSickLeavesByYear(year.value, id),
         getInternalEmployees(),
       ])
+
+    if (seq !== loadSeq) return
 
     monthStats.value =
       monthResult.status === 'fulfilled' && monthResult.value

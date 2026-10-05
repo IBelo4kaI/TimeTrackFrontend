@@ -52,11 +52,6 @@ const userStore = useUserStore()
 const isSelf = computed(() => !route.params.id)
 
 const titleStore = useHeaderTitleStore()
-if (isSelf.value) {
-  titleStore.setTitle('Главная', 'Ваша сводная информация')
-} else {
-  titleStore.setTitle('Карточка сотрудника', 'Сводная информация')
-}
 
 // «Назад» — только в карточке другого сотрудника, туда, откуда реально
 // пришли, иначе на табель.
@@ -76,8 +71,29 @@ const TABS = [
 ]
 
 const submenuStore = useSubmenuStore()
-submenuStore.setItems(TABS)
-submenuStore.setActiveTab('home')
+
+// Тот же компонент обслуживает /home и /workers/:id и переиспользуется при
+// переходе между ними, а router.beforeEach сбрасывает заголовок/сабменю
+// на каждой навигации — поэтому выставляем их заново при смене маршрута
+const isWorkerRoute = () => ['dashboard', 'worker'].includes(route.name)
+
+function initHeader() {
+  if (isSelf.value) {
+    titleStore.setTitle('Главная', 'Ваша сводная информация')
+  } else {
+    titleStore.setTitle('Карточка сотрудника', 'Сводная информация')
+  }
+  submenuStore.setItems(TABS)
+  submenuStore.setActiveTab('home')
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (isWorkerRoute()) initHeader()
+  },
+  { immediate: true }
+)
 
 const activeTabLabel = computed(
   () => TABS.find((t) => t.id === submenuStore.activeTab)?.label ?? ''
@@ -89,7 +105,13 @@ async function load() {
   await workerStore.load(route.params.id || userStore.user?.id)
 }
 
-watch(() => route.params.id, load)
+// Не грузим данные, пока уходим со страницы (params.id при этом тоже меняется)
+watch(
+  () => route.params.id,
+  () => {
+    if (isWorkerRoute()) load()
+  }
+)
 onMounted(load)
 </script>
 
