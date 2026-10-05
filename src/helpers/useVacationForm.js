@@ -12,8 +12,7 @@ import { startDateBeforeEnd } from '@/utils/modal.utils'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 // Состояние и логика формы создания отпуска для пошаговой страницы
-// (pages/vacation/VacationCreateStepsPage.vue). Классическая форма
-// (components/Vacation/VacationCreate.vue) живёт своей логикой отдельно.
+// (pages/vacation/VacationCreateStepsPage.vue).
 export function useVacationForm() {
   const userStore = useUserStore()
   const vacationStore = useVacationStore()

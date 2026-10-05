@@ -1,35 +1,108 @@
 <template>
   <div class="vacation-list">
-    <div class="vacation-list__controls">
-      <template v-if="isAdmin">
+    <AppTable
+      :headers="headers"
+      :rows="rows"
+      row-key="id"
+      :loading="vacationStore.isLoading"
+      empty-text="Заявки не найдены"
+    >
+      <template #toolbar>
         <Tabs
+          v-if="isAdmin"
           :tabs="targets"
           v-model="vacationStore.target"
           type="line"
           class="target-tabs"
         />
+
+        <template v-if="!isMobile">
+          <Tabs :tabs="filters" v-model="vacationStore.filter" type="line" />
+          <MonthYearSelect
+            variant="line"
+            align="center"
+            v-model:month="vacationStore.selectedMonth"
+            v-model:year="vacationStore.selectedYear"
+          />
+        </template>
+
+        <button
+          v-else
+          type="button"
+          class="filter-trigger"
+          @click="filtersOpen = true"
+          aria-label="Фильтры"
+        >
+          <i class="fa-regular fa-filter"></i>
+        </button>
+
+        <div class="toolbar-end">
+          <ButtonUI
+            v-if="userStore.hasPermission('vacation', 'create')"
+            type="accent"
+            icon="fa-regular fa-plus"
+            v-tooltip="'Создать заявку на отпуск'"
+            @click="router.push({ name: 'vacation-create' })"
+          />
+        </div>
       </template>
 
-      <template v-if="!isMobile">
-        <Tabs :tabs="filters" v-model="vacationStore.filter" type="line" />
-        <MonthYearSelect
-          variant="line"
-          align="center"
-          v-model:month="vacationStore.selectedMonth"
-          v-model:year="vacationStore.selectedYear"
-        />
+      <template #cell-status="{ row }">
+        <div class="status-cell">
+          <Badge :type="row.statusMeta.type">{{ row.statusMeta.text }}</Badge>
+          <Badge
+            v-if="row.vacationTypeName"
+            type="muted"
+            :style="typeBadgeStyle(row)"
+          >
+            {{ row.vacationTypeName }}
+          </Badge>
+        </div>
       </template>
 
-      <button
-        v-else
-        type="button"
-        class="filter-trigger"
-        @click="filtersOpen = true"
-        aria-label="Фильтры"
-      >
-        <i class="fa-regular fa-filter"></i>
-      </button>
-    </div>
+      <template #cell-period="{ row }">
+        <div class="period-cell">
+          <span class="period-cell__dates">{{ row.periodText }}</span>
+          <Badge type="muted">{{ formatStats(row.totalDays) }}</Badge>
+        </div>
+      </template>
+
+      <template #cell-description="{ value }">
+        <span class="description-cell">{{ value || '—' }}</span>
+      </template>
+
+      <template #actions="{ row }">
+        <div class="row-actions">
+          <ButtonUI
+            type="muted-accent"
+            icon="fa-regular fa-arrow-up-right-from-square"
+            v-tooltip="'Открыть заявку'"
+            @click="onOpen(row)"
+          />
+          <ButtonUI
+            type="muted-accent"
+            icon="fa-regular fa-file-word"
+            v-tooltip="'Получить шаблон заявления'"
+            @click="vacationDocs.getDocument(row.id)"
+          />
+          <ButtonUI
+            v-if="menuItemsFor(row).length"
+            type="muted-accent"
+            icon="fa-regular fa-ellipsis"
+            v-tooltip="'Ещё'"
+            @click="openMenu($event, row)"
+          />
+        </div>
+      </template>
+    </AppTable>
+
+    <input
+      ref="fileInput"
+      type="file"
+      accept=".pdf"
+      style="display: none"
+      @change="onFileSelected"
+    />
 
     <!-- Фильтры на мобилке — выезжающая панель, как боковое меню, вместо
     попыток впихнуть все селекты в одну строку с табами. -->
@@ -49,53 +122,47 @@
         v-model:year="vacationStore.selectedYear"
       />
     </MobileFilterDrawer>
-    <table class="vacation-list__items">
-      <tbody>
-        <template
-          v-if="
-            !vacationStore.isLoading && vacationStore.filterVacations.length > 0
-          "
-          v-for="item in vacationStore.filterVacations"
-        >
-          <VacationItem
-            :item="item"
-            :is-admin="vacationStore.target == 'all'"
-          />
-        </template>
-        <template v-else-if="!vacationStore.isLoading">
-          <tr>
-            <td class="vacation-item__empty">
-              <span>Заявки не найдены</span>
-            </td>
-          </tr>
-        </template>
-        <template v-else>
-          <tr>
-            <td class="vacation-item__empty">
-              <LoaderTitle />
-            </td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
+
+    <ContextMenu />
   </div>
 </template>
 
 <script setup>
-import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
+import AppTable from '@/components/AppTable.vue'
+import Badge from '@/components/Badge.vue'
+import ButtonUI from '@/components/ButtonUI.vue'
+import ContextMenu from '@/components/ContextMenu/ContextMenu.vue'
 import MobileFilterDrawer from '@/components/MobileFilterDrawer.vue'
 import MonthYearSelect from '@/components/MonthYearSelect.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
+import {
+  approvedVacationStatus,
+  deleteVacation,
+  updateVacationStatus,
+  uploadVacationFile,
+} from '@/services/vacation.api'
+import { useConfirmModal } from '@/stores/confirmModal'
+import { useContextMenuStore } from '@/stores/contexMenu'
+import { useNotificationStore } from '@/stores/notification'
 import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user.js'
 import { useVacationStore } from '@/stores/vacation'
+import { useVacationDocs } from '@/stores/vacationDocs'
+import { getDateNamed } from '@/utils/calendar.utils'
+import { parseDate } from '@/utils/date.utils'
+import { formatStats, getVacationStatusMeta } from '@/utils/vacation.utils'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
-import VacationItem from './VacationItem.vue'
+import { useRouter } from 'vue-router'
 
 const vacationStore = useVacationStore()
 const userStore = useUserStore()
+const confirmModalStore = useConfirmModal()
+const contextMenuStore = useContextMenuStore()
+const notificationStore = useNotificationStore()
+const vacationDocs = useVacationDocs()
+const router = useRouter()
 const { isMobile } = storeToRefs(useThemeStore())
 
 const filtersOpen = ref(false)
@@ -104,10 +171,11 @@ const filtersOpen = ref(false)
 // коллег" использует отдельное узкое vacation_calendar:read, см.
 // stores/vacationOther.js) — поэтому вкладку "Все заявки" можно гейтить
 // именно им, а не vacation.all:edit: сама вкладка — просмотр, а не
-// изменение (approve/reject — отдельные действия внутри VacationItem.vue,
-// у них свой gate на .edit). GET /vacation/all/:year на бэке и так требует
-// ровно vacation.all:read (RequireAll), см. internal/vacation/route.go.
+// изменение (approve/reject — действия из меню строки, у них свой gate на
+// .edit). GET /vacation/all/:year на бэке и так требует ровно
+// vacation.all:read (RequireAll), см. internal/vacation/route.go.
 const isAdmin = computed(() => userStore.hasPermission('vacation.all', 'read'))
+const canManageAll = computed(() => userStore.hasPermission('vacation.all', 'edit'))
 
 const targets = [
   { id: 'my', label: 'Мои заявки' },
@@ -145,41 +213,211 @@ const filters = [
   },
 ]
 
+/* ================== таблица ================== */
+
+const headers = computed(() => {
+  const cols = [{ valueKey: 'status', title: 'Статус' }]
+  if (vacationStore.target == 'all') {
+    cols.push({ valueKey: 'userName', title: 'Сотрудник' })
+  }
+  cols.push(
+    { valueKey: 'period', title: 'Период' },
+    { valueKey: 'description', title: 'Комментарий' },
+    { valueKey: 'createdAtText', title: 'Создано' }
+  )
+  return cols
+})
+
+function getUserName(userId) {
+  const u = userStore.usersAll?.find((u) => u.id == userId)
+  if (!u) return '—'
+  return [u.surname, u.name, u.patronymic].filter(Boolean).join(' ')
+}
+
+const rows = computed(() =>
+  vacationStore.filterVacations.map((v) => {
+    const start = parseDate(v.startDate)
+    const end = parseDate(v.endDate)
+    return {
+      ...v,
+      statusMeta: getVacationStatusMeta(v.status) ?? {
+        type: 'destruct',
+        text: 'Отклонена',
+      },
+      userName: getUserName(v.userId),
+      periodText: `${getDateNamed(start)} - ${getDateNamed(end)} ${end.getFullYear()}`,
+      createdAtText: v.createdAt?.Valid
+        ? parseDate(v.createdAt.Time).toLocaleDateString()
+        : '—',
+    }
+  })
+)
+
+function typeBadgeStyle(row) {
+  const color = row.vacationTypeColor
+  if (!color) return {}
+  return { color, borderColor: color, background: 'transparent' }
+}
+
+function onOpen(row) {
+  router.push({ name: 'vacation-application', params: { id: row.id } })
+}
+
+/* ================== действия над заявкой ================== */
+
+// Действие над заявкой: показываем ответ сервера или его текст ошибки
+const runAction = async (action, fallbackError) => {
+  try {
+    const resp = await action()
+    notificationStore.addNotification(resp.message, 'success')
+    await vacationStore.fetchVacations()
+  } catch (error) {
+    notificationStore.addNotification(
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        fallbackError,
+      'error'
+    )
+  }
+}
+
+const hasFile = (row) => vacationStore.vacationIdsWithFiles.has(row.id)
+
+// Пункты меню строки: управление статусом — с vacation.all:edit; свою
+// заявку на рассмотрении можно удалить; файл — если ещё не прикреплён
+function menuItemsFor(row) {
+  const items = []
+
+  if (canManageAll.value) {
+    if (row.status == 'pending') {
+      items.push({ action: 'approve', label: 'Утвердить' })
+    }
+    if (row.status != 'pending') {
+      items.push({ action: 'pending', label: 'На рассмотрении' })
+    }
+    if (row.status != 'rejected') {
+      items.push({ action: 'rejected', label: 'Отклонить' })
+    }
+    items.push({ action: 'delete', label: 'Удалить отпуск', danger: true })
+  } else if (row.status == 'pending') {
+    items.push({ action: 'delete', label: 'Удалить отпуск', danger: true })
+  }
+
+  if (!hasFile(row) && userStore.hasPermission('vacation', 'edit')) {
+    items.push({ action: 'attach', label: 'Прикрепить файл' })
+  }
+
+  return items
+}
+
+function openMenu(event, row) {
+  // Клик по кнопке не должен тут же закрыть меню собственным всплытием
+  event.stopPropagation()
+
+  contextMenuStore.openMenu(event, {
+    items: menuItemsFor(row),
+    onAction: (action) => onMenuAction(action, row),
+  })
+}
+
+function onMenuAction(action, row) {
+  switch (action) {
+    case 'approve':
+      return runAction(() => approvedVacationStatus(row.id), 'Не удалось утвердить')
+    case 'pending':
+    case 'rejected':
+      return runAction(
+        () => updateVacationStatus(row.id, action),
+        'Не удалось изменить статус'
+      )
+    case 'delete':
+      return confirmModalStore.open(
+        () => runAction(() => deleteVacation(row.id), 'Не удалось удалить'),
+        'Вы действительно хотите удалить?'
+      )
+    case 'attach':
+      attachTargetId = row.id
+      return fileInput.value?.click()
+  }
+}
+
+/* ================== файл заявления ================== */
+
+const fileInput = ref(null)
+let attachTargetId = null
+
+async function onFileSelected(event) {
+  const file = event.target.files[0]
+  const id = attachTargetId
+  attachTargetId = null
+  event.target.value = ''
+  if (!file || !id) return
+
+  if (file.size > 10 * 1024 * 1024) {
+    notificationStore.addNotification(
+      'Файл слишком большой. Максимальный размер: 10MB',
+      'error'
+    )
+    return
+  }
+
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    notificationStore.addNotification(
+      'Недопустимый тип файла. Разрешены: PDF',
+      'error'
+    )
+    return
+  }
+
+  try {
+    await uploadVacationFile(id, file)
+    notificationStore.addNotification('Файл прикреплён', 'success')
+    await vacationStore.fetchVacations()
+  } catch {
+    notificationStore.addNotification('Ошибка при загрузке файла', 'error')
+  }
+}
 </script>
 
 <style scoped>
 .vacation-list {
   flex: 1;
-
+  min-width: 0;
   display: flex;
   flex-direction: column;
-
-  background: var(--foreground);
-  border-radius: var(--border-radius);
-  border: 0.07rem solid var(--border-color);
-
-  padding: var(--padding-secondary);
-
-  height: 100%;
 }
 
-.vacation-list__controls {
+.toolbar-end {
   display: flex;
-  align-items: flex-end;
-  gap: 2rem;
-  border-bottom: 0.07rem solid var(--border-color);
+  margin-left: auto;
 }
 
-.vacation-list__items {
-  border-collapse: collapse;
+.status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
-.vacation-item__empty {
-  padding: var(--padding-secondary);
-  font-size: 1.3rem;
-  font-weight: 700;
-  text-align: center;
+.period-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.period-cell__dates {
+  font-weight: 600;
+}
+
+.description-cell {
   color: var(--muted-text);
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
 }
 
 .filter-trigger {
@@ -198,13 +436,6 @@ const filters = [
 }
 
 @media (max-width: 768px) {
-  .vacation-list__controls {
-    align-items: center;
-    padding-bottom: var(--gap-primary);
-    gap: var(--gap-primary);
-    border-bottom: none;
-  }
-
   .target-tabs {
     flex: 1;
     min-width: 0;
