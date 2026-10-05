@@ -38,14 +38,14 @@
             </td>
           </tr>
 
-          <template v-else-if="isGrouped">
-            <template v-for="group in groupedRows" :key="group.department">
-              <tr class="tr-department">
+          <template v-else>
+            <template v-for="section in sections" :key="section.key">
+              <tr v-if="section.department !== null" class="tr-department">
                 <td colspan="8" class="td-department">
-                  {{ group.department || 'Без отдела' }}
+                  {{ section.department }}
                 </td>
               </tr>
-              <tr v-for="row in group.rows" :key="row.id" class="tr">
+              <tr v-for="row in section.rows" :key="row.id" class="tr">
                 <td class="td align-left td-name">
                   <RouterLink
                     class="name-link"
@@ -54,22 +54,43 @@
                     {{ row.name }}
                   </RouterLink>
                 </td>
-                <td class="td align-center" :class="hoursVariant(row)">
-                  {{ row.totalHours }} / {{ row.standardHours }}ч
-                </td>
-                <td class="td align-center" :class="daysVariant(row)">
-                  {{ row.totalWorkDays }} / {{ row.standardWorkDays }}д
-                </td>
-                <td class="td align-center destructive">
-                  {{ row.medicalDays }}
-                </td>
-                <td class="td align-center accent">
-                  {{ row.timeoffDays }}
-                </td>
-                <td class="td align-center warn">
-                  {{ row.vacationDays }}
-                </td>
-                <td class="td align-center">{{ row.decreeDays }}</td>
+                <template v-if="row.unavailable">
+                  <td
+                    v-for="n in 6"
+                    :key="n"
+                    class="td align-center td-muted"
+                    title="Не указан пол — норму рассчитать нельзя"
+                  >
+                    —
+                  </td>
+                </template>
+                <template v-else>
+                  <td class="td align-center" :class="hoursVariant(row)">
+                    {{ row.totalHours }} / {{ row.standardHours }}ч
+                  </td>
+                  <td class="td align-center" :class="daysVariant(row)">
+                    {{ row.totalWorkDays }} / {{ row.standardWorkDays }}д
+                  </td>
+                  <td
+                    class="td align-center"
+                    :class="row.medicalDays > 0 ? 'destructive' : ''"
+                  >
+                    {{ row.medicalDays }}
+                  </td>
+                  <td
+                    class="td align-center"
+                    :class="row.timeoffDays > 0 ? 'accent' : ''"
+                  >
+                    {{ row.timeoffDays }}
+                  </td>
+                  <td
+                    class="td align-center"
+                    :class="row.vacationDays > 0 ? 'warn' : ''"
+                  >
+                    {{ row.vacationDays }}
+                  </td>
+                  <td class="td align-center">{{ row.decreeDays }}</td>
+                </template>
                 <td class="td align-center">
                   <RouterLink
                     class="calendar-link"
@@ -81,53 +102,6 @@
                 </td>
               </tr>
             </template>
-          </template>
-
-          <template v-else>
-            <tr v-for="row in rows" :key="row.id" class="tr">
-              <td class="td align-left td-name">
-                <RouterLink
-                  class="name-link"
-                  :to="{ name: 'worker', params: { id: row.id } }"
-                >
-                  {{ row.name }}
-                </RouterLink>
-              </td>
-              <td class="td align-center" :class="hoursVariant(row)">
-                {{ row.totalHours }} / {{ row.standardHours }}ч
-              </td>
-              <td class="td align-center" :class="daysVariant(row)">
-                {{ row.totalWorkDays }} / {{ row.standardWorkDays }}д
-              </td>
-              <td
-                class="td align-center"
-                :class="row.medicalDays > 0 ? 'destructive' : ''"
-              >
-                {{ row.medicalDays }}
-              </td>
-              <td
-                class="td align-center"
-                :class="row.timeoffDays > 0 ? 'accent' : ''"
-              >
-                {{ row.timeoffDays }}
-              </td>
-              <td
-                class="td align-center"
-                :class="row.vacationDays > 0 ? 'warn' : ''"
-              >
-                {{ row.vacationDays }}
-              </td>
-              <td class="td align-center">{{ row.decreeDays }}</td>
-              <td class="td align-center">
-                <RouterLink
-                  class="calendar-link"
-                  v-tooltip="'Перейти к календарю'"
-                  :to="calendarLinkFor(row)"
-                >
-                  <i class="fa-regular fa-calendar"></i>
-                </RouterLink>
-              </td>
-            </tr>
           </template>
 
           <tr v-if="!isLoading && !rows.length">
@@ -170,16 +144,19 @@ function calendarLinkFor(row) {
   }
 }
 
-const emits = defineEmits(['update:modelValue', 'print'])
+defineEmits(['update:modelValue'])
 
 const departmentOptions = computed(() => [
   { label: 'Все отделы', value: 'all' },
   ...props.departments.map((d) => ({ label: d, value: d })),
 ])
 
-const isGrouped = computed(() => props.modelValue === 'all')
+// "Все отделы" — с заголовками отделов, один отдел — плоский список
+const sections = computed(() => {
+  if (props.modelValue !== 'all') {
+    return [{ key: 'all', department: null, rows: props.rows }]
+  }
 
-const groupedRows = computed(() => {
   const map = new Map()
   for (const row of props.rows) {
     const dept = row.department || ''
@@ -188,20 +165,21 @@ const groupedRows = computed(() => {
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b, 'ru'))
-    .map(([department, rows]) => ({ department, rows }))
+    .map(([department, rows]) => ({
+      key: department || '__none',
+      department: department || 'Без отдела',
+      rows,
+    }))
 })
 
-const hoursVariant = (row) => {
-  if (row.totalHours >= row.standardHours) return 'success'
-  if (row.totalHours > 0) return 'warn'
-  return 'warn'
+// Нет нормы (0) — не красим: сравнивать не с чем
+const variant = (total, standard) => {
+  if (!standard) return ''
+  return total >= standard ? 'success' : 'warn'
 }
 
-const daysVariant = (row) => {
-  if (row.totalWorkDays >= row.standardWorkDays) return 'success'
-  if (row.totalWorkDays > 0) return 'warn'
-  return 'warn'
-}
+const hoursVariant = (row) => variant(row.totalHours, row.standardHours)
+const daysVariant = (row) => variant(row.totalWorkDays, row.standardWorkDays)
 
 function print() {
   window.print()
@@ -337,6 +315,10 @@ function print() {
   text-align: center;
   color: var(--muted-text);
   font-size: 0.875rem;
+}
+
+.td-muted {
+  color: var(--muted-text);
 }
 
 .success {

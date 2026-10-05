@@ -17,7 +17,7 @@
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useReportStore } from '@/stores/report'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import ReportTable from '@/components/Report/ReportTable.vue'
 
 const titleStore = useHeaderTitleStore()
@@ -41,13 +41,6 @@ const filteredRows = computed(() => {
 onMounted(async () => {
   await reportStore.fetchAllStatistics()
 })
-
-watch(
-  () => reportStore.currentDate,
-  async () => {
-    await reportStore.fetchAllStatistics()
-  }
-)
 </script>
 
 <style scoped>
