@@ -3,7 +3,6 @@
     <div class="vacation-form__header">
       <div class="vacation-form__title">Создание заявки</div>
       <ButtonUI
-        v-if="showOpenButton"
         type="muted"
         icon="fa-regular fa-arrow-up-right-from-square"
         v-tooltip="'Открыть в отдельном окне'"
@@ -158,12 +157,7 @@ import { getActiveVacationTypes } from '@/services/vacationTypes.api'
 import { startDateBeforeEnd } from '@/utils/modal.utils'
 import { formatStats } from '@/utils/vacation.utils'
 
-// Кнопка «открыть в отдельном окне» не нужна, когда форма уже на своей странице
-defineProps({
-  showOpenButton: { type: Boolean, default: true },
-})
-
-const emit = defineEmits(['success', 'range-change'])
+const emit = defineEmits(['success'])
 
 const router = useRouter()
 
@@ -246,21 +240,30 @@ const endModeTabs = [
 // calendar_events), простым end-start+1 это не посчитать.
 const daysCount = ref(null)
 
+// Двусторонняя связь "окончание ⇄ количество дней": в режиме "дата" число
+// дней считается по датам (и подставляется в поле дней, чтобы переключение
+// режима ничего не сбивало), в режиме "дни" дата окончания считается по числу.
+// Счётчик увеличивается до проверки режима — ответ запроса из режима, который
+// уже сменился, ничего не перезаписывает.
 let daysSeq = 0
 
 watch(
   () => [formData.startDate, formData.endDate, endMode.value],
   async ([start, end, mode]) => {
-    if (mode !== 'date') return
     const seq = ++daysSeq
+    if (mode !== 'date') return
+
     if (!start || !end || new Date(end) < new Date(start)) {
       daysCount.value = null
+      daysInput.value = ''
       return
     }
 
     try {
       const result = await calculateVacationDays(start, end)
-      if (seq === daysSeq) daysCount.value = result?.totalVacationDays ?? null
+      if (seq !== daysSeq) return
+      daysCount.value = result?.totalVacationDays ?? null
+      daysInput.value = daysCount.value != null ? String(daysCount.value) : ''
     } catch {
       if (seq === daysSeq) daysCount.value = null
     }
@@ -272,9 +275,16 @@ let endDateSeq = 0
 watch(
   () => [formData.startDate, daysInput.value, endMode.value],
   async ([start, days, mode]) => {
-    if (mode !== 'days' || !start || !days || Number(days) < 1) return
-
     const seq = ++endDateSeq
+    if (mode !== 'days') return
+
+    // Число дней стёрли — окончание больше не соответствует, не оставляем старое
+    if (!days || Number(days) < 1) {
+      formData.endDate = ''
+      return
+    }
+    if (!start) return
+
     try {
       const result = await calculateVacationEndDate(start, Number(days))
       if (seq === endDateSeq && result?.endDate) {
@@ -285,6 +295,11 @@ watch(
       // не критично — при сабмите сработает валидация на пустую/старую дату
     }
   }
+)
+
+// Сколько дней в отпуске сейчас: в режиме "дни" — введённое число, иначе расчёт
+const currentDays = computed(() =>
+  endMode.value === 'days' ? Number(daysInput.value) || null : daysCount.value
 )
 
 // Остаток отпускных дней за год начала отпуска — для проверки у обычных
@@ -332,27 +347,6 @@ const checkFreeDays = () => {
 watch(endMode, () => {
   errors.endDate = null
 })
-
-// Выбор дат снаружи (клик по календарю): окончание задаётся датой, а не
-// числом дней, поэтому режим переключается на «Дата окончания»
-function setDates({ startDate, endDate }) {
-  formData.startDate = startDate
-  formData.endDate = endDate
-  errors.startDate = null
-  errors.endDate = null
-  endMode.value = 'date'
-}
-
-defineExpose({ setDates })
-
-// Выбранный период — наружу, для отображения на календаре (страница создания)
-watch(
-  () => [formData.startDate, formData.endDate, formData.userId, daysCount.value],
-  ([startDate, endDate, userId, days]) => {
-    emit('range-change', { startDate, endDate, userId, days })
-  },
-  { immediate: true }
-)
 
 const checkDateValidator = startDateBeforeEnd('startDate', 'endDate')
 

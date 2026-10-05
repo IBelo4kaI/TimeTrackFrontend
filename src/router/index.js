@@ -7,7 +7,7 @@ import WorkerPage from '@/pages/workers/WorkerPage.vue'
 import CalendarPage from '@/pages/calendar/Index.vue'
 import ReportPage from '@/pages/report/Index.vue'
 import VacationPage from '@/pages/vacation/Vacation.vue'
-import VacationCreatePage from '@/pages/vacation/VacationCreatePage.vue'
+import VacationCreateStepsPage from '@/pages/vacation/VacationCreateStepsPage.vue'
 import ReceiptPage from '@/pages/receipt/Index.vue'
 import ReceiptAddPage from '@/pages/receipt/ReceiptAdd.vue'
 import BusinessCardPage from '@/pages/receipt/BusinessCard.vue'
@@ -150,7 +150,7 @@ router.addRoute(routesNavigation.settings)
 router.addRoute({
   path: '/vacation/create',
   name: 'vacation-create',
-  component: VacationCreatePage,
+  component: VacationCreateStepsPage,
   meta: { title: 'Создание отпуска', entity: 'vacation', action: 'create' },
 })
 
