@@ -40,10 +40,6 @@ const calendarStore = useCalendarStore()
 const birthdays = computed(() => {
   return userStore.birthdaysByMonth(calendarStore.currentMonth)
 })
-
-const isBirthdayHovered = computed(
-  () => dayDate.value.getDate() == calendarStore.hoveredBirthday
-)
 </script>
 
 <style scoped>

@@ -38,7 +38,6 @@ import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useUserStore } from '@/stores/user'
 import { onMounted } from 'vue'
 import Autocomplete from './Autocomplete.vue'
-import { useSelectingStore } from '@/stores/selecting'
 
 const { page, store } = defineProps({
   page: { default: 'calendar' },
@@ -49,7 +48,6 @@ const { page, store } = defineProps({
 const modalStore = useAddReportModalStore()
 
 const userStore = useUserStore()
-const selectingStore = useSelectingStore()
 
 const changeUser = async () => {
   await store.initialFetch()
@@ -62,7 +60,7 @@ const clearUser = async () => {
 }
 
 onMounted(() => {
-  userStore.userAllFetch()
+  if (!userStore.usersAll.length) userStore.userAllFetch()
 })
 </script>
 

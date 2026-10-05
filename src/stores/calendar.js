@@ -26,8 +26,11 @@ import {
   generatePrevMonthDays,
 } from '../helpers/calendar.helpers'
 import { useDayTypesStore } from './dayTypes'
+import { useNotificationStore } from './notification'
+import { useSelectingStore } from './selecting'
 import { useUserStore } from './user'
 import { parseDate } from '@/utils/date.utils'
+import { parseGenderId } from '@/utils/user.utils'
 
 export const useCalendarStore = defineStore('calendar', () => {
   // State
@@ -47,19 +50,6 @@ export const useCalendarStore = defineStore('calendar', () => {
   const userStore = useUserStore()
   const dayTypesStore = useDayTypesStore()
 
-  const parseGenderId = (user) => {
-    const rawGender = user?.gender?.id ?? user?.genderId ?? user?.gender
-    if (typeof rawGender === 'number') return rawGender
-    if (typeof rawGender === 'string') {
-      const normalizedGender = rawGender.trim().toLowerCase()
-      if (['2', 'female', 'f', 'жен', 'женский'].includes(normalizedGender))
-        return 2
-      if (['1', 'male', 'm', 'муж', 'мужской'].includes(normalizedGender))
-        return 1
-    }
-    return null
-  }
-
   // Init
   const init = async () => {
     selectedUser.value = userStore.user
@@ -67,75 +57,86 @@ export const useCalendarStore = defineStore('calendar', () => {
     await initialFetch()
   }
 
-  const fetchStatistics = async () => {
-    if (!selectedUserId.value) return
-
+  // null — у сотрудника не указан пол, норму бэк посчитать не может
+  const fetchStatistics = async (userId, month, year) => {
     const user =
-      selectedUser.value?.id === selectedUserId.value
+      selectedUser.value?.id === userId
         ? selectedUser.value
-        : userStore.usersAll.find((u) => u.id === selectedUserId.value)
+        : userStore.usersAll.find((u) => u.id === userId)
 
     const genderId = parseGenderId(user)
-    if (!genderId) return
+    if (!genderId) return null
 
-    statsData.value = await getStatistics(
-      selectedUserId.value,
-      currentMonth.value,
-      currentYear.value,
-      genderId
-    )
+    return getStatistics(userId, month, year, genderId)
   }
 
-  // Индивидуальный график просматриваемого сотрудника за текущий год —
-  // свой смотрим через /mine (доступно всем), чужой — best-effort через
-  // общий /year (доступен только с work_standards:read, т.е. админам;
-  // без прав просто считаем, что индивидуального графика нет).
-  const fetchIndividualStandards = async () => {
-    if (!selectedUserId.value) {
-      individualStandards.value = []
-      return
-    }
-
+  // Индивидуальный график просматриваемого сотрудника за год — свой смотрим
+  // через /mine (доступно всем), чужой — best-effort через общий /year
+  // (доступен только с work_standards:read, т.е. админам; без прав просто
+  // считаем, что индивидуального графика нет).
+  const fetchIndividualStandards = async (userId, year) => {
     try {
-      if (selectedUserId.value === userStore.user?.id) {
-        individualStandards.value =
-          (await getMyWorkStandards(currentYear.value)) ?? []
-      } else {
-        const all = (await getStandardsByYear(currentYear.value)) ?? []
-        individualStandards.value = all.filter(
-          (s) => s.userId?.Valid && s.userId.String === selectedUserId.value
-        )
+      if (userId === userStore.user?.id) {
+        return (await getMyWorkStandards(year)) ?? []
       }
+      const all = (await getStandardsByYear(year)) ?? []
+      return all.filter((s) => s.userId?.Valid && s.userId.String === userId)
     } catch {
-      individualStandards.value = []
+      return []
     }
   }
+
+  // Номер последней загрузки — ответы устаревших загрузок отбрасываем
+  let fetchSeq = 0
 
   const initialFetch = async () => {
+    const seq = ++fetchSeq
+    // Выделение относится к старым дням — при перезагрузке сбрасываем
+    useSelectingStore().clearSelection()
     isLoading.value = true
 
-    if (!selectedUserId.value) {
+    const userId = selectedUserId.value
+    if (!userId) {
       data.value = []
       prevMonthDays.value = []
       nextMonthDays.value = []
+      statsData.value = null
+      individualStandards.value = []
       isLoading.value = false
       return
     }
 
-    const result = await getCalendarDays(
-      currentMonth.value,
-      currentYear.value,
-      selectedUserId.value
-    )
-    data.value = result.days
-    console.log(data.value, prevMonthDays.value, nextMonthDays.value)
-    prevMonthDays.value = generatePrevMonthDays(firstDateOfMonth.value)
-    nextMonthDays.value = generateNextMonthDays(lastDateOfMonth.value)
+    const month = currentMonth.value
+    const year = currentYear.value
+    const first = firstDateOfMonth.value
+    const last = lastDateOfMonth.value
 
-    await fetchStatistics()
-    await fetchIndividualStandards()
+    try {
+      const [result, stats, standards] = await Promise.all([
+        getCalendarDays(month, year, userId),
+        // Статистика вторична — её сбой не должен прятать сам календарь
+        fetchStatistics(userId, month, year).catch(() => null),
+        fetchIndividualStandards(userId, year),
+      ])
+      if (seq !== fetchSeq) return
 
-    isLoading.value = false
+      data.value = result.days ?? []
+      prevMonthDays.value = generatePrevMonthDays(first)
+      nextMonthDays.value = generateNextMonthDays(last)
+      statsData.value = stats
+      individualStandards.value = standards
+    } catch (error) {
+      if (seq !== fetchSeq) return
+      console.error('Ошибка загрузки календаря:', error)
+      data.value = []
+      statsData.value = null
+      useNotificationStore().addNotification(
+        'Не удалось загрузить календарь',
+        'error'
+      )
+    } finally {
+      if (seq === fetchSeq) isLoading.value = false
+    }
   }
 
   // Computed
@@ -161,29 +162,25 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   const updateDay = async (daysUpdate, daysCreate) => {
     if (daysUpdate.entities.length > 0) {
-      const res = await updateUserTimeEntry(daysUpdate)
-      // updateDayInReports(res)
+      await updateUserTimeEntry(daysUpdate)
     }
     if (daysCreate.entities.length > 0) {
-      const res = await createUserTimeEntry(daysCreate)
-      // updateDayInReports(res)
+      await createUserTimeEntry(daysCreate)
     }
     if (daysUpdate.entities.length > 0 || daysCreate.entities.length > 0)
-      initialFetch()
+      await initialFetch()
   }
 
   const deleteDay = async (daysDelete) => {
     if (daysDelete.entryDate.length > 0) {
-      const res = await deleteUserTimeEntry(daysDelete)
-      initialFetch()
-      // updateDayInReports(res)
+      await deleteUserTimeEntry(daysDelete)
+      await initialFetch()
     }
   }
 
   const hoverBirthday = (dateHover) => {
     const d = parseDate(dateHover)
     hoveredBirthday.value = d.getDate()
-    console.log('hovered date: ', hoveredBirthday.value)
   }
 
   const resetHoveredBirthday = () => {
@@ -232,7 +229,8 @@ export const useCalendarStore = defineStore('calendar', () => {
     return plannedMonthHours(
       calendarDays.value,
       viewedGenderId.value,
-      viewedIndividualStandard.value
+      viewedIndividualStandard.value,
+      dayTypesStore.getDayTypeIdByName('preholiday')
     )
   })
 
@@ -248,7 +246,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       calendarDays.value,
       vacationTypeId,
       viewedGenderId.value,
-      viewedIndividualStandard.value
+      viewedIndividualStandard.value,
+      dayTypesStore.getDayTypeIdByName('preholiday')
     )
     return Math.max(0, standard - vacationNorm)
   })

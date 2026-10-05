@@ -88,27 +88,27 @@ export const useUserStore = defineStore('user', () => {
     )
   }
 
-  const birthdays = computed(() => {
-    if (usersAll.value)
-      return usersAll.value
-        .map((u) => {
-          return {
-            fullName: u.surname + ' ' + u.name,
-            initials: [u.surname.charAt(0), u.name.charAt(0)].join(''),
-            birthday: u.birthday,
-          }
-        })
-        .sort((a, b) => {
-          const da = parseDate(a.birthday)
-          const db = parseDate(b.birthday)
-          return (
-            da.getMonth() - db.getMonth() ||
-            da.getDate() - db.getDate() ||
-            a.fullName.localeCompare(b.fullName)
-          )
-        })
-    else return []
-  })
+  // Без даты рождения (в справочнике она необязательна) — в список не попадают
+  const birthdays = computed(() =>
+    (usersAll.value ?? [])
+      .filter((u) => u.birthday && !isNaN(parseDate(u.birthday)))
+      .map((u) => ({
+        fullName: [u.surname, u.name].filter(Boolean).join(' '),
+        initials: [u.surname?.charAt(0), u.name?.charAt(0)]
+          .filter(Boolean)
+          .join(''),
+        birthday: u.birthday,
+      }))
+      .sort((a, b) => {
+        const da = parseDate(a.birthday)
+        const db = parseDate(b.birthday)
+        return (
+          da.getMonth() - db.getMonth() ||
+          da.getDate() - db.getDate() ||
+          a.fullName.localeCompare(b.fullName)
+        )
+      })
+  )
 
   const userFullName = computed(() => {
     if (user.value) return [user.value.name, user.value.surname].join(' ')

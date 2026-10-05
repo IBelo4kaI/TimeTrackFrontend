@@ -38,9 +38,8 @@
 <script setup>
 import HeaderCalendar from '@/components/Calendar/HeaderCalendar.vue'
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue'
-import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import { SelectingHelper } from '@/helpers/selecting.helpers'
-import { clearDays, createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
+import { applyDayAction } from '@/helpers/usertimeentry.helpers'
 import { useCalendarStore } from '@/stores/calendar'
 import { useContextMenuStore } from '@/stores/contexMenu'
 import { useDayTypesStore } from '@/stores/dayTypes'
@@ -75,49 +74,13 @@ const menuItems = [
 
 // Обработчик действий меню
 const handleContextAction = async (action) => {
-  const selectedItems = selectingStore.selectedItems
-
   try {
-    // Определяем дни для обработки
-    const daysToProcess = Array.from(selectedItems)
-
-    if (action === 'clear') {
-      await clearDays(daysToProcess, calendarStore, dayTypesStore)
-    } else {
-      // Обновление - определяем тип дня и часы
-      const actionConfig = {
-        medical: {
-          userTimeTypeId: dayTypesStore.getDayTypeIdByName('medical'),
-          hours: null,
-        }, // Замени на реальный ID
-        decree: {
-          userTimeTypeId: dayTypesStore.getDayTypeIdByName('decree'),
-          hours: null,
-        }, // Замени на реальный ID
-        'time-off': {
-          userTimeTypeId: dayTypesStore.getDayTypeIdByName('time-off'),
-          hours: null,
-        }, // Замени на реальный ID
-        standardWork: {
-          userTimeTypeId: dayTypesStore.getDayTypeIdByName('work'),
-          hours: 8,
-        }, // Замени на реальный ID
-      }
-
-      const config = actionConfig[action]
-
-      if (!config) return
-
-      // Создаем объект для сбора данных
-      const updates = createUpdatesObjects(
-        daysToProcess,
-        config,
-        calendarStore.selectedUserId
-      )
-
-      await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
-    }
-
+    await applyDayAction(
+      action,
+      Array.from(selectingStore.selectedItems),
+      calendarStore,
+      dayTypesStore
+    )
     selectingStore.clearSelection()
   } catch (error) {
     console.error('Ошибка при выполнении действия:', error)

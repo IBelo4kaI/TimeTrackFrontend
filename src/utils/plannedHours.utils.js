@@ -9,6 +9,10 @@ const DEFAULT_DAILY_HOURS = 8 // мужчины всегда, женщины к�
 const FEMALE_FRIDAY_HOURS = 6
 
 const GENDER_FEMALE = 2
+const PREHOLIDAY_CUT_HOURS = 1
+
+const isPreholiday = (day, preholidayTypeId) =>
+  !!preholidayTypeId && day.calendarEventTypeId === preholidayTypeId
 
 // dailyNorm — часы нормы на конкретный рабочий день.
 // individualStandard — строка work_standards с user_id = этот сотрудник за
@@ -16,25 +20,38 @@ const GENDER_FEMALE = 2
 // ВЕСЬ МЕСЯЦ (та же форма, что и у общих норм — см. StandardSettings.vue),
 // поэтому дневная норма — их отношение, без пятничного исключения. Без
 // индивидуального графика — 8ч, у женщин по пятницам 6ч.
-export function dailyNorm(date, genderId, individualStandard) {
+// Предпраздничный день короче на час (только для общей нормы — в
+// индивидуальной уже месячное среднее).
+export function dailyNorm(date, genderId, individualStandard, isPreholiday) {
   if (individualStandard?.standardDays) {
     return individualStandard.standardHours / individualStandard.standardDays
   }
-  if (genderId === GENDER_FEMALE && date.getDay() === 5) {
-    return FEMALE_FRIDAY_HOURS
-  }
-  return DEFAULT_DAILY_HOURS
+  const base =
+    genderId === GENDER_FEMALE && date.getDay() === 5
+      ? FEMALE_FRIDAY_HOURS
+      : DEFAULT_DAILY_HOURS
+  return isPreholiday ? base - PREHOLIDAY_CUT_HOURS : base
 }
 
 // plannedMonthHours — сумма по всем дням месяца (см. описание выше).
 // days — calendarStore.calendarDays (date/hours/userTimeId/isWeekend).
-export function plannedMonthHours(days, genderId, individualStandard) {
+export function plannedMonthHours(
+  days,
+  genderId,
+  individualStandard,
+  preholidayTypeId
+) {
   let total = 0
   for (const day of days) {
     if (day.userTimeId) {
       total += day.hours ?? 0
     } else if (!day.isWeekend) {
-      total += dailyNorm(new Date(day.date), genderId, individualStandard)
+      total += dailyNorm(
+        new Date(day.date),
+        genderId,
+        individualStandard,
+        isPreholiday(day, preholidayTypeId)
+      )
     }
   }
   return total
@@ -44,13 +61,24 @@ export function plannedMonthHours(days, genderId, individualStandard) {
 // месяце (по рабочим дням внутри отпуска). Нужно, чтобы вычесть их из
 // нормы месяца перед расчётом "Недоработка/Переработка" — иначе отпуск
 // всегда выглядел бы как недоработка, хотя остальные дни отработаны как надо.
-export function vacationNormHours(days, vacationTypeId, genderId, individualStandard) {
+export function vacationNormHours(
+  days,
+  vacationTypeId,
+  genderId,
+  individualStandard,
+  preholidayTypeId
+) {
   if (!vacationTypeId) return 0
 
   let total = 0
   for (const day of days) {
     if (day.userTimeTypeId === vacationTypeId && !day.isWeekend) {
-      total += dailyNorm(new Date(day.date), genderId, individualStandard)
+      total += dailyNorm(
+        new Date(day.date),
+        genderId,
+        individualStandard,
+        isPreholiday(day, preholidayTypeId)
+      )
     }
   }
   return total

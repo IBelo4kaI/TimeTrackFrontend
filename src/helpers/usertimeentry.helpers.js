@@ -62,3 +62,35 @@ export const clearDays = async (days, calendarStore, dayTypesStore) => {
     await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
   }
 }
+
+// Действие контекстного меню календаря над выбранными днями
+export const applyDayAction = async (
+  action,
+  days,
+  calendarStore,
+  dayTypesStore
+) => {
+  if (action === 'clear') {
+    await clearDays(days, calendarStore, dayTypesStore)
+    return
+  }
+
+  const configs = {
+    medical: { type: 'medical', hours: null },
+    decree: { type: 'decree', hours: null },
+    'time-off': { type: 'time-off', hours: null },
+    standardWork: { type: 'work', hours: 8 },
+  }
+  const config = configs[action]
+  if (!config) return
+
+  const updates = createUpdatesObjects(
+    days,
+    {
+      userTimeTypeId: dayTypesStore.getDayTypeIdByName(config.type),
+      hours: config.hours,
+    },
+    calendarStore.selectedUserId
+  )
+  await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
+}

@@ -99,7 +99,7 @@ const calendarStore = useCalendarStore()
 const overtimeHours = computed(() => {
   const total = calendarStore.workingHours.totalHours
   const standard = calendarStore.effectiveStandardHours
-  return total - standard
+  return Math.round((total - standard) * 100) / 100
 })
 </script>
 

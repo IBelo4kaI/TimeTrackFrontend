@@ -44,15 +44,11 @@ const selectingStore = useSelectingStore()
 const dayDate = computed(() => parseDate(day.date))
 const handleMouseDown = (event) => {
   // if (!day.isCurrentMonth) return;
-  console.log('down')
-
   emit('day-mouse-down', day, event)
 }
 
 const handleMouseEnter = (event) => {
   // if (!day.isCurrentMonth) return;
-  console.log('enter', day, event)
-
   emit('day-mouse-enter', day, event)
 }
 
