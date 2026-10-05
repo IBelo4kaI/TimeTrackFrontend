@@ -1,6 +1,15 @@
 <template>
   <div class="vacation-form">
-    <div class="vacation-form__title">Создание заявки</div>
+    <div class="vacation-form__header">
+      <div class="vacation-form__title">Создание заявки</div>
+      <ButtonUI
+        v-if="showOpenButton"
+        type="muted"
+        icon="fa-regular fa-arrow-up-right-from-square"
+        v-tooltip="'Открыть в отдельном окне'"
+        @click="router.push({ name: 'vacation-create' })"
+      />
+    </div>
     <template v-if="isAdmin">
       <div class="field-wrapper">
         <label class="field-label">
@@ -131,6 +140,7 @@
 
 <script setup>
 import { reactive, computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
 import SelectUI from '@/components/SelectUI.vue'
@@ -148,7 +158,14 @@ import { getActiveVacationTypes } from '@/services/vacationTypes.api'
 import { startDateBeforeEnd } from '@/utils/modal.utils'
 import { formatStats } from '@/utils/vacation.utils'
 
-const emit = defineEmits(['success'])
+// Кнопка «открыть в отдельном окне» не нужна, когда форма уже на своей странице
+defineProps({
+  showOpenButton: { type: Boolean, default: true },
+})
+
+const emit = defineEmits(['success', 'range-change'])
+
+const router = useRouter()
 
 const userStore = useUserStore()
 const vacationStore = useVacationStore()
@@ -316,6 +333,27 @@ watch(endMode, () => {
   errors.endDate = null
 })
 
+// Выбор дат снаружи (клик по календарю): окончание задаётся датой, а не
+// числом дней, поэтому режим переключается на «Дата окончания»
+function setDates({ startDate, endDate }) {
+  formData.startDate = startDate
+  formData.endDate = endDate
+  errors.startDate = null
+  errors.endDate = null
+  endMode.value = 'date'
+}
+
+defineExpose({ setDates })
+
+// Выбранный период — наружу, для отображения на календаре (страница создания)
+watch(
+  () => [formData.startDate, formData.endDate, formData.userId, daysCount.value],
+  ([startDate, endDate, userId, days]) => {
+    emit('range-change', { startDate, endDate, userId, days })
+  },
+  { immediate: true }
+)
+
 const checkDateValidator = startDateBeforeEnd('startDate', 'endDate')
 
 const validate = () => {
@@ -416,6 +454,13 @@ const handleSubmit = async () => {
 
   min-width: 20rem;
   max-width: 30rem;
+}
+
+.vacation-form__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .vacation-form__title {
