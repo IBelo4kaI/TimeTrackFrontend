@@ -3,7 +3,6 @@ import {
   createReceiptCategory,
   deleteReceipt,
   getAllReceipts,
-  getReceiptById,
   getReceiptCategories,
   getReceiptsByUser,
   renameReceiptCategory,
@@ -12,6 +11,7 @@ import { createObject, getObjects } from '@/services/referenceObjects.api'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { nullString } from '@/utils/receipt.utils'
+import { useNotificationStore } from './notification'
 import { useUserStore } from './user'
 
 // Отдельное значение фильтра "Без категории" — '' уже занято под "Все
@@ -39,7 +39,6 @@ export const useReceiptStore = defineStore('receipt', () => {
   const sortBy = ref('createdAt')
 
   const receipts = ref([])
-  const selectedReceipt = ref(null) // карточка с items, см. fetchReceiptById
 
   // Id чека, к строке которого нужно прокрутить список при возврате со
   // страницы чека (кнопка "Назад") — см. onOpen/scrollToRow в ReceiptList.vue.
@@ -83,35 +82,30 @@ export const useReceiptStore = defineStore('receipt', () => {
     filterReceipts.value.reduce((sum, r) => sum + (r.totalSum ?? 0), 0)
   )
 
+  // Номер последней загрузки — ответы устаревших загрузок отбрасываем
+  let fetchSeq = 0
+
   const fetchReceipts = async () => {
-    if (target.value == 'all') await fetchAllReceipts()
-    else if (target.value == 'my') await fetchMyReceipts()
-  }
-
-  /* ================== fetch ================== */
-  const fetchMyReceipts = async () => {
+    const seq = ++fetchSeq
     isLoading.value = true
-    const list = await getReceiptsByUser(userStore.user.id)
-
-    receipts.value = list ?? []
-    isLoading.value = false
-  }
-
-  const fetchAllReceipts = async () => {
-    isLoading.value = true
-    const list = await getAllReceipts()
-
-    receipts.value = list ?? []
-    isLoading.value = false
-  }
-
-  const fetchReceiptById = async (id) => {
-    isLoading.value = true
-    const item = await getReceiptById(id)
-
-    selectedReceipt.value = item ?? null
-    isLoading.value = false
-    return selectedReceipt.value
+    try {
+      const list =
+        target.value == 'all'
+          ? await getAllReceipts()
+          : await getReceiptsByUser(userStore.user.id)
+      if (seq !== fetchSeq) return
+      receipts.value = list ?? []
+    } catch (error) {
+      if (seq !== fetchSeq) return
+      console.error('Ошибка загрузки чеков:', error)
+      receipts.value = []
+      useNotificationStore().addNotification(
+        'Не удалось загрузить чеки',
+        'error'
+      )
+    } finally {
+      if (seq === fetchSeq) isLoading.value = false
+    }
   }
 
   /* ================== actions ================== */
@@ -124,7 +118,6 @@ export const useReceiptStore = defineStore('receipt', () => {
   const removeReceipt = async (id) => {
     await deleteReceipt(id)
     receipts.value = receipts.value.filter((r) => r.id != id)
-    if (selectedReceipt.value?.id == id) selectedReceipt.value = null
   }
 
   /* ================== категории (см. internal/receipt_category на бэке) ================== */
@@ -134,8 +127,12 @@ export const useReceiptStore = defineStore('receipt', () => {
 
   const fetchCategories = async () => {
     if (categoriesLoaded) return
-    categories.value = (await getReceiptCategories()) ?? []
-    categoriesLoaded = true
+    try {
+      categories.value = (await getReceiptCategories()) ?? []
+      categoriesLoaded = true
+    } catch (error) {
+      console.error('Ошибка загрузки категорий чеков:', error)
+    }
   }
 
   const categoryOptions = computed(() =>
@@ -205,7 +202,9 @@ export const useReceiptStore = defineStore('receipt', () => {
   watch(target, async () => {
     employeeId.value = ''
     await fetchReceipts()
-    if (target.value == 'all') await userStore.userAllFetch()
+    if (target.value == 'all' && !userStore.usersAll.length) {
+      await userStore.userAllFetch()
+    }
   })
 
   return {
@@ -214,7 +213,6 @@ export const useReceiptStore = defineStore('receipt', () => {
     selectedMonth,
     sortBy,
     receipts,
-    selectedReceipt,
     scrollToReceiptId,
     isLoading,
     filterReceipts,
@@ -230,9 +228,6 @@ export const useReceiptStore = defineStore('receipt', () => {
 
     // actions
     fetchReceipts,
-    fetchAllReceipts,
-    fetchMyReceipts,
-    fetchReceiptById,
     addReceipt,
     removeReceipt,
     fetchObjects,

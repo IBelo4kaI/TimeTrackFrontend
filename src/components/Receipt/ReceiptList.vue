@@ -458,6 +458,7 @@ function scrollToRow(id) {
 function onDelete(row) {
   confirmModalStore.open(async () => {
     await receiptStore.removeReceipt(row.id)
+    selectedIds.value = selectedIds.value.filter((id) => id !== row.id)
     notificationStore.addNotification('Чек удалён', 'success')
   }, 'Вы действительно хотите удалить чек?')
 }

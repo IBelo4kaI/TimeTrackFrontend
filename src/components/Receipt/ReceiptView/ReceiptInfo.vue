@@ -248,6 +248,8 @@ const props = defineProps({
   isLoading: { type: Boolean, default: false },
 })
 
+const emit = defineEmits(['updated'])
+
 const userStore = useUserStore()
 const receiptStore = useReceiptStore()
 const businessCardStore = useBusinessCardStore()
@@ -323,6 +325,8 @@ const ndsBreakdown = computed(() => {
     rows.push({ label: 'НДС 10%', value: formatMoney(props.receipt.nds10) })
   if (props.receipt.nds0)
     rows.push({ label: 'НДС 0%', value: formatMoney(props.receipt.nds0) })
+  if (props.receipt.nds22)
+    rows.push({ label: 'НДС 22%', value: formatMoney(props.receipt.nds22) })
   if (props.receipt.ndsNo)
     rows.push({ label: 'Без НДС', value: formatMoney(props.receipt.ndsNo) })
   return rows
@@ -450,7 +454,7 @@ async function onSaveCategory() {
       props.receipt.id,
       categoryDraft.value
     )
-    props.receipt.categoryIds = updated.categoryIds
+    emit('updated', { categoryIds: updated.categoryIds })
     notificationStore.addNotification('Категория обновлена', 'success')
   } catch {
     notificationStore.addNotification(
@@ -494,7 +498,7 @@ async function onSaveObject() {
       props.receipt.id,
       objectDraft.value || null
     )
-    props.receipt.objectId = updated.objectId
+    emit('updated', { objectId: updated.objectId })
     notificationStore.addNotification('Объект обновлён', 'success')
   } catch {
     notificationStore.addNotification(

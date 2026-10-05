@@ -13,7 +13,7 @@ import { useBusinessCardStore } from '@/stores/businessCard'
 import { useReceiptStore } from '@/stores/receipt'
 import { useSubmenuStore } from '@/stores/submenu'
 import { useUserStore } from '@/stores/user'
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import BusinessCards from '@/components/Receipt/BusinessCards.vue'
 import ReceiptList from '@/components/Receipt/ReceiptList.vue'
 
@@ -27,6 +27,10 @@ const submenuStore = useSubmenuStore()
 const businessCardStore = useBusinessCardStore()
 const canReadCards = userStore.hasPermission('business_cards', 'read')
 const isCardsAdmin = userStore.hasPermission('business_cards.all', 'read')
+
+// После await страница уже могла смениться — вкладки тогда не трогаем
+let isActive = true
+onUnmounted(() => (isActive = false))
 
 // Вкладка "Карты": админам всегда, остальным — только если им выдана карта
 async function setupSubmenu() {
@@ -43,6 +47,8 @@ async function setupSubmenu() {
       /* без карт вкладка просто не показывается */
     }
   }
+
+  if (!isActive) return
 
   if (isCardsAdmin || businessCardStore.myCards.length) {
     submenuStore.setItems([

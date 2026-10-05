@@ -703,6 +703,7 @@ import { useReceiptStore } from '@/stores/receipt'
 import { useThemeStore } from '@/stores/themes.js'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
+import { onBeforeRouteLeave } from 'vue-router'
 
 QrScanner.WORKER_PATH = QrScannerWorkerPath
 
@@ -1434,7 +1435,25 @@ const addAllPending = async () => {
   )
 }
 
+// Несохранённая очередь живёт только в этом компоненте — спрашиваем, прежде
+// чем потерять её при уходе со страницы или закрытии вкладки
+onBeforeRouteLeave(() => {
+  if (!pendingReceipts.value.length) return true
+  return window.confirm(
+    'В очереди есть несохранённые чеки. Уйти без сохранения?'
+  )
+})
+
+const warnBeforeUnload = (event) => {
+  if (!pendingReceipts.value.length) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+window.addEventListener('beforeunload', warnBeforeUnload)
+
 onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', warnBeforeUnload)
   closeCameraScanner()
   clearScannedPhoto()
   pendingReceipts.value.forEach((item) => {

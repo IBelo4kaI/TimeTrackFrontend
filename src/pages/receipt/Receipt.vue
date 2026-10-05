@@ -11,6 +11,7 @@
       v-if="submenuStore.activeTab === 'info'"
       :receipt="receipt"
       :is-loading="isLoading"
+      @updated="(patch) => (receipt = { ...receipt, ...patch })"
     />
     <ReceiptFiles
       v-else-if="submenuStore.activeTab === 'files'"
@@ -65,10 +66,10 @@ async function load() {
   } catch (err) {
     receipt.value = null
 
-    // Бэк отдаёт 403, если чек чужой и нет receipts.all:read — тост уже
-    // показывает общий перехватчик в api.js, тут только уводим со сломанной
-    // пустой страницы
+    // Бэк отдаёт 403, если чек чужой и нет receipts.all:read — сообщаем и
+    // уводим со сломанной пустой страницы
     if (err?.response?.status === 403) {
+      notificationStore.addNotification('Нет доступа к этому чеку', 'error')
       router.push({ name: 'receipts' })
       return
     }
@@ -79,7 +80,13 @@ async function load() {
   }
 }
 
-watch(() => route.params.id, load)
+// При уходе со страницы params.id тоже пропадает — тогда не грузим
+watch(
+  () => route.params.id,
+  (id) => {
+    if (id && route.name === 'receipt-view') load()
+  }
+)
 onMounted(load)
 </script>
 

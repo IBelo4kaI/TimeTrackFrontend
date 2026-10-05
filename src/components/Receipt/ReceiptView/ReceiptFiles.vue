@@ -94,7 +94,9 @@ const fileInput = ref(null)
 // blob-урлы только для картинок (превью в сетке); pdf грузим по клику, чтобы
 // не тянуть все сканы сразу
 const previewUrls = reactive({})
-const isImage = (f) => f.mimeType?.startsWith('image/')
+// HEIC/HEIF браузеры не показывают — для них остаётся иконка
+const isImage = (f) =>
+  f.mimeType?.startsWith('image/') && !/hei[cf]/i.test(f.mimeType)
 
 async function loadFiles() {
   isLoading.value = true
@@ -151,6 +153,8 @@ async function onFilesSelected(event) {
   const maxSize = 10 * 1024 * 1024 // 10MB
   const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.heic']
 
+  let uploaded = 0
+
   for (const file of selected) {
     if (file.size > maxSize) {
       notificationStore.addNotification(
@@ -171,6 +175,7 @@ async function onFilesSelected(event) {
 
     try {
       await uploadReceiptFile(props.receiptId, file)
+      uploaded++
     } catch {
       notificationStore.addNotification(
         `${file.name}: ошибка при загрузке`,
@@ -179,10 +184,11 @@ async function onFilesSelected(event) {
     }
   }
 
+  event.target.value = ''
+  if (!uploaded) return
+
   notificationStore.addNotification('Файлы обновлены', 'success')
   await loadFiles()
-
-  event.target.value = ''
 }
 
 function onDeleteFile(f) {
