@@ -2,9 +2,10 @@
   <div class="reminder-card">
     <div class="reminder-card__title">Напоминания о заполнении табеля</div>
     <div class="reminder-card__hint">
-      Автоматически шлётся раз в сутки: напоминание в последние дни текущего
-      месяца, в первые дни следующего. Кнопка ниже запускает ту же проверку
-      прямо сейчас, не дожидаясь расписания.
+      Автоматически проверяется раз в сутки в первые дни месяца: если за
+      прошлый месяц остались незаполненные дни, сотруднику уходит одно
+      напоминание на месяц. Кнопка ниже запускает ту же проверку прямо
+      сейчас, не дожидаясь расписания.
     </div>
     <ButtonUI :disabled="isRunning" @click="onRun">
       <template v-if="isRunning"><LoaderTitle text="Проверка" /></template>
@@ -14,7 +15,7 @@
     <AppTable v-if="hasRun" :headers="headers" :rows="rows" row-key="key">
       <template #cell-notified="{ value }">
         <Badge :type="value ? 'success' : 'muted'">
-          {{ value ? 'Отправлено' : 'Уже отправлено сегодня' }}
+          {{ value ? 'Отправлено' : 'Уже отправлено' }}
         </Badge>
       </template>
     </AppTable>
@@ -68,9 +69,9 @@ function userName(userId) {
 
 const rows = computed(() =>
   results.value.map((r) => ({
-    key: `${r.userId}:${r.kind}:${r.year}-${r.month}`,
+    key: `${r.userId}:${r.year}-${r.month}`,
     name: userName(r.userId),
-    period: `${MONTH_NAMES[r.month - 1]} ${r.year}${r.kind === 'soft' ? ' (текущий)' : ' (прошлый)'}`,
+    period: `${MONTH_NAMES[r.month - 1]} ${r.year}`,
     gaps: r.gaps,
     notified: r.notified,
   }))
