@@ -461,6 +461,8 @@ function openNotificationsMenu(event) {
   }
 
   contextMenuStore.openMenu(event, {
+    // Меню выравнивается по кнопке, а не по точке клика
+    anchor: event.currentTarget,
     items,
     onAction: (action) => {
       if (action === 'enable-all') {

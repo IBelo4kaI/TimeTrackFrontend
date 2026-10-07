@@ -315,6 +315,8 @@ function openMenu(event, row) {
   event.stopPropagation()
 
   contextMenuStore.openMenu(event, {
+    // Меню выравнивается по кнопке «Ещё», а не по точке клика
+    anchor: event.currentTarget,
     items: menuItemsFor(row),
     onAction: (action) => onMenuAction(action, row),
   })
