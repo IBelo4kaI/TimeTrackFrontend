@@ -42,7 +42,9 @@
     <section class="panel">
       <!-- 1. Кому и какой тип -->
       <template v-if="step === 1">
-        <h3 class="panel__title">Кому и какой тип</h3>
+        <h3 class="panel__title">
+          {{ isAdmin ? 'Кому и какой тип' : 'Какой тип отпуска' }}
+        </h3>
 
         <template v-if="isAdmin">
           <div class="field">
@@ -81,7 +83,10 @@
               @click="selectType(t.id)"
             >
               <span class="type-card__name">
-                <i class="type-card__dot" :style="{ background: t.colorCode }"></i>
+                <i
+                  class="type-card__dot"
+                  :style="{ background: t.colorCode }"
+                ></i>
                 {{ t.name }}
               </span>
               <span class="type-card__hint">
@@ -140,10 +145,12 @@
                 Дата окончания: {{ formatDate(formData.endDate) }}
               </div>
               <div v-if="currentDays != null">
-                Продолжительность: <b>{{ formatStats(currentDays) }}</b>
+                Продолжительность:
+                <b>{{ formatStats(currentDays) }}</b>
               </div>
               <div v-if="freeDays != null">
-                Остаток в году: <b>{{ formatStats(freeDays) }}</b>
+                Остаток в году:
+                <b>{{ formatStats(freeDays) }}</b>
                 <template v-if="freeAfter != null">
                   · после отпуска:
                   <b :class="{ negative: freeAfter < 0 }">
@@ -157,13 +164,33 @@
             </div>
           </div>
 
-          <VacationRangeCalendar
-            :start-date="formData.startDate"
-            :end-date="formData.endDate"
-            :user-id="formData.userId"
-            :days="currentDays"
-            @select="setDates"
-          />
+          <div class="period__main">
+            <VacationRangeCalendar
+              :start-date="formData.startDate"
+              :end-date="formData.endDate"
+              :user-id="formData.userId"
+              :days="currentDays"
+              @select="setDates"
+            />
+
+            <div v-if="adjacent.length" class="adjacent">
+              <div class="adjacent__title">
+                Смежные отпуска · {{ department }}
+              </div>
+              <div class="adjacent__list">
+                <div v-for="v in adjacent" :key="v.id" class="adjacent__item">
+                  <i class="adjacent__dot" :style="{ background: v.color }"></i>
+                  <span class="adjacent__name">{{ v.name }}</span>
+                  <span class="adjacent__dates">
+                    {{ formatDate(v.startDate) }} — {{ formatDate(v.endDate) }}
+                  </span>
+                  <span v-if="v.status === 'pending'" class="muted">
+                    (на рассмотрении)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -280,11 +307,12 @@ import InputUi from '@/components/InputUi.vue'
 import SelectUI from '@/components/SelectUI.vue'
 import Tabs from '@/components/Tabs.vue'
 import VacationRangeCalendar from '@/components/Vacation/VacationRangeCalendar.vue'
+import { useDepartmentVacations } from '@/helpers/useDepartmentVacations'
 import { useVacationForm } from '@/helpers/useVacationForm'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
 import { formatStats } from '@/utils/vacation.utils'
-import { computed, ref } from 'vue'
+import { computed, ref, toRef } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -313,13 +341,19 @@ const {
   submit,
 } = useVacationForm()
 
+const { department, adjacent } = useDepartmentVacations(
+  toRef(formData, 'userId'),
+  toRef(formData, 'startDate'),
+  toRef(formData, 'endDate')
+)
+
 const endModeTabs = [
   { id: 'date', label: 'Дата окончания' },
   { id: 'days', label: 'Количество дней' },
 ]
 
 const steps = [
-  { id: 'who', label: 'Кому и тип' },
+  { id: 'who', label: isAdmin ? 'Кому и тип' : 'Тип отпуска' },
   { id: 'period', label: 'Период' },
   { id: 'comment', label: 'Комментарий' },
   { id: 'review', label: 'Проверка' },
@@ -601,6 +635,56 @@ onBeforeRouteLeave(() => {
   background: var(--muted-foreground);
   border-radius: var(--border-radius);
   font-size: 0.95rem;
+}
+
+.period__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.adjacent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  padding: var(--padding-secondary);
+  background: var(--foreground);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.adjacent__title {
+  font-weight: 600;
+}
+
+.adjacent__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.adjacent__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.adjacent__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.adjacent__dates {
+  color: var(--muted-text);
 }
 
 .muted {
