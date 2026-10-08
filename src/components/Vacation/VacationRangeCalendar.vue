@@ -62,7 +62,9 @@
               'day--in-range': d.inRange,
               'day--start': d.isStart,
               'day--end': d.isEnd,
+              'day--highlight': d.isHighlighted,
             }"
+            :style="d.isHighlighted ? { '--highlight': highlight.color } : null"
             :title="d.title"
             @click="onDayClick(d.dateStr)"
           >
@@ -96,6 +98,8 @@ const props = defineProps({
   endDate: { type: String, default: '' },
   userId: { type: String, default: '' },
   days: { type: Number, default: null },
+  // Подсветка чужого отпуска: { startDate, endDate, color }
+  highlight: { type: Object, default: null },
 })
 
 const MIN_MONTHS = 2
@@ -145,12 +149,23 @@ const monthKeys = computed(() => {
     count = Math.min(MAX_MONTHS, Math.max(MIN_MONTHS, span))
   }
 
-  return Array.from({ length: count }, (_, i) => {
-    const index = viewMonth.value - 1 + i
-    return {
-      year: viewYear.value + Math.floor(index / 12),
-      month: (index % 12) + 1,
+  let first = viewYear.value * 12 + viewMonth.value - 1
+  let last = first + count - 1
+
+  // Подсвеченный отпуск целиком должен быть виден — добавляем месяцы по краям
+  if (props.highlight) {
+    const toIndex = (str) => {
+      const [y, m] = str.split('-').map(Number)
+      return y * 12 + m - 1
     }
+    first = Math.min(first, toIndex(props.highlight.startDate))
+    last = Math.max(last, toIndex(props.highlight.endDate))
+    last = Math.min(last, first + MAX_MONTHS - 1)
+  }
+
+  return Array.from({ length: last - first + 1 }, (_, i) => {
+    const index = first + i
+    return { year: Math.floor(index / 12), month: (index % 12) + 1 }
   })
 })
 
@@ -225,6 +240,10 @@ const months = computed(() =>
           !!props.startDate &&
           dateStr >= props.startDate &&
           dateStr <= (props.endDate || props.startDate),
+        isHighlighted:
+          !!props.highlight &&
+          dateStr >= props.highlight.startDate &&
+          dateStr <= props.highlight.endDate,
         isStart: dateStr === props.startDate,
         // Пока окончание не выбрано — подсвечиваем один день начала
         isEnd: !!props.startDate && dateStr === (props.endDate || props.startDate),
@@ -312,6 +331,8 @@ const months = computed(() =>
 .month__grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  /* Место под 6 недель резервируем всегда — высота не прыгает */
+  grid-template-rows: auto repeat(6, 2rem);
   gap: 0.15rem;
   text-align: center;
 }
@@ -323,7 +344,7 @@ const months = computed(() =>
 }
 
 .day {
-  padding: 0.4rem 0;
+  padding: 0;
   border: none;
   border-radius: 0.4rem;
   background: transparent;
@@ -345,6 +366,11 @@ const months = computed(() =>
 .day--holiday {
   color: var(--destructive);
   font-weight: 600;
+}
+
+.day--highlight {
+  background: color-mix(in srgb, var(--highlight, var(--accent)) 30%, transparent);
+  box-shadow: inset 0 0 0 0.1rem var(--highlight, var(--accent));
 }
 
 .day--in-range {

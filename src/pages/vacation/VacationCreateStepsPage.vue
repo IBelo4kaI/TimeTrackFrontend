@@ -170,6 +170,7 @@
               :end-date="formData.endDate"
               :user-id="formData.userId"
               :days="currentDays"
+              :highlight="hovered"
               @select="setDates"
             />
 
@@ -177,8 +178,17 @@
               <div class="adjacent__title">
                 Смежные отпуска · {{ department }}
               </div>
+              <div class="adjacent__hint">
+                Наведите на отпуск, чтобы увидеть его дни в календаре
+              </div>
               <div class="adjacent__list">
-                <div v-for="v in adjacent" :key="v.id" class="adjacent__item">
+                <div
+                  v-for="v in adjacent"
+                  :key="v.id"
+                  class="adjacent__item"
+                  @mouseenter="hovered = v"
+                  @mouseleave="hovered = null"
+                >
                   <i class="adjacent__dot" :style="{ background: v.color }"></i>
                   <span class="adjacent__name">{{ v.name }}</span>
                   <span class="adjacent__dates">
@@ -346,6 +356,8 @@ const { department, adjacent } = useDepartmentVacations(
   toRef(formData, 'startDate'),
   toRef(formData, 'endDate')
 )
+
+const hovered = ref(null)
 
 const endModeTabs = [
   { id: 'date', label: 'Дата окончания' },
@@ -658,6 +670,11 @@ onBeforeRouteLeave(() => {
 
 .adjacent__title {
   font-weight: 600;
+}
+
+.adjacent__hint {
+  color: var(--muted-text);
+  font-size: 0.85rem;
 }
 
 .adjacent__list {
