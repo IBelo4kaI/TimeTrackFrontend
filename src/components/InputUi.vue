@@ -18,6 +18,9 @@
         :readonly="readonly"
         :required="required"
         :autocomplete="autocomplete"
+        :min="min"
+        :max="max"
+        :step="step"
         :class="[
           'input-field',
           { 'input-field--error': error },
@@ -81,6 +84,18 @@ const props = defineProps({
   id: {
     type: String,
     default: '',
+  },
+  min: {
+    type: [Number, String],
+    default: undefined,
+  },
+  max: {
+    type: [Number, String],
+    default: undefined,
+  },
+  step: {
+    type: [Number, String],
+    default: undefined,
   },
   // Опции maska (mask, tokens, number...) — маска ввода; только для type text/tel
   mask: {

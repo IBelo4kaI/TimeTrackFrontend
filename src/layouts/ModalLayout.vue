@@ -1,12 +1,27 @@
 <template>
   <div class="modal">
-    <div class="modal-container">
+    <div
+      ref="containerRef"
+      class="modal-container"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="title"
+      :style="width ? { maxWidth: width } : null"
+      tabindex="-1"
+    >
       <div class="modal-header">
         <div class="header-info">
           <div class="modal-title" v-if="title">{{ title }}</div>
           <div class="modal-desc" v-if="desc">{{ desc }}</div>
         </div>
-        <i class="fa-regular fa-xmark close" @click="close"></i>
+        <i
+          class="fa-regular fa-xmark close"
+          role="button"
+          tabindex="0"
+          aria-label="Закрыть"
+          @click="close"
+          @keydown.enter="close"
+        ></i>
       </div>
       <slot></slot>
     </div>
@@ -15,23 +30,66 @@
 </template>
 
 <script setup>
-const { title, desc } = defineProps({
+import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+
+const { title, desc, width } = defineProps({
   title: String,
   desc: String,
+  width: String,
 })
 const emit = defineEmits(['close'])
+
+const containerRef = useTemplateRef('containerRef')
+let previousFocus = null
 
 const close = () => {
   emit('close')
 }
 
-const closeKeyboard = (e) => {
-  if (e.key == 'Escape') close()
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-  document.removeEventListener('keydown', closeKeyboard)
+const onKeydown = (e) => {
+  if (e.key == 'Escape') {
+    close()
+    return
+  }
+  if (e.key != 'Tab' || !containerRef.value) return
+
+  // Фокус не уходит за пределы окна
+  const items = [...containerRef.value.querySelectorAll(FOCUSABLE)]
+  if (!items.length) {
+    e.preventDefault()
+    return
+  }
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (
+    e.shiftKey &&
+    (document.activeElement === first ||
+      document.activeElement === containerRef.value)
+  ) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
 }
 
-document.addEventListener('keydown', closeKeyboard)
+onMounted(() => {
+  previousFocus = document.activeElement
+  document.addEventListener('keydown', onKeydown)
+  const target = containerRef.value?.querySelector(
+    'input:not([disabled]):not([type="hidden"]), textarea:not([disabled])'
+  )
+  ;(target || containerRef.value)?.focus()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  previousFocus?.focus?.()
+})
 </script>
 
 <style scoped>
@@ -60,6 +118,7 @@ document.addEventListener('keydown', closeKeyboard)
   cursor: pointer;
 }
 .modal-container {
+  outline: none;
   display: flex;
   flex-direction: column;
   gap: 1.43rem;
@@ -69,7 +128,7 @@ document.addEventListener('keydown', closeKeyboard)
   z-index: 101;
   width: 100%;
   max-width: 28.57rem;
-  min-width: 22rem;
+  min-width: min(22rem, 100%);
 }
 
 .modal-header {

@@ -4,6 +4,7 @@ import { parseDate } from '@/utils/date.utils'
 import { defineStore, storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { useCalendarStore } from './calendar'
+import { useNotificationStore } from './notification'
 import { useDayTypesStore } from './dayTypes'
 import { useUniversalModalStore } from './modal'
 import { useSelectingStore } from './selecting'
@@ -28,6 +29,7 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
   const universalModal = useUniversalModalStore()
   const calendarStore = useCalendarStore()
   const selectingStore = useSelectingStore()
+  const notificationStore = useNotificationStore()
   const dayTypesStore = useDayTypesStore()
   const daysData = ref(createInitialDayData())
   const title = ref('')
@@ -62,14 +64,13 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
         ' ' +
         daysData.value.date.getFullYear()
     } else if (selectedItems.value.size > 1) {
-      title.value = 'Выбранные числа: '
       const days = []
       selectedItems.value.forEach((d) => {
-        day = { ...d, date: parseDate(d.date) }
-        title.value += day.date.getDate() + ', '
-        days.push(day)
+        days.push({ ...d, date: parseDate(d.date) })
       })
       daysData.value = days[0]
+      title.value =
+        'Выбранные числа: ' + days.map((d) => d.date.getDate()).join(', ')
     } else if (selectedItems.value.size == 1) {
       daysData.value = {
         ...selectionStart.value,
@@ -144,6 +145,7 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
     })
 
     universalModal.open({
+      width: '24rem',
       title: isMultiEdit
         ? 'Множественная запись'
         : isUpdate
@@ -161,9 +163,10 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       deletingText: 'Удаление...',
 
       onValidate: (data) => {
-        return data.userTimeTypeId !== '' && data.hours >= 0 && data.hours <= 24
-          ? null
-          : 'Ошибка валидации'
+        if (data.hours < 0 || data.hours > 24) {
+          return 'Количество часов должно быть от 0 до 24'
+        }
+        return null
       },
 
       onSubmit: async (data) => {
@@ -205,7 +208,10 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
           selectingStore.clearSelection()
         } catch (error) {
           console.error('Ошибка при удалении:', error)
-          alert('Не удалось удалить запись. Попробуйте еще раз.')
+          notificationStore.addNotification(
+            'Не удалось удалить запись. Попробуйте ещё раз',
+            'error'
+          )
           throw error
         }
       },

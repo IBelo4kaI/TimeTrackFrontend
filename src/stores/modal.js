@@ -5,9 +5,11 @@ export const useUniversalModalStore = defineStore('universalModal', () => {
   // Состояние
   const show = ref(false)
   const title = ref('')
+  const width = ref('')
   const isSubmitting = ref(false)
   const isDeleting = ref(false)
   const isValid = ref(true)
+  const formError = ref('')
 
   // Конфигурация кнопок
   const showSubmitButton = ref(true)
@@ -33,9 +35,62 @@ export const useUniversalModalStore = defineStore('universalModal', () => {
   // Computed
   const isLoading = computed(() => isSubmitting.value || isDeleting.value)
 
+  // Окна, открытые поверх другого, и счётчик открытий для отложенной очистки
+  const stack = []
+  let generation = 0
+  let resetTimer = null
+
+  const snapshot = () => ({
+    title: title.value,
+    width: width.value,
+    showSubmitButton: showSubmitButton.value,
+    showDeleteButton: showDeleteButton.value,
+    submitButtonText: submitButtonText.value,
+    deleteButtonText: deleteButtonText.value,
+    cancelButtonText: cancelButtonText.value,
+    submittingText: submittingText.value,
+    deletingText: deletingText.value,
+    fields: fields.value,
+    formData: formData.value,
+    onSubmit: onSubmit.value,
+    onDelete: onDelete.value,
+    onClose: onClose.value,
+    onValidate: onValidate.value,
+  })
+
+  const restore = (s) => {
+    title.value = s.title
+    width.value = s.width
+    showSubmitButton.value = s.showSubmitButton
+    showDeleteButton.value = s.showDeleteButton
+    submitButtonText.value = s.submitButtonText
+    deleteButtonText.value = s.deleteButtonText
+    cancelButtonText.value = s.cancelButtonText
+    submittingText.value = s.submittingText
+    deletingText.value = s.deletingText
+    fields.value = s.fields
+    formData.value = s.formData
+    onSubmit.value = s.onSubmit
+    onDelete.value = s.onDelete
+    onClose.value = s.onClose
+    onValidate.value = s.onValidate
+    isSubmitting.value = false
+    isDeleting.value = false
+    isValid.value = true
+    formError.value = ''
+  }
+
   // Методы
   const open = (config = {}) => {
+    clearTimeout(resetTimer)
+    generation++
+    // Окно, открытое из onSubmit/onDelete, заменяет текущее, а не накладывается
+    if (show.value && !isLoading.value) stack.push(snapshot())
+    formError.value = ''
+    isValid.value = true
+
     title.value = config.title || ''
+    width.value = config.width || ''
 
     showSubmitButton.value =
       config.showSubmitButton !== undefined ? config.showSubmitButton : true
@@ -82,10 +137,16 @@ export const useUniversalModalStore = defineStore('universalModal', () => {
       onClose.value()
     }
 
+    const previous = stack.pop()
+    if (previous) {
+      restore(previous)
+      return
+    }
+
     show.value = false
 
-    // Сброс состояний
-    setTimeout(() => {
+    // Сброс после анимации; отменяется, если окно открыли заново
+    resetTimer = setTimeout(() => {
       isSubmitting.value = false
       isDeleting.value = false
       formData.value = {}
@@ -99,40 +160,40 @@ export const useUniversalModalStore = defineStore('universalModal', () => {
     if (!isValid.value || isLoading.value) return
 
     isSubmitting.value = true
+    const gen = generation
 
     try {
       if (onSubmit.value && typeof onSubmit.value === 'function') {
         await onSubmit.value(formData.value)
       }
-      // Закрываем модальное окно только после успешного выполнения
-      isSubmitting.value = false
-      close()
     } catch (error) {
+      // Окно остаётся открытым, сообщение показывает сам onSubmit
       console.error('Ошибка при отправке:', error)
       isSubmitting.value = false
-      // Не закрываем окно при ошибке
-      throw error
+      return
     }
+    isSubmitting.value = false
+    // Если onSubmit открыл следующее окно, закрывать нечего
+    if (gen === generation) close()
   }
 
   const deleteAction = async () => {
     if (isLoading.value) return
 
     isDeleting.value = true
+    const gen = generation
 
     try {
       if (onDelete.value && typeof onDelete.value === 'function') {
         await onDelete.value(formData.value)
       }
-      // Закрываем модальное окно только после успешного выполнения
-      isDeleting.value = false
-      close()
     } catch (error) {
       console.error('Ошибка при удалении:', error)
       isDeleting.value = false
-      // Не закрываем окно при ошибке
-      throw error
+      return
     }
+    isDeleting.value = false
+    if (gen === generation) close()
   }
 
   const updateField = (name, value) => {
@@ -170,9 +231,11 @@ export const useUniversalModalStore = defineStore('universalModal', () => {
     })
 
     // глобальный валидатор формы (если нужен)
+    formError.value = ''
     if (onValidate.value && typeof onValidate.value === 'function') {
-      const formError = onValidate.value(formData.value)
-      if (typeof formError === 'string') {
+      const error = onValidate.value(formData.value)
+      if (typeof error === 'string') {
+        formError.value = error
         valid = false
       }
     }
@@ -184,9 +247,11 @@ export const useUniversalModalStore = defineStore('universalModal', () => {
     // State
     show,
     title,
+    width,
     isSubmitting,
     isDeleting,
     isValid,
+    formError,
     isLoading,
     showSubmitButton,
     showDeleteButton,

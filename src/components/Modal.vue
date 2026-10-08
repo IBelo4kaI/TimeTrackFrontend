@@ -1,5 +1,5 @@
 <template>
-  <ModalLayout :title="title" @close="close" v-if="show">
+  <ModalLayout :title="title" :width="width" @close="close" v-if="show">
     <div class="modal-fields">
       <div
         v-for="field in fields"
@@ -22,6 +22,7 @@
             @change="updateField(field.name, $event)"
             :disabled="field.disabled || isLoading"
             :error="field.error != null"
+            full-width
             style="width: 100%"
           />
           <span v-if="field.error" class="error-message">
@@ -42,6 +43,9 @@
             v-model="formData[field.name]"
             :type="field.type"
             :mask="field.mask"
+            :min="field.min"
+            :max="field.max"
+            :step="field.step"
             :label="field.label"
             :required="field.required"
             :placeholder="field.placeholder"
@@ -157,6 +161,10 @@
       </div>
     </div>
 
+    <span v-if="formError" class="error-message form-error">
+      {{ formError }}
+    </span>
+
     <div class="modal-action">
       <ButtonUI
         v-if="showDeleteButton"
@@ -199,9 +207,11 @@ const modalStore = useUniversalModalStore()
 const {
   show,
   title,
+  width,
   isSubmitting,
   isDeleting,
   isValid,
+  formError,
   isLoading,
   showSubmitButton,
   showDeleteButton,
@@ -314,6 +324,10 @@ textarea:disabled {
   font-size: 1rem;
   margin: 0;
   line-height: 1.5;
+}
+
+.form-error {
+  margin-top: -0.5rem;
 }
 
 .modal-action {
