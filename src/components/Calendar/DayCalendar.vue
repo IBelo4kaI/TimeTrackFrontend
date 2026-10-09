@@ -16,14 +16,32 @@
       <span class="day-number">
         {{ dayDate.getDate() }}
       </span>
-      <template v-if="birthday.length > 0">
-        <span class="day-number day-birthday">
-          <!-- <svg class="day-dot" viewBox="0 0 8 8" aria-hidden="true">
+      <!-- <div class="day-birthdays" v-if="birthdays.length > 0">
+        <span class="day-number day-birthday" v-for="birthday in birthdays">
+           <svg class="day-dot" viewBox="0 0 8 8" aria-hidden="true">
             <circle cx="4" cy="4" r="4" />
-          </svg> -->
-          {{ birthday[0].initials }}
+          </svg>
+          {{ birthday.initials }}
         </span>
-      </template>
+      </div> -->
+         <div class="day-birthdays" v-if="birthdays.length > 0">
+        <span
+          class="day-birthday"
+          v-for="(birthday, i) in birthdays"
+          :key="birthday.id ?? i"
+          :class="{ 'day-birthday-extra': i >= 3 }"
+          :style="{ '--i': i }"
+        >
+          {{ birthday.initials }}
+        </span>
+        <span
+          v-if="birthdays.length > 3"
+          class="day-birthday day-birthday-more"
+          :style="{ '--i': 0 }"
+        >
+          +{{ birthdays.length - 3 }}
+        </span>
+      </div>
       <span v-if="locationIcon" class="day-location">
         <i :class="locationIcon.icon" v-tooltip="locationIcon.title"></i>
       </span>
@@ -93,7 +111,7 @@ const themeStore = useThemeStore()
 
 const dayDate = computed(() => parseDate(day.date))
 
-const birthday = computed(() => {
+const birthdays = computed(() => {
   return userStore.birthdaysByMonthAndDate(
     dayDate.value.getMonth(),
     dayDate.value.getDate()
@@ -114,13 +132,13 @@ const handleMouseDown = (event) => {
 const handleMouseEnter = (event) => {
   // if (!day.isCurrentMonth) return;
   emit('day-mouse-enter', day, event)
-  if (birthday.value.length > 0) {
-    calendarStore.hoverBirthday(birthday.value[0].birthday)
+  if (birthdays.value.length > 0) {
+    calendarStore.hoverBirthday(birthdays.value[0].birthday)
   }
 }
 
 const handleMouseLeave = (event) => {
-  if (birthday.value.length > 0) {
+  if (birthdays.value.length > 0) {
     calendarStore.resetHoveredBirthday()
   }
 }
@@ -214,9 +232,62 @@ const dayStyle = computed(() => {
   color: var(--usertype);
 }
 
+.day-birthdays {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  isolation: isolate;
+}
+
 .day-birthday {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border-radius: 2rem;
+  background: var(--muted-accent);
+  /*border: 0.07rem solid var(--foreground);*/
+  font-size: 0.85rem;
+  font-weight: 500;
   color: var(--accent);
-  font-size: 0.88rem;
+  position: relative;
+
+  /* первый самый яркий, дальше бледнее: 1 → 0.7 → 0.4 */
+  opacity: calc(1 - var(--i) * 0.3);
+
+  transform: scale(calc(1 - var(--i) * 0.1));
+
+  /* первый лежит сверху, следующие под ним */
+  z-index: calc(3 - var(--i));
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    margin 0.3s ease;
+}
+
+.day-birthday-extra {
+  display: none;
+}
+
+/* при наведении раскрываем видимых именинников без наложения */
+.day:hover .day-birthdays {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.day:hover .day-birthday:not(.day-birthday-extra) {
+  display: inline-flex;
+  opacity: 1;
+  transform: none;
+}
+
+/* сдвиг: каждый следующий заходит под предыдущий */
+.day-birthday + .day-birthday {
+  margin-left: -1rem;
+}
+
+.day:hover .day-birthday + .day-birthday {
+  margin-left: 0.25rem;
 }
 
 .day-main {
