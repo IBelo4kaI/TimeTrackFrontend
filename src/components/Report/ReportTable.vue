@@ -23,6 +23,10 @@
             <th class="th align-left">Сотрудник</th>
             <th class="th align-center">Часы</th>
             <th class="th align-center">Дни</th>
+            <template v-if="showLocations">
+              <th class="th align-center">Офис</th>
+              <th class="th align-center">Удалённо</th>
+            </template>
             <th class="th align-center">Больничные</th>
             <th class="th align-center">Отгулы</th>
             <th class="th align-center">Отпуск</th>
@@ -33,7 +37,7 @@
 
         <tbody>
           <tr v-if="isLoading">
-            <td colspan="8" class="state-cell">
+            <td :colspan="colCount" class="state-cell">
               <LoaderTitle />
             </td>
           </tr>
@@ -41,7 +45,7 @@
           <template v-else>
             <template v-for="section in sections" :key="section.key">
               <tr v-if="section.department !== null" class="tr-department">
-                <td colspan="8" class="td-department">
+                <td :colspan="colCount" class="td-department">
                   {{ section.department }}
                 </td>
               </tr>
@@ -56,7 +60,7 @@
                 </td>
                 <template v-if="row.unavailable">
                   <td
-                    v-for="n in 6"
+                    v-for="n in colCount - 2"
                     :key="n"
                     class="td align-center td-muted"
                     title="Не указан пол — норму рассчитать нельзя"
@@ -71,6 +75,10 @@
                   <td class="td align-center" :class="daysVariant(row)">
                     {{ row.totalWorkDays }} / {{ row.standardWorkDays }}д
                   </td>
+                  <template v-if="showLocations">
+                    <td class="td align-center">{{ row.officeDays }}</td>
+                    <td class="td align-center">{{ row.remoteDays }}</td>
+                  </template>
                   <td
                     class="td align-center"
                     :class="row.medicalDays > 0 ? 'destructive' : ''"
@@ -105,7 +113,7 @@
           </template>
 
           <tr v-if="!isLoading && !rows.length">
-            <td colspan="8" class="state-cell empty">Нет данных</td>
+            <td :colspan="colCount" class="state-cell empty">Нет данных</td>
           </tr>
         </tbody>
       </table>
@@ -145,6 +153,12 @@ function calendarLinkFor(row) {
 }
 
 defineEmits(['update:modelValue'])
+
+// Офис/удалёнка показываются, только если кто-то работал удалённо
+const showLocations = computed(() =>
+  props.rows.some((row) => row.remoteDays > 0)
+)
+const colCount = computed(() => (showLocations.value ? 10 : 8))
 
 const departmentOptions = computed(() => [
   { label: 'Все отделы', value: 'all' },

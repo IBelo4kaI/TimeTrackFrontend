@@ -1,4 +1,7 @@
-import { clearDays, createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
+import {
+  clearDays,
+  createUpdatesObjects,
+} from '@/helpers/usertimeentry.helpers'
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
 import { defineStore, storeToRefs } from 'pinia'
@@ -22,7 +25,16 @@ const createInitialDayData = () => {
     userTimeId: '',
     userTimeTypeId: '',
     calendarEventTypeId: '',
+    workLocation: '',
   }
+}
+
+const KEEP_LOCATION = 'keep'
+
+// undefined — оставить у каждого дня своё значение
+const resolveWorkLocation = (data, workTypeId) => {
+  if (data.userTimeTypeId !== workTypeId) return null
+  return data.workLocation === KEEP_LOCATION ? undefined : data.workLocation
 }
 
 export const useAddReportModalStore = defineStore('add-report-modal', () => {
@@ -105,6 +117,12 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       : [daysData.value]
     const isUpdate = editedDays.some((d) => d.userTimeId)
 
+    const hasMixedLocations =
+      isMultiEdit &&
+      new Set(editedDays.map((d) => d.workLocation).filter(Boolean)).size > 1
+
+    const workTypeId = dayTypesStore.getDayTypeIdByName('work')
+
     const fields = [
       {
         name: 'title',
@@ -135,6 +153,22 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
         min: 0,
         max: 24,
         step: 0.5,
+      },
+      {
+        name: 'workLocation',
+        type: 'radio',
+        label: 'Место работы',
+        value: hasMixedLocations
+          ? KEEP_LOCATION
+          : daysData.value.workLocation || 'office',
+        visibleIf: (form) => form.userTimeTypeId === workTypeId,
+        options: [
+          ...(hasMixedLocations
+            ? [{ value: KEEP_LOCATION, label: 'Не менять' }]
+            : []),
+          { value: 'office', label: 'Офис' },
+          { value: 'remote', label: 'Удалённо' },
+        ],
       },
     ]
 
@@ -181,7 +215,10 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
 
           const updates = createUpdatesObjects(
             daysToProcess,
-            data,
+            {
+              ...data,
+              workLocation: resolveWorkLocation(data, workTypeId),
+            },
             calendarStore.selectedUserId
           )
 

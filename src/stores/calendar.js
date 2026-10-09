@@ -255,12 +255,16 @@ export const useCalendarStore = defineStore('calendar', () => {
   const otherDays = computed(() =>
     statsData.value
       ? {
+          officeDays: statsData.value.officeDays,
+          remoteDays: statsData.value.remoteDays,
           vacationDays: statsData.value.vacationDays,
           medicalDays: statsData.value.medicalDays,
           timeoffDays: statsData.value.timeoffDays,
           decreeDays: statsData.value.decreeDays,
         }
       : {
+          officeDays: { count: 0 },
+          remoteDays: { count: 0 },
           vacationDays: { count: 0 },
           medicalDays: { count: 0 },
           timeoffDays: { count: 0 },

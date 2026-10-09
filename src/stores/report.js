@@ -96,6 +96,8 @@ export const useReportStore = defineStore('report', () => {
         totalHours: data?.hours?.totalHours ?? 0,
         standardWorkDays: data?.workDays?.standardWorkDays ?? 0,
         totalWorkDays: data?.workDays?.totalWorkDays ?? 0,
+        officeDays: data?.officeDays?.count ?? 0,
+        remoteDays: data?.remoteDays?.count ?? 0,
         medicalDays: data?.medicalDays?.count ?? 0,
         timeoffDays: data?.timeoffDays?.count ?? 0,
         vacationDays: data?.vacationDays?.count ?? 0,

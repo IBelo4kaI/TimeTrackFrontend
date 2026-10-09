@@ -24,6 +24,9 @@
           {{ birthday[0].initials }}
         </span>
       </template>
+      <span v-if="locationIcon" class="day-location">
+        <i :class="locationIcon.icon" v-tooltip="locationIcon.title"></i>
+      </span>
     </div>
     <div class="day-main">
       <div class="day-hours" v-if="day.hours > 0">
@@ -63,6 +66,7 @@
 </template>
 
 <script setup>
+import { WORK_LOCATIONS } from '@/constants/workLocation.constants'
 import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useCalendarStore } from '@/stores/calendar'
 import { useDayTypesStore } from '@/stores/dayTypes'
@@ -99,6 +103,8 @@ const birthday = computed(() => {
 const isBirthdayHovered = computed(
   () => dayDate.value.getDate() == calendarStore.hoveredBirthday
 )
+
+const locationIcon = computed(() => WORK_LOCATIONS[day.workLocation])
 
 const handleMouseDown = (event) => {
   // if (!day.isCurrentMonth) return;
@@ -195,6 +201,17 @@ const dayStyle = computed(() => {
   height: 0.77rem;
   overflow: visible;
   fill: currentColor;
+}
+
+.day-location {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /*border-radius: var(--border-radius);
+  background: var(--background);*/
+  padding: 0.35rem;
+  font-size: 1.2rem;
+  color: var(--usertype);
 }
 
 .day-birthday {

@@ -83,7 +83,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const workerStore = useWorkerStore()
 
-const headers = [
+const baseHeaders = [
   { valueKey: 'monthLabel', title: 'Месяц' },
   { valueKey: 'hours', title: 'Часы', align: 'center' },
   { valueKey: 'workDays', title: 'Дни', align: 'center' },
@@ -92,6 +92,19 @@ const headers = [
   { valueKey: 'vacationDays', title: 'Отпуск', align: 'center' },
   { valueKey: 'decreeDays', title: 'Декрет', align: 'center' },
 ]
+
+const locationHeaders = [
+  { valueKey: 'officeDays', title: 'Офис', align: 'center' },
+  { valueKey: 'remoteDays', title: 'Удалённо', align: 'center' },
+]
+
+// Офис/удалёнка показываются, только если была работа удалённо
+const headers = computed(() => {
+  if (!workerStore.timesheetTotals.remoteDays) return baseHeaders
+  const list = [...baseHeaders]
+  list.splice(3, 0, ...locationHeaders)
+  return list
+})
 
 const years = computed(() => [
   workerStore.timesheetYear - 1,

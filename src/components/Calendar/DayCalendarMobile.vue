@@ -16,10 +16,12 @@
     <span class="day-hours" v-if="day.hours > 0">
       {{ day.hours }}
     </span>
+    <i v-if="locationIcon" class="day-location" :class="locationIcon.icon"></i>
   </div>
 </template>
 
 <script setup>
+import { WORK_LOCATIONS } from '@/constants/workLocation.constants'
 import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useDayTypesStore } from '@/stores/dayTypes'
 import { useSelectingStore } from '@/stores/selecting'
@@ -42,6 +44,7 @@ const dayTypesStore = useDayTypesStore()
 const selectingStore = useSelectingStore()
 
 const dayDate = computed(() => parseDate(day.date))
+const locationIcon = computed(() => WORK_LOCATIONS[day.workLocation])
 const handleMouseDown = (event) => {
   // if (!day.isCurrentMonth) return;
   emit('day-mouse-down', day, event)
@@ -114,6 +117,11 @@ onMounted(() => {
   font-weight: 600;
   background: var(--background-number, inherit);
   color: var(--text-number, var(--text));
+}
+
+.day-location {
+  font-size: 0.7rem;
+  opacity: 0.7;
 }
 
 .day-weekend {

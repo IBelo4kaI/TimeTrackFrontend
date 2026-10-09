@@ -9,10 +9,15 @@
         <span>{{ dayType[1].name }}</span>
       </div>
     </template>
+    <div v-for="loc in WORK_LOCATIONS" :key="loc.title" class="legend-item">
+      <i :class="loc.icon"></i>
+      <span>{{ loc.title }}</span>
+    </div>
   </div>
 </template>
 
 <script setup>
+import { WORK_LOCATIONS } from '@/constants/workLocation.constants'
 import { useDayTypesStore } from '@/stores/dayTypes'
 
 const dayTypesStore = useDayTypesStore()

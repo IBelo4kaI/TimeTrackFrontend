@@ -4,6 +4,7 @@
       <div
         v-for="field in fields"
         :key="field.name"
+        v-show="!field.visibleIf || field.visibleIf(formData)"
         class="field-wrapper"
         :class="{ 'field-hidden': field.type === 'hidden' }"
       >

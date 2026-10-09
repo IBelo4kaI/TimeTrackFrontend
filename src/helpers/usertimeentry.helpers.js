@@ -20,6 +20,11 @@ export const createUpdatesObjects = (daysToProcess, config, userId) => {
       dayTypeId: dayTypeId,
       entryDate: parseDateStartDay(day.date),
       hoursWorked: (config.hours ?? day.hours).toString(),
+      // undefined — оставить как есть, null — сбросить
+      workLocation:
+        day.isEditType && config.workLocation !== undefined
+          ? config.workLocation
+          : day.workLocation || null,
     }
 
     // Разделяем на обновление и создание
@@ -76,9 +81,9 @@ export const applyDayAction = async (
   }
 
   const configs = {
-    medical: { type: 'medical', hours: null },
-    decree: { type: 'decree', hours: null },
-    'time-off': { type: 'time-off', hours: null },
+    medical: { type: 'medical', hours: null, workLocation: null },
+    decree: { type: 'decree', hours: null, workLocation: null },
+    'time-off': { type: 'time-off', hours: null, workLocation: null },
     standardWork: { type: 'work', hours: 8 },
   }
   const config = configs[action]
@@ -89,6 +94,7 @@ export const applyDayAction = async (
     {
       userTimeTypeId: dayTypesStore.getDayTypeIdByName(config.type),
       hours: config.hours,
+      workLocation: config.workLocation,
     },
     calendarStore.selectedUserId
   )

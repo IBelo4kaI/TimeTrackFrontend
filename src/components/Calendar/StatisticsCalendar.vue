@@ -1,15 +1,10 @@
 <template>
   <div class="statistics">
     <div class="statistics__row">
-      <div class="statistics__title">Норма часов</div>
-      <div class="statistics__value">
-        {{ calendarStore.workingHours.standardHours }} ч
-      </div>
-    </div>
-    <div class="statistics__row">
       <div class="statistics__title">Отработано часов</div>
       <div class="statistics__value">
-        {{ calendarStore.workingHours.totalHours }} ч
+        {{ calendarStore.workingHours.totalHours }} /
+        {{ calendarStore.workingHours.standardHours }} ч
       </div>
     </div>
     <div class="statistics__row" v-if="calendarStore.plannedHours !== null">
@@ -37,15 +32,28 @@
       </div>
     </div>
     <div class="statistics__row">
-      <div class="statistics__title">Норма дней</div>
+      <div class="statistics__title">Отработано дней</div>
       <div class="statistics__value">
+        {{ calendarStore.workingDays.totalWorkDays }} /
         {{ calendarStore.workingDays.standardWorkDays }}
       </div>
     </div>
-    <div class="statistics__row">
-      <div class="statistics__title">Отработано дней</div>
+    <div
+      class="statistics__row"
+      v-if="calendarStore.otherDays.remoteDays?.count"
+    >
+      <div class="statistics__title">В офисе</div>
       <div class="statistics__value">
-        {{ calendarStore.workingDays.totalWorkDays }}
+        {{ calendarStore.otherDays.officeDays.count }} д
+      </div>
+    </div>
+    <div
+      class="statistics__row"
+      v-if="calendarStore.otherDays.remoteDays?.count"
+    >
+      <div class="statistics__title">Удалённо</div>
+      <div class="statistics__value">
+        {{ calendarStore.otherDays.remoteDays.count }} д
       </div>
     </div>
     <div
