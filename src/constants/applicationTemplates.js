@@ -63,4 +63,32 @@ export const APPLICATION_TEMPLATES = [
       },
     ],
   },
+  {
+    id: 'dismissal',
+    title: 'Заявление на увольнение',
+    path: '/dismissal.docx',
+    fields: [
+      {
+        key: 'dismissalDate',
+        label: 'Дата увольнения',
+        type: 'date',
+        param: true,
+      },
+      {
+        key: 'textDismissal',
+        label: 'Текст заявления',
+        type: 'textarea',
+        placeholder: 'Прошу уволить меня ...',
+      },
+    ],
+    textField: 'textDismissal',
+    // TODO: заменить тексты на утверждённые формулировки
+    textTemplates: [
+      {
+        id: 'dismissal-own-will',
+        params: ['dismissalDate'],
+        text: 'Прошу уволить меня по собственному желанию {dismissalDate}.',
+      },
+    ],
+  },
 ]
