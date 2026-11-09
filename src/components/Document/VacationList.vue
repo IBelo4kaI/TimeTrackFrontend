@@ -104,6 +104,7 @@
         {{ row.status.text }}
       </Badge>
       <span v-else>—</span>
+      <VacationExcessBadge :days="row.excessDays" />
     </template>
 
     <template #actions="{ row }">
@@ -187,6 +188,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppTable from '../AppTable.vue'
 import Autocomplete from '../Autocomplete.vue'
+import VacationExcessBadge from '@/components/Vacation/VacationExcessBadge.vue'
 import Badge from '../Badge.vue'
 import ButtonUI from '../ButtonUI.vue'
 import InputUi from '../InputUi.vue'
@@ -258,6 +260,7 @@ const rows = computed(() =>
       status: vacation ? getVacationStatusMeta(vacation.status) : null,
       // Сырой статус/id — для фильтрации (status/ownerName выше уже
       // человекочитаемые, для select'ов и сравнения нужны исходные значения).
+      excessDays: vacation?.excessDays ?? 0,
       statusValue: vacation?.status ?? null,
       // К кому привязана заявка — узнаём по userId самого отпуска, а не по
       // тому, кто грузил файл (это может быть разными людьми, если файл

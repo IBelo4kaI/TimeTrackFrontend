@@ -148,10 +148,9 @@ export function useVacationForm() {
   watch(
     () => [formData.startDate, formData.userId],
     async ([start, userId]) => {
+      const seq = ++freeSeq
       freeDays.value = null
       if (!start || !userId) return
-
-      const seq = ++freeSeq
       try {
         const stats = await getVacationStats(new Date(start).getFullYear(), userId)
         if (seq === freeSeq) freeDays.value = stats?.free ?? null
@@ -166,6 +165,11 @@ export function useVacationForm() {
     if (freeDays.value == null) return null
     if (selectedType.value && !selectedType.value.affectsBalance) return freeDays.value
     return freeDays.value - (currentDays.value ?? 0)
+  })
+
+  const excessDays = computed(() => {
+    if (freeDays.value == null || currentDays.value == null || !selectedType.value?.affectsBalance) return 0
+    return Math.max(currentDays.value - Math.max(freeDays.value, 0), 0)
   })
 
   const checkDateValidator = startDateBeforeEnd('startDate', 'endDate')
@@ -223,19 +227,7 @@ export function useVacationForm() {
       valid = false
     } else {
       const dateErr = checkDateValidator(formData.endDate, formData)
-      const need = currentDays.value
-      // Лимит остатка блокирует обычного сотрудника и только для типов со списанием
-      const overLimit =
-        !isAdmin &&
-        need &&
-        freeDays.value != null &&
-        (selectedType.value?.affectsBalance ?? true) &&
-        freeDays.value < need
-      errors.endDate =
-        dateErr ||
-        (overLimit
-          ? `Не хватает свободных отпускных дней: ${need} / ${freeDays.value}`
-          : null)
+      errors.endDate = dateErr
       if (errors.endDate) valid = false
     }
 
@@ -296,6 +288,7 @@ export function useVacationForm() {
     currentDays,
     freeDays,
     freeAfter,
+    excessDays,
     isSubmitting,
     isDirty,
     setDates,

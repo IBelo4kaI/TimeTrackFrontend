@@ -45,7 +45,7 @@
       </div>
     </div>
 
-    <VacationEmptyState v-if="!vacationStore.isLoading && !rows.length" />
+    <VacationEmptyState v-if="!activeLoading && !hasVisibleVacations" />
     <AppTable
       v-else-if="viewMode === 'table'"
       :headers="headers"
@@ -57,6 +57,7 @@
       <template #cell-status="{ row }">
         <div class="status-cell">
           <Badge :type="row.statusMeta.type">{{ row.statusMeta.text }}</Badge>
+          <VacationExcessBadge :days="row.excessDays" />
           <Badge
             v-if="row.vacationTypeName"
             type="muted"
@@ -104,7 +105,7 @@
     </AppTable>
 
     <template v-else>
-      <div v-if="vacationStore.isLoading" class="graphic-state">Загрузка заявок…</div>
+      <div v-if="activeLoading" class="graphic-state">Загрузка заявок…</div>
       <VacationTable v-else :data-source="graphicData" />
     </template>
 
@@ -153,6 +154,7 @@
 
 <script setup>
 import Autocomplete from '@/components/Autocomplete.vue'
+import VacationExcessBadge from '@/components/Vacation/VacationExcessBadge.vue'
 import VacationEmptyState from '@/components/Vacation/VacationEmptyState.vue'
 import VacationTable from '@/components/Vacation/VacationOther/VacationTable/VacationTable.vue'
 import { getInternalEmployees } from '@/services/reference.api'
@@ -167,6 +169,7 @@ import Tabs from '@/components/Tabs.vue'
 import {
   approvedVacationStatus,
   deleteVacation,
+  getVacationCalendarByYear,
   updateVacationStatus,
   uploadVacationFile,
 } from '@/services/vacation.api'
@@ -200,6 +203,37 @@ const viewTabs = [
   { id: 'table', label: 'Таблица' },
   { id: 'graphic', label: 'График' },
 ]
+// Обычные сотрудники видят в графике календарь своего отдела.
+// Полные заявки коллег для этого не запрашиваем.
+const isDepartmentGraph = computed(() =>
+  viewMode.value === 'graphic' &&
+  !userStore.hasPermission('vacation.all', 'read') &&
+  !userStore.hasPermission('vacation.all', 'edit')
+)
+const departmentVacations = ref([])
+const departmentLoading = ref(false)
+const employeesLoading = ref(true)
+let departmentFetchSeq = 0
+watch(
+  [isDepartmentGraph, () => vacationStore.selectedYear],
+  async ([enabled, year]) => {
+    const seq = ++departmentFetchSeq
+    departmentVacations.value = []
+    departmentLoading.value = enabled
+    if (!enabled) return
+    try {
+      const result = await getVacationCalendarByYear(year)
+      if (seq === departmentFetchSeq) departmentVacations.value = result ?? []
+    } catch {
+      if (seq === departmentFetchSeq) {
+        notificationStore.addNotification('Не удалось загрузить отпуска отдела', 'error')
+      }
+    } finally {
+      if (seq === departmentFetchSeq) departmentLoading.value = false
+    }
+  },
+  { immediate: true }
+)
 const internalEmployees = ref([])
 onMounted(async () => {
   try {
@@ -208,9 +242,12 @@ onMounted(async () => {
       Array.isArray(item.employees)
         ? item.employees.map((employee) => ({ ...employee, department: employee.department || item.department }))
         : [item]
-    )
+    ).map((employee) => ({ ...employee, user_id: employee.user_id ?? employee.id }))
   } catch {
     // Имена доступны из общего списка пользователей и без кадрового справочника.
+    notificationStore.addNotification('Не удалось загрузить справочник сотрудников', 'error')
+  } finally {
+    employeesLoading.value = false
   }
 })
 const employeeOptions = computed(() => {
@@ -229,12 +266,45 @@ const employeeOptions = computed(() => {
     }
   }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'))
 })
+const departmentEmployees = computed(() => {
+  const current = internalEmployees.value.find((employee) =>
+    String(employee.user_id) === String(userStore.user?.id)
+  )
+  if (!current?.department) return []
+  return internalEmployees.value.filter((employee) => employee.department === current.department)
+})
+const graphicVacations = computed(() => {
+  if (!isDepartmentGraph.value) return vacationStore.filterVacations
+  const ids = new Set(departmentEmployees.value.map((employee) => String(employee.user_id)))
+  const month = vacationStore.selectedMonth
+  const year = vacationStore.selectedYear
+  const start = new Date(year, month ? month - 1 : 0, 1)
+  const end = month ? new Date(year, month, 0) : new Date(year, 11, 31)
+  return departmentVacations.value.filter((vacation) =>
+    ids.has(String(vacation.userId ?? vacation.user_id)) &&
+    (vacationStore.filter === 'all' || vacation.status === vacationStore.filter) &&
+    parseDate(vacation.startDate ?? vacation.start_date) <= end &&
+    parseDate(vacation.endDate ?? vacation.end_date) >= start
+  )
+})
+const activeLoading = computed(() => isDepartmentGraph.value
+  ? departmentLoading.value || employeesLoading.value
+  : vacationStore.isLoading
+)
+const hasVisibleVacations = computed(() => viewMode.value === 'graphic'
+  ? graphicVacations.value.length > 0
+  : rows.value.length > 0
+)
 const graphicData = computed(() => {
-  const ids = new Set(vacationStore.filterVacations.map((vacation) => String(vacation.userId)))
+  const ids = new Set(graphicVacations.value.map((vacation) => String(vacation.userId ?? vacation.user_id)))
+  const employees = isDepartmentGraph.value
+    ? departmentEmployees.value
+    : employeeOptions.value.filter((employee) => ids.has(employee.user_id))
   const groups = new Map()
-  employeeOptions.value.filter((employee) => ids.has(employee.user_id)).forEach((employee) => {
-    if (!groups.has(employee.department)) groups.set(employee.department, { department: employee.department, employees: [] })
-    groups.get(employee.department).employees.push(employee)
+  employees.forEach((employee) => {
+    const department = employee.department || 'Без отдела'
+    if (!groups.has(department)) groups.set(department, { department, employees: [] })
+    groups.get(department).employees.push(employee)
   })
   return {
     filters: {
@@ -243,7 +313,7 @@ const graphicData = computed(() => {
       viewMode: vacationStore.selectedMonth ? 'month' : 'year',
     },
     filteredEmployeesGrouped: [...groups.values()],
-    filteredVacations: vacationStore.filterVacations,
+    filteredVacations: graphicVacations.value,
   }
 })
 

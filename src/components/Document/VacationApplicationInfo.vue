@@ -20,6 +20,7 @@
       </div>
       <div class="info__badges">
         <Badge v-if="status" :type="status.type">{{ status.text }}</Badge>
+        <VacationExcessBadge :days="vacation.excessDays" />
         <Badge
           v-if="vacation.vacationTypeName"
           :style="typeBadgeStyle"
@@ -114,6 +115,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import VacationExcessBadge from '@/components/Vacation/VacationExcessBadge.vue'
 import Badge from '../Badge.vue'
 import ButtonUI from '../ButtonUI.vue'
 import LoaderTitle from '../Loader/LoaderTitle.vue'

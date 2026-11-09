@@ -277,6 +277,13 @@
           </div>
         </dl>
       </template>
+      <div v-if="excessDays > 0 && (step === 2 || step === 4)" class="limit-warning" role="status">
+        <i class="fa-regular fa-triangle-exclamation" aria-hidden="true"></i>
+        <span>
+          Доступно {{ formatStats(freeDays) }}, запрошено {{ formatStats(currentDays) }}.
+          Превышение — {{ formatStats(excessDays) }}. Вы можете отправить заявку на рассмотрение.
+        </span>
+      </div>
     </section>
 
     <div class="footer">
@@ -343,6 +350,7 @@ const {
   currentDays,
   freeDays,
   freeAfter,
+  excessDays,
   isSubmitting,
   isDirty,
   setDates,
@@ -707,6 +715,19 @@ onBeforeRouteLeave(() => {
 .muted {
   color: var(--muted-text);
 }
+
+.limit-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--warn);
+  border-radius: var(--border-radius);
+  background: var(--muted-warn);
+  color: var(--text);
+}
+.limit-warning > i { color: var(--warn); }
 
 .negative {
   color: var(--destructive);

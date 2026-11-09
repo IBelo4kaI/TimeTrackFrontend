@@ -1,3 +1,5 @@
+import { formatStats } from '@/utils/vacation.utils'
+
 // Утилиты для работы с датами в компонентах отпусков
 
 // Форматирование даты для tooltip: "01.01.2024"
@@ -92,6 +94,10 @@ export function getVacationTooltip(vacation) {
   const lines = [`Начало: ${startDate}`, `Конец: ${endDate}`, `Статус: ${status}`]
   if (vacation.vacationTypeName) {
     lines.push(`Тип: ${vacation.vacationTypeName}`)
+  }
+
+  if (vacation.excessDays > 0) {
+    lines.push(`Сверх лимита при подаче: ${formatStats(vacation.excessDays)}`)
   }
 
   return lines.join('\n')
