@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useVacationStore } from './vacation'
+import { getVacationById } from '@/services/vacation.api'
 import {
   fillAndDownload,
   findEmployeeByUserId,
@@ -10,13 +10,12 @@ import { buildDocumentHeader } from '@/utils/vacation-docs.utils'
 export const useVacationDocs = defineStore('vacation-docs', () => {
   const TEMPLATE_PATH = '/vacation.docx'
 
-  const vacationStore = useVacationStore()
 
   // ─── Основная функция ────────────────────────────────────────────────────
 
   const getDocument = async (vacationId) => {
     // 1. Находим отпуск по id
-    const vacation = vacationStore.vacations.find((v) => v.id === vacationId)
+    const vacation = await getVacationById(vacationId)
     if (!vacation) throw new Error(`Отпуск ${vacationId} не найден`)
 
     // 2. Находим сотрудника по user_id из отпуска.

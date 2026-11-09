@@ -347,6 +347,7 @@ const filters = [
       activeBackground: 'var(--muted-warn)',
     },
   },
+  { id: 'withdrawn', label: 'Отозванные' },
   {
     id: 'rejected',
     label: 'Отклоненные',
@@ -440,7 +441,7 @@ function menuItemsFor(row) {
     if (row.status != 'pending') {
       items.push({ action: 'pending', label: 'На рассмотрении' })
     }
-    if (row.status != 'rejected') {
+    if (row.status == 'pending') {
       items.push({ action: 'rejected', label: 'Отклонить' })
     }
     items.push({ action: 'delete', label: 'Удалить отпуск', danger: true })
@@ -448,7 +449,7 @@ function menuItemsFor(row) {
     items.push({ action: 'delete', label: 'Удалить отпуск', danger: true })
   }
 
-  if (!hasFile(row) && userStore.hasPermission('vacation', 'edit')) {
+  if (!hasFile(row) && (canManageAll.value || (String(row.userId) === String(userStore.user?.id) && userStore.hasPermission('vacation', 'edit')))) {
     items.push({ action: 'attach', label: 'Прикрепить файл' })
   }
 
@@ -474,8 +475,8 @@ function onMenuAction(action, row) {
         () => approvedVacationStatus(row.id),
         'Не удалось утвердить'
       )
-    case 'pending':
     case 'rejected':
+    case 'pending':
       return runAction(
         () => updateVacationStatus(row.id, action),
         'Не удалось изменить статус'

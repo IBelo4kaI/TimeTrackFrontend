@@ -83,7 +83,7 @@ const props = defineProps({
 const countAll = () => {
   if (props.vacations && props.vacations.length > 0) {
     return props.vacations
-      .filter((v) => v.status != 'rejected')
+      .filter((v) => !['rejected', 'withdrawn'].includes(v.status))
       .map((v) => v.totalDays)
       .reduce((a, v) => a + v, 0)
   } else {
@@ -291,5 +291,10 @@ const countApproved = () => {
 .vacation-date-tag--rejected {
   background: color-mix(in srgb, var(--destructive) 15%, transparent);
   color: var(--destructive);
+}
+
+.vacation-date-tag--withdrawn {
+  background: var(--muted-foreground);
+  color: var(--muted-text);
 }
 </style>

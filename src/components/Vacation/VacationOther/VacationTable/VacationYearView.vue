@@ -128,4 +128,9 @@ function vacationBarStyle(vacation) {
 .vacation-bar--rejected {
   background: var(--destructive);
 }
+
+.vacation-bar--withdrawn {
+  background: var(--muted-text);
+  opacity: 0.4;
+}
 </style>

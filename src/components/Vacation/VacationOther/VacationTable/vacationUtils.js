@@ -77,6 +77,7 @@ export function getStatusInRussian(status) {
   const statusMap = {
     approved: 'утвержден',
     rejected: 'отклонен',
+    withdrawn: 'отозван',
     pending: 'на рассмотрении',
   }
   return statusMap[status] || status

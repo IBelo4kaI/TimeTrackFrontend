@@ -294,6 +294,7 @@ const statusOptions = [
   { label: 'Утверждена', value: 'approved' },
   { label: 'На рассмотрении', value: 'pending' },
   { label: 'Отклонена', value: 'rejected' },
+  { label: 'Отозвана', value: 'withdrawn' },
 ]
 
 // Списки для автокомплитов «Сотрудник»/«Загрузил» строим из реально

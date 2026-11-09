@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
+    // API и worker PDF.js должны загружаться из одной установленной версии.
+    optimizeDeps: { exclude: ['pdfjs-dist'] },
     plugins: [
       vue(),
       vueDevTools(),

@@ -117,6 +117,7 @@ const statusOptions = [
   { label: 'На рассмотрении', value: 'pending' },
   { label: 'Утвержденные', value: 'approved' },
   { label: 'Отклоненные', value: 'rejected' },
+  { label: 'Отозванные', value: 'withdrawn' },
 ]
 
 </script>

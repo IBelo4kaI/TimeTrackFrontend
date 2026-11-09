@@ -70,7 +70,7 @@ export function useDepartmentVacations(userId, startDate, endDate) {
       .flatMap((y) => vacationsByYear.value[y] ?? [])
       .filter(
         (v) =>
-          v.status !== 'rejected' &&
+          !['rejected', 'withdrawn'].includes(v.status) &&
           String(v.userId) !== String(userId.value) &&
           names.has(String(v.userId)) &&
           toTime(v.startDate) <= to &&

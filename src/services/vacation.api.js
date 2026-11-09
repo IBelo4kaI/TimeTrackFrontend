@@ -120,10 +120,11 @@ export const createVacation = async (data) => {
   }
 }
 
-export const updateVacationStatus = async (id, status) => {
+export const updateVacationStatus = async (id, status, comment = '') => {
   try {
     const response = await timeTrackApi.put(`/vacation/${id}/status`, {
       status: status,
+      comment,
     })
     return response.data
   } catch (error) {
@@ -163,3 +164,7 @@ export const deleteVacation = async (id) => {
     throw error
   }
 }
+
+export const getVacationHistory = async (id) => (await timeTrackApi.get(`/vacation/${id}/history`)).data
+export const editVacationApplication = async (id, data) => (await timeTrackApi.put(`/vacation/${id}/application`, data)).data
+export const withdrawVacation = async (id) => (await timeTrackApi.put(`/vacation/${id}/withdraw`)).data

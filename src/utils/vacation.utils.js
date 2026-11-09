@@ -25,6 +25,7 @@ const VACATION_STATUS_META = {
   approved: { text: 'Утверждена', type: 'success' },
   pending: { type: 'warn', text: 'На рассмотрении' },
   rejected: { type: 'destruct', text: 'Отклонена' },
+  withdrawn: { type: 'muted', text: 'Отозвана' },
 };
 
 // Текст + тип для Badge.vue по статусу отпуска ('approved' | 'pending' | 'rejected').

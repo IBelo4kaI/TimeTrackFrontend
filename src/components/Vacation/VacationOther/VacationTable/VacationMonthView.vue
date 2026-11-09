@@ -126,4 +126,9 @@ function isVacationEnd(date) {
 .vacation-cell--rejected {
   background: var(--destructive);
 }
+
+.vacation-cell--withdrawn {
+  background: var(--muted-text);
+  opacity: 0.4;
+}
 </style>
