@@ -1,52 +1,59 @@
 <template>
   <div class="vacation-list">
+    <div class="request-toolbar">
+      <template v-if="!isMobile">
+        <Tabs :tabs="filters" v-model="vacationStore.filter" type="line" />
+        <MonthYearSelect
+          variant="line"
+          align="center"
+          v-model:month="vacationStore.selectedMonth"
+          v-model:year="vacationStore.selectedYear"
+        />
+      </template>
+
+      <button
+        v-else
+        type="button"
+        class="filter-trigger"
+        @click="filtersOpen = true"
+        aria-label="Фильтры"
+      >
+        <i class="fa-regular fa-filter"></i>
+      </button>
+
+      <Tabs :tabs="viewTabs" v-model="viewMode" />
+      <Autocomplete
+        v-if="vacationStore.target === 'all' && !isMobile"
+        class="employee-filter"
+        v-model="vacationStore.selectedEmployee"
+        :options="employeeOptions"
+        label-key="full_name"
+        value-key="user_id"
+        :is-show-button="false"
+        :highlight-match="false"
+        placeholder="Все сотрудники"
+        empty-text="Сотрудники не найдены"
+      />
+      <div class="toolbar-end">
+        <ButtonUI
+          v-if="userStore.hasPermission('vacation', 'create')"
+          type="accent"
+          icon="fa-regular fa-plus"
+          v-tooltip="'Создать заявку на отпуск'"
+          @click="router.push({ name: 'vacation-create' })"
+        />
+      </div>
+    </div>
+
+    <VacationEmptyState v-if="!vacationStore.isLoading && !rows.length" />
     <AppTable
+      v-else-if="viewMode === 'table'"
       :headers="headers"
       :rows="rows"
       row-key="id"
       :loading="vacationStore.isLoading"
       empty-text="Заявки не найдены"
     >
-      <template #toolbar>
-        <Tabs
-          v-if="isAdmin"
-          :tabs="targets"
-          v-model="vacationStore.target"
-          type="line"
-          class="target-tabs"
-        />
-
-        <template v-if="!isMobile">
-          <Tabs :tabs="filters" v-model="vacationStore.filter" type="line" />
-          <MonthYearSelect
-            variant="line"
-            align="center"
-            v-model:month="vacationStore.selectedMonth"
-            v-model:year="vacationStore.selectedYear"
-          />
-        </template>
-
-        <button
-          v-else
-          type="button"
-          class="filter-trigger"
-          @click="filtersOpen = true"
-          aria-label="Фильтры"
-        >
-          <i class="fa-regular fa-filter"></i>
-        </button>
-
-        <div class="toolbar-end">
-          <ButtonUI
-            v-if="userStore.hasPermission('vacation', 'create')"
-            type="accent"
-            icon="fa-regular fa-plus"
-            v-tooltip="'Создать заявку на отпуск'"
-            @click="router.push({ name: 'vacation-create' })"
-          />
-        </div>
-      </template>
-
       <template #cell-status="{ row }">
         <div class="status-cell">
           <Badge :type="row.statusMeta.type">{{ row.statusMeta.text }}</Badge>
@@ -96,6 +103,11 @@
       </template>
     </AppTable>
 
+    <template v-else>
+      <div v-if="vacationStore.isLoading" class="graphic-state">Загрузка заявок…</div>
+      <VacationTable v-else :data-source="graphicData" />
+    </template>
+
     <input
       ref="fileInput"
       type="file"
@@ -107,6 +119,18 @@
     <!-- Фильтры на мобилке — выезжающая панель, как боковое меню, вместо
     попыток впихнуть все селекты в одну строку с табами. -->
     <MobileFilterDrawer v-model="filtersOpen">
+      <Autocomplete
+        v-if="vacationStore.target === 'all'"
+        v-model="vacationStore.selectedEmployee"
+        :options="employeeOptions"
+        label="Сотрудник"
+        label-key="full_name"
+        value-key="user_id"
+        :is-show-button="false"
+        :highlight-match="false"
+        placeholder="Все сотрудники"
+        empty-text="Сотрудники не найдены"
+      />
       <SelectUI
         label="Статус"
         full-width
@@ -128,6 +152,10 @@
 </template>
 
 <script setup>
+import Autocomplete from '@/components/Autocomplete.vue'
+import VacationEmptyState from '@/components/Vacation/VacationEmptyState.vue'
+import VacationTable from '@/components/Vacation/VacationOther/VacationTable/VacationTable.vue'
+import { getInternalEmployees } from '@/services/reference.api'
 import AppTable from '@/components/AppTable.vue'
 import Badge from '@/components/Badge.vue'
 import ButtonUI from '@/components/ButtonUI.vue'
@@ -153,7 +181,7 @@ import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
 import { formatStats, getVacationStatusMeta } from '@/utils/vacation.utils'
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const vacationStore = useVacationStore()
@@ -166,6 +194,59 @@ const router = useRouter()
 const { isMobile } = storeToRefs(useThemeStore())
 
 const filtersOpen = ref(false)
+const viewMode = ref('table')
+watch(() => vacationStore.target, () => { viewMode.value = 'table' })
+const viewTabs = [
+  { id: 'table', label: 'Таблица' },
+  { id: 'graphic', label: 'График' },
+]
+const internalEmployees = ref([])
+onMounted(async () => {
+  try {
+    const result = await getInternalEmployees()
+    internalEmployees.value = (result ?? []).flatMap((item) =>
+      Array.isArray(item.employees)
+        ? item.employees.map((employee) => ({ ...employee, department: employee.department || item.department }))
+        : [item]
+    )
+  } catch {
+    // Имена доступны из общего списка пользователей и без кадрового справочника.
+  }
+})
+const employeeOptions = computed(() => {
+  const employees = new Map(internalEmployees.value.map((employee) => [
+    String(employee.user_id ?? employee.id), employee,
+  ]))
+  const ids = new Set(userStore.usersAll.map((user) => String(user.id)))
+  vacationStore.vacations.forEach((vacation) => ids.add(String(vacation.userId)))
+  return [...ids].map((id) => {
+    const employee = employees.get(id)
+    return {
+      ...employee,
+      user_id: id,
+      full_name: employee?.full_name || getUserName(id),
+      department: employee?.department || 'Без отдела',
+    }
+  }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'))
+})
+const graphicData = computed(() => {
+  const ids = new Set(vacationStore.filterVacations.map((vacation) => String(vacation.userId)))
+  const groups = new Map()
+  employeeOptions.value.filter((employee) => ids.has(employee.user_id)).forEach((employee) => {
+    if (!groups.has(employee.department)) groups.set(employee.department, { department: employee.department, employees: [] })
+    groups.get(employee.department).employees.push(employee)
+  })
+  return {
+    filters: {
+      year: vacationStore.selectedYear,
+      month: vacationStore.selectedMonth,
+      viewMode: vacationStore.selectedMonth ? 'month' : 'year',
+    },
+    filteredEmployeesGrouped: [...groups.values()],
+    filteredVacations: vacationStore.filterVacations,
+  }
+})
+
 
 // vacation.all:read теперь сужен до админов/руководителей (виджет "отпуска
 // коллег" использует отдельное узкое vacation_calendar:read, см.
@@ -174,13 +255,9 @@ const filtersOpen = ref(false)
 // изменение (approve/reject — действия из меню строки, у них свой gate на
 // .edit). GET /vacation/all/:year на бэке и так требует ровно
 // vacation.all:read (RequireAll), см. internal/vacation/route.go.
-const isAdmin = computed(() => userStore.hasPermission('vacation.all', 'read'))
-const canManageAll = computed(() => userStore.hasPermission('vacation.all', 'edit'))
-
-const targets = [
-  { id: 'my', label: 'Мои заявки' },
-  { id: 'all', label: 'Все заявки' },
-]
+const canManageAll = computed(() =>
+  userStore.hasPermission('vacation.all', 'edit')
+)
 
 const filters = [
   { id: 'all', label: 'Все' },
@@ -299,7 +376,7 @@ function menuItemsFor(row) {
       items.push({ action: 'rejected', label: 'Отклонить' })
     }
     items.push({ action: 'delete', label: 'Удалить отпуск', danger: true })
-  } else if (row.status == 'pending') {
+  } else if (row.status == 'pending' && String(row.userId) === String(userStore.user?.id)) {
     items.push({ action: 'delete', label: 'Удалить отпуск', danger: true })
   }
 
@@ -325,7 +402,10 @@ function openMenu(event, row) {
 function onMenuAction(action, row) {
   switch (action) {
     case 'approve':
-      return runAction(() => approvedVacationStatus(row.id), 'Не удалось утвердить')
+      return runAction(
+        () => approvedVacationStatus(row.id),
+        'Не удалось утвердить'
+      )
     case 'pending':
     case 'rejected':
       return runAction(
@@ -388,6 +468,20 @@ async function onFileSelected(event) {
   display: flex;
   flex-direction: column;
 }
+
+.request-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--foreground);
+  border: 0.07rem solid var(--border-color);
+  border-radius: var(--border-radius);
+  margin-bottom: 0.75rem;
+}
+.employee-filter { flex: 1; min-width: 14rem; max-width: 24rem; }
+.graphic-state { padding: 2rem; text-align: center; color: var(--muted-text); }
 
 .toolbar-end {
   display: flex;

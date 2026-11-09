@@ -80,20 +80,24 @@ import VacationMonthView from './VacationMonthView.vue'
 import { parseLocalDate, toDateStr } from './vacationUtils.js'
 import VacationYearView from './VacationYearView.vue'
 
-const store = useVacationOther()
+const props = defineProps({
+  dataSource: { type: Object, default: null },
+})
+const defaultStore = useVacationOther()
+const store = computed(() => props.dataSource ?? defaultStore)
 
-const isYearView = computed(() => store.filters.viewMode === 'year')
+const isYearView = computed(() => store.value.filters.viewMode === 'year')
 
 // ─── Dates ────────────────────────────────────────────────────────────────────
 
 const rangeStart = computed(() => {
-  if (isYearView.value) return new Date(store.filters.year, 0, 1)
-  return new Date(store.filters.year, store.filters.month - 1, 1)
+  if (isYearView.value) return new Date(store.value.filters.year, 0, 1)
+  return new Date(store.value.filters.year, store.value.filters.month - 1, 1)
 })
 
 const rangeEnd = computed(() => {
-  if (isYearView.value) return new Date(store.filters.year, 11, 31)
-  return new Date(store.filters.year, store.filters.month, 0)
+  if (isYearView.value) return new Date(store.value.filters.year, 11, 31)
+  return new Date(store.value.filters.year, store.value.filters.month, 0)
 })
 
 // ─── Year view ────────────────────────────────────────────────────────────────
@@ -101,7 +105,7 @@ const rangeEnd = computed(() => {
 const months = computed(() => {
   const result = []
   for (let m = 0; m < 12; m++) {
-    result.push(new Date(store.filters.year, m, 1))
+    result.push(new Date(store.value.filters.year, m, 1))
   }
   return result
 })
@@ -112,7 +116,7 @@ const days = computed(() => {
   const result = []
   const count = rangeEnd.value.getDate()
   for (let d = 1; d <= count; d++) {
-    const date = new Date(store.filters.year, store.filters.month - 1, d)
+    const date = new Date(store.value.filters.year, store.value.filters.month - 1, d)
     result.push({
       date,
       dateStr: toDateStr(date),
@@ -125,10 +129,10 @@ const days = computed(() => {
 
 // ─── Employees & Vacations ────────────────────────────────────────────────────
 
-const groupedEmployees = computed(() => store.filteredEmployeesGrouped)
+const groupedEmployees = computed(() => store.value.filteredEmployeesGrouped)
 
 function getEmployeeVacations(employeeId) {
-  return (store.filteredVacations || []).filter((v) => {
+  return (store.value.filteredVacations || []).filter((v) => {
     const vacUserId = v.userId ?? v.user_id
     if (vacUserId != employeeId) return false
     const start = parseLocalDate(v.startDate ?? v.start_date)
@@ -187,7 +191,7 @@ onMounted(async () => {
   await nextTick()
   updateCompact()
 
-  await store.initialFetch()
+  if (!props.dataSource) await defaultStore.initialFetch()
   // Список сотрудников подгружается асинхронно и не меняет положение
   // шапки/сетки, но на всякий случай — если это как-то сдвинуло раскладку.
   await nextTick()

@@ -22,6 +22,7 @@ export const useVacationStore = defineStore('vacation', () => {
   const selectedMonth = ref(null)
   const filter = ref('all')
   const target = ref('my')
+  const selectedEmployee = ref('')
 
   const vacations = ref([])
   const vacationStats = ref(createEmptyStats())
@@ -34,6 +35,7 @@ export const useVacationStore = defineStore('vacation', () => {
 
   const filterVacations = computed(() => {
     return vacations.value.filter((i) => {
+      if (target.value === 'all' && selectedEmployee.value && String(i.userId) !== selectedEmployee.value) return false
       if (filter.value != 'all' && i.status != filter.value) return false
 
       // Отпуск — это диапазон [startDate, endDate], а не одна дата, поэтому
@@ -123,6 +125,7 @@ export const useVacationStore = defineStore('vacation', () => {
     // state
     selectedYear,
     selectedMonth,
+    selectedEmployee,
     vacations,
     vacationStats,
     isLoading,
