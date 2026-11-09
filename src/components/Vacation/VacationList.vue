@@ -203,12 +203,10 @@ const viewTabs = [
   { id: 'table', label: 'Таблица' },
   { id: 'graphic', label: 'График' },
 ]
-// Обычные сотрудники видят в графике календарь своего отдела.
-// Полные заявки коллег для этого не запрашиваем.
+// Во вкладке «Заявки» график показывает отдел текущего сотрудника.
+// Полные заявки всех сотрудников используются во вкладке «Все заявки».
 const isDepartmentGraph = computed(() =>
-  viewMode.value === 'graphic' &&
-  !userStore.hasPermission('vacation.all', 'read') &&
-  !userStore.hasPermission('vacation.all', 'edit')
+  viewMode.value === 'graphic' && vacationStore.target === 'my'
 )
 const departmentVacations = ref([])
 const departmentLoading = ref(false)
