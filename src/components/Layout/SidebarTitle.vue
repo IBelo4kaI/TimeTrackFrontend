@@ -30,6 +30,15 @@
         />
         <circle cx="20" cy="20" r="2" fill="#0060E6" />
         <circle cx="20" cy="20" r="15" stroke="#0060E6" stroke-width="2" />
+        <g aria-hidden="true" transform="rotate(-12 20 5)">
+          <path
+            d="M6 4 C8 -4 16 -11 26 -9 C32 -8 35 -4 34 1 L31 2 C31 -2 29 -3 26 -2 L29 4 Z"
+            fill="#e53950"
+          />
+          <path d="M6 4 C9 -3 15 -8 21 -9 C16 -4 16 0 18 4 Z" fill="#f45a68" />
+          <rect x="4" y="1" width="27" height="7" rx="3.5" fill="#fff" stroke="#dce2eb" stroke-width=".8" />
+          <circle cx="33.5" cy="2" r="4" fill="#fff" stroke="#dce2eb" stroke-width=".8" />
+        </g>
       </svg>
     </div>
     <div class="sidebar-title__column">
@@ -91,6 +100,10 @@ onUnmounted(() => {
 .sidebar-title__icon {
   display: flex;
   align-items: center;
+}
+
+.sidebar-title__icon svg {
+  overflow: visible;
 }
 
 .sidebar-title__column {

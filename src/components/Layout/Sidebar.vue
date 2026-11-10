@@ -14,6 +14,10 @@
       />
     </div>
 
+    <div class="sidebar-countdown">
+      <NewYearCountdown />
+    </div>
+
     <!-- Переключатель темы — на десктопе живёт в шапке, сюда переезжает
     только на мобилке (см. media query ниже), без JS-детекта ширины. -->
     <div class="sidebar-theme">
@@ -29,6 +33,7 @@ import Info from '../Info.vue'
 import NavItem from '../NavItem.vue'
 import ToggleTheme from '../ToggleTheme.vue'
 import SidebarTitle from './SidebarTitle.vue'
+import NewYearCountdown from './NewYearCountdown.vue'
 
 const chatStore = useChatStore()
 const emits = defineEmits(['update:isSidebarOpen'])
@@ -50,7 +55,11 @@ function closeSidebar() {
   background: var(--foreground);
   border-right: 0.07rem solid var(--border-color);
   z-index: 100;
+  overflow-y: auto;
 }
+
+.sidebar > * { flex-shrink: 0; }
+.sidebar-countdown { margin: auto 0.71rem 0.71rem; padding-top: 0.71rem; }
 
 .sidebar-nav {
   display: flex;
@@ -61,7 +70,7 @@ function closeSidebar() {
 
 .sidebar-theme {
   display: none;
-  margin-top: auto;
+  margin-top: 0;
   padding: 0.71rem;
   border-top: 0.07rem solid var(--border-color);
 }

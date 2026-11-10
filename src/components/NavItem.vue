@@ -7,6 +7,21 @@
   >
     <div class="icon"><i :class="icon"></i></div>
     <div class="title">{{ title }}</div>
+    <span class="snowflakes" aria-hidden="true">
+      <svg width="72" height="28" viewBox="0 0 72 28" focusable="false">
+        <path
+          v-for="flake in snowflakes"
+          :key="flake"
+          :transform="flake"
+          d="M0 -8V8 M-7 -4L7 4 M-7 4L7 -4 M-2 -6L0 -4L2 -6 M-2 6L0 4L2 6 M-6 -1L-3.5 -2L-4 -4.5 M6 1L3.5 2L4 4.5 M-4 4.5L-3.5 2L-6 1 M4 -4.5L3.5 -2L6 -1"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </span>
     <span v-if="badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
   </RouterLink>
 </template>
@@ -24,6 +39,11 @@ const { icon, title, to, meta, badge } = defineProps({
 })
 
 const userStore = useUserStore()
+const snowflakes = [
+  'translate(12 16) scale(.65)',
+  'translate(35 9) scale(.4)',
+  'translate(59 17) scale(.85)',
+]
 </script>
 
 <style scoped>
@@ -48,6 +68,21 @@ const userStore = useUserStore()
 .title {
   flex: 1;
 }
+
+.snowflakes { display: none; }
+.active .title { flex: 0 0 auto; }
+.active .snowflakes {
+  display: block;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 1.3rem;
+  align-self: center;
+  overflow: hidden;
+  opacity: .55;
+  pointer-events: none;
+}
+.snowflakes svg { position: absolute; right: 0; top: 0; height: 100%; }
 
 .badge {
   flex-shrink: 0;

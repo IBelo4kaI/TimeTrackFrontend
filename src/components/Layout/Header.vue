@@ -23,11 +23,13 @@
       <NotificationBell />
     </div>
     <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
+    <HeaderGarland />
   </div>
 </template>
 
 <script setup>
 import Info from '../Info.vue'
+import HeaderGarland from './HeaderGarland.vue'
 import NewsBell from './NewsBell.vue'
 import NotificationBell from './NotificationBell.vue'
 import Profile from '../Profile.vue'
@@ -46,6 +48,7 @@ const emit = defineEmits(['toggle-sidebar'])
 
 <style scoped>
 .header {
+  position: relative;
   grid-area: header;
   display: flex;
   align-items: center;
