@@ -10,17 +10,17 @@
     <div class="title">{{ title }}</div>
     <span v-if="decorations.enabled" class="snowflakes" aria-hidden="true">
       <svg width="72" height="28" viewBox="0 0 72 28" focusable="false">
-        <path
-          v-for="flake in snowflakes"
-          :key="flake"
-          :transform="flake"
-          d="M0 -8V8 M-7 -4L7 4 M-7 4L7 -4 M-2 -6L0 -4L2 -6 M-2 6L0 4L2 6 M-6 -1L-3.5 -2L-4 -4.5 M6 1L3.5 2L4 4.5 M-4 4.5L-3.5 2L-6 1 M4 -4.5L3.5 -2L6 -1"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
+        <g v-for="flake in snowflakes" :key="flake" :transform="flake">
+          <path
+            class="nav-snowflake"
+            d="M0 -8V8 M-7 -4L7 4 M-7 4L7 -4 M-2 -6L0 -4L2 -6 M-2 6L0 4L2 6 M-6 -1L-3.5 -2L-4 -4.5 M6 1L3.5 2L4 4.5 M-4 4.5L-3.5 2L-6 1 M4 -4.5L3.5 -2L6 -1"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </g>
       </svg>
     </span>
     <span v-if="badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
@@ -82,10 +82,27 @@ const snowflakes = [
   height: 1.3rem;
   align-self: center;
   overflow: hidden;
-  opacity: .55;
+  opacity: .8;
   pointer-events: none;
 }
 .snowflakes svg { position: absolute; right: 0; top: 0; height: 100%; }
+.nav-snowflake {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: snowflake-sway 3.2s ease-in-out infinite;
+}
+.snowflakes g:nth-child(2) .nav-snowflake { animation-duration: 4s; animation-delay: -1.3s; }
+.snowflakes g:nth-child(3) .nav-snowflake { animation-duration: 2.8s; animation-delay: -1.8s; }
+
+@keyframes snowflake-sway {
+  0%, 100% { transform: translate(-1.5px, -3px) rotate(-25deg); opacity: .45; }
+  50% { transform: translate(1.5px, 3px) rotate(25deg); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-snowflake { animation: none; }
+}
+
 
 .badge {
   flex-shrink: 0;
