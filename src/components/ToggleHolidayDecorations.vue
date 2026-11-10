@@ -5,7 +5,7 @@
     :class="{ active: decorations.enabled }"
     :aria-pressed="decorations.enabled"
     aria-label="Новогоднее оформление"
-    :title="decorations.enabled ? 'Отключить новогоднее оформление' : 'Включить новогоднее оформление'"
+    v-tooltip="'Новогоднее настроение'"
     @click="decorations.toggle"
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
