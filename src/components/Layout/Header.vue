@@ -16,6 +16,7 @@
       :info-content="desc"
     />
     <div class="header-theme">
+      <ToggleHolidayDecorations />
       <ToggleTheme />
     </div>
     <div class="header-notify">
@@ -23,7 +24,7 @@
       <NotificationBell />
     </div>
     <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
-    <HeaderGarland />
+    <HeaderGarland v-if="decorations.enabled" />
   </div>
 </template>
 
@@ -34,6 +35,8 @@ import NewsBell from './NewsBell.vue'
 import NotificationBell from './NotificationBell.vue'
 import Profile from '../Profile.vue'
 import ToggleTheme from '../ToggleTheme.vue'
+import ToggleHolidayDecorations from '../ToggleHolidayDecorations.vue'
+import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
@@ -42,6 +45,7 @@ const titleStore = useHeaderTitleStore()
 const { title, desc } = storeToRefs(titleStore)
 
 const userStore = useUserStore()
+const decorations = useHolidayDecorationsStore()
 
 const emit = defineEmits(['toggle-sidebar'])
 </script>
@@ -68,6 +72,8 @@ const emit = defineEmits(['toggle-sidebar'])
   display: flex;
   align-items: center;
 }
+
+.header-theme { display: flex; align-items: center; gap: 0.36rem; }
 
 @media (max-width: 768px) {
   .header-theme {

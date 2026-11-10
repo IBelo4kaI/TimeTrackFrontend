@@ -30,7 +30,7 @@
         />
         <circle cx="20" cy="20" r="2" fill="#0060E6" />
         <circle cx="20" cy="20" r="15" stroke="#0060E6" stroke-width="2" />
-        <g aria-hidden="true" transform="rotate(-12 20 5)">
+        <g v-if="decorations.enabled" aria-hidden="true" transform="rotate(-12 20 5)">
           <path
             d="M6 4 C8 -4 16 -11 26 -9 C32 -8 35 -4 34 1 L31 2 C31 -2 29 -3 26 -2 L29 4 Z"
             fill="#e53950"
@@ -57,6 +57,9 @@
 </template>
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
+
+const decorations = useHolidayDecorationsStore()
 
 const emit = defineEmits(['close'])
 

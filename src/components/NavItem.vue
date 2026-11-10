@@ -2,12 +2,13 @@
   <RouterLink
     v-if="userStore.hasPermission(meta.entity, meta.action)"
     class="link"
+    :class="{ 'holiday-enabled': decorations.enabled }"
     activeClass="active"
     :to="{ name: to }"
   >
     <div class="icon"><i :class="icon"></i></div>
     <div class="title">{{ title }}</div>
-    <span class="snowflakes" aria-hidden="true">
+    <span v-if="decorations.enabled" class="snowflakes" aria-hidden="true">
       <svg width="72" height="28" viewBox="0 0 72 28" focusable="false">
         <path
           v-for="flake in snowflakes"
@@ -28,6 +29,7 @@
 
 <script setup>
 import { useUserStore } from '@/stores/user'
+import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 import { RouterLink } from 'vue-router'
 
 const { icon, title, to, meta, badge } = defineProps({
@@ -39,6 +41,7 @@ const { icon, title, to, meta, badge } = defineProps({
 })
 
 const userStore = useUserStore()
+const decorations = useHolidayDecorationsStore()
 const snowflakes = [
   'translate(12 16) scale(.65)',
   'translate(35 9) scale(.4)',
@@ -70,7 +73,7 @@ const snowflakes = [
 }
 
 .snowflakes { display: none; }
-.active .title { flex: 0 0 auto; }
+.active.holiday-enabled .title { flex: 0 0 auto; }
 .active .snowflakes {
   display: block;
   position: relative;

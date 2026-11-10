@@ -14,13 +14,14 @@
       />
     </div>
 
-    <div class="sidebar-countdown">
+    <div v-if="decorations.enabled" class="sidebar-countdown">
       <NewYearCountdown />
     </div>
 
     <!-- Переключатель темы — на десктопе живёт в шапке, сюда переезжает
     только на мобилке (см. media query ниже), без JS-детекта ширины. -->
     <div class="sidebar-theme">
+      <ToggleHolidayDecorations />
       <ToggleTheme />
     </div>
   </div>
@@ -34,8 +35,11 @@ import NavItem from '../NavItem.vue'
 import ToggleTheme from '../ToggleTheme.vue'
 import SidebarTitle from './SidebarTitle.vue'
 import NewYearCountdown from './NewYearCountdown.vue'
+import ToggleHolidayDecorations from '../ToggleHolidayDecorations.vue'
+import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 
 const chatStore = useChatStore()
+const decorations = useHolidayDecorationsStore()
 const emits = defineEmits(['update:isSidebarOpen'])
 
 function closeSidebar() {
@@ -70,10 +74,14 @@ function closeSidebar() {
 
 .sidebar-theme {
   display: none;
-  margin-top: 0;
+  margin-top: auto;
   padding: 0.71rem;
   border-top: 0.07rem solid var(--border-color);
+  align-items: center;
+  gap: 0.36rem;
 }
+
+.sidebar-countdown + .sidebar-theme { margin-top: 0; }
 
 @media (max-width: 768px) {
   .sidebar-close-btn {
