@@ -9,6 +9,7 @@
           <StatisticsCalendar />
           <TimeOffLink />
           <Birthdays />
+          <SantaSnowball v-if="decorations.enabled" />
         </div>
       </div>
     </template>
@@ -40,6 +41,7 @@
 
 <script setup>
 import Birthdays from '@/components/Calendar/Birthdays.vue'
+import SantaSnowball from '@/components/Calendar/SantaSnowball.vue'
 import DayListCalendar from '@/components/Calendar/DayListCalendar.vue'
 import DayListCalendarMobile from '@/components/Calendar/DayListCalendarMobile.vue'
 import LegendCalendar from '@/components/Calendar/LegendCalendar.vue'
@@ -49,10 +51,12 @@ import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useCalendarStore } from '@/stores/calendar'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
+import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const isMobile = computed(() => window.innerWidth <= 768)
+const decorations = useHolidayDecorationsStore()
 
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Календарь', 'Учёт рабочих дней')
