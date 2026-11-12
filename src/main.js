@@ -4,13 +4,19 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from './App.vue'
+import MaintenanceScreen from './components/MaintenanceScreen.vue'
 import router from './router'
 import tooltip from './directives/tooltip'
 
-const app = createApp(App)
+// Поставьте false, чтобы отключить временный экран и вернуть сайт.
+const MAINTENANCE_MODE = true
+
+const app = createApp(MAINTENANCE_MODE ? MaintenanceScreen : App)
 
 app.use(createPinia())
 app.use(tooltip)
-app.use(router)
+if (!MAINTENANCE_MODE) {
+  app.use(router)
+}
 
 app.mount('#app')
