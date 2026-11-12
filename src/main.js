@@ -11,11 +11,14 @@ import tooltip from './directives/tooltip'
 // Поставьте false, чтобы отключить временный экран и вернуть сайт.
 const MAINTENANCE_MODE = false
 
-const app = createApp(MAINTENANCE_MODE ? MaintenanceScreen : App)
+// Обход в текущей вкладке: sessionStorage.setItem('maintenance_bypass', 'true'); location.reload()
+const maintenanceActive = MAINTENANCE_MODE && sessionStorage.getItem('maintenance_bypass') !== 'true'
+
+const app = createApp(maintenanceActive ? MaintenanceScreen : App)
 
 app.use(createPinia())
 app.use(tooltip)
-if (!MAINTENANCE_MODE) {
+if (!maintenanceActive) {
   app.use(router)
 }
 
