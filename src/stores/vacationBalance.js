@@ -66,7 +66,18 @@ export const useVacationBalanceStore = defineStore('vacation-balance', () => {
     } catch (cause) {
       if (id === requestId) {
         balances.value = []
-        error.value = cause.message || 'Не удалось загрузить баланс отпусков'
+        const status = cause.response?.status
+        if (status === 403) {
+          error.value = 'У вас нет доступа к балансу отпусков.'
+        } else if (status === 401) {
+          error.value = 'Сессия завершена. Войдите в приложение заново.'
+        } else if (status === 400) {
+          error.value = 'Проверьте выбранный год.'
+        } else if (typeof cause.response?.data?.error === 'string' && cause.response.data.error.includes('vacation_duration')) {
+          error.value = 'Годовая норма отпуска не настроена или задана некорректно. Обратитесь к администратору.'
+        } else {
+          error.value = 'Попробуйте ещё раз. Если ошибка повторится, обратитесь к администратору.'
+        }
       }
     } finally {
       if (id === requestId) loading.value = false

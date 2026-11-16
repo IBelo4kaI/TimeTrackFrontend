@@ -5,15 +5,28 @@
       <InputUi class="employee-filter" v-model="search" label="Поиск по ФИО" placeholder="Поиск по ФИО" />
       <SelectUI v-if="store.departments.length" v-model="department" variant="line" :options="departmentOptions" />
       <SelectUI class="mobile-sort" v-model="sort" label="Сортировка" :options="sortOptions" />
+      <div v-if="store.departmentWarning && !store.error" class="department-notice" role="status">
+        <Badge type="warn">Фильтр по отделам временно недоступен</Badge>
+      </div>
     </div>
     <div v-if="store.error" class="error-state" role="alert">
+      <i class="fa-regular fa-circle-exclamation error-icon" aria-hidden="true"></i>
+      <h3>Не удалось загрузить баланс отпусков</h3>
       <p>{{ store.error }}</p>
-      <ButtonUI @click="store.fetchBalances">Повторить</ButtonUI>
+      <ButtonUI type="muted" icon="fa-regular fa-arrow-rotate-right" @click="store.fetchBalances">Попробовать снова</ButtonUI>
     </div>
     <template v-else>
-      <p v-if="store.departmentWarning" role="status">{{ store.departmentWarning }}</p>
       <template v-if="store.loaded">
-        <p class="summary-caption">Сводка по всем загруженным сотрудникам за {{ store.year }} год, без учёта поиска и фильтра отдела.</p>
+        <div class="summary-caption">
+          <span>Итого за {{ store.year }} год · Все сотрудники</span>
+          <span
+            class="summary-info"
+            tabindex="0"
+            role="img"
+            aria-label="Поиск и фильтры не влияют на итоговые показатели"
+            v-tooltip="'Поиск и фильтры не влияют на итоговые показатели'"
+          ><i class="fa-regular fa-circle-info" aria-hidden="true"></i></span>
+        </div>
         <div class="summary">
           <CardStatistics :value="store.summary.count" label="Сотрудников" icon="fa-regular fa-users" />
           <CardStatistics :value="store.summary.used" label="Утверждено дней" icon="fa-regular fa-calendar" value-variant="warn" />
@@ -128,11 +141,29 @@ onBeforeUnmount(store.clear)
 }
 .mobile-sort { display: none; }
 .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--padding-secondary) / 2); }
-.summary-caption { margin: 0; color: var(--muted-text); }
+.summary-caption { display: flex; align-items: center; gap: 0.5rem; color: var(--muted-text); font-size: 0.9rem; }
+.summary-info { display: inline-flex; flex-shrink: 0; cursor: help; border-radius: 50%; }
+.summary-info:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.department-notice { margin-left: auto; min-width: 0; }
+.department-notice :deep(.badge) { display: inline-block; white-space: normal; }
 .balance-value { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.error-state { padding: var(--padding-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius); }
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem var(--padding-primary);
+  background: var(--foreground);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  text-align: center;
+}
+.error-icon { font-size: 2rem; color: var(--warn); }
+.error-state h3 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text); }
+.error-state p { margin: 0; max-width: 32rem; font-size: 0.875rem; color: var(--muted-text); }
 @media (max-width: 768px) {
   .mobile-sort { display: block; }
+  .department-notice { margin-left: 0; }
   .summary { grid-template-columns: 1fr; }
   .balance-toolbar { flex-direction: column; align-items: stretch; }
   .year-filter, .employee-filter { width: 100%; min-width: 0; max-width: none; }

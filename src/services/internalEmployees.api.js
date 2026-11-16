@@ -1,7 +1,10 @@
 import { referenceApi } from './api'
+import { getInternalEmployees as getDevelopmentEmployees } from './reference.api'
 
-// Административный баланс не должен использовать mock-fallback справочника.
+// Mock-fallback существующего справочника доступен только в разработке.
 export const getInternalEmployees = async () => {
+  if (import.meta.env.DEV) return getDevelopmentEmployees()
+
   try {
     const response = await referenceApi.get('/ref/employees/internal')
     return response.data
