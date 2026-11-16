@@ -23,7 +23,9 @@
       <NewsBell />
       <NotificationBell />
     </div>
-    <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
+    <RouterLink class="header-profile" :to="{ name: 'profile' }" aria-label="Открыть личный кабинет">
+      <Profile :icon="userStore.userInitials" :title="userStore.userFullName" />
+    </RouterLink>
     <HeaderGarland v-if="decorations.enabled" />
   </div>
 </template>
@@ -83,6 +85,17 @@ const emit = defineEmits(['toggle-sidebar'])
 
 .header-profile {
   cursor: pointer;
+  border-radius: var(--border-radius);
+  padding: 0.35rem;
+}
+
+.header-profile:hover,
+.header-profile:focus-visible {
+  background: var(--muted-foreground);
+}
+
+.header-profile:focus-visible {
+  outline: 2px solid var(--accent);
 }
 
 .burger-btn {

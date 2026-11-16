@@ -168,3 +168,13 @@ export const deleteVacation = async (id) => {
 export const getVacationHistory = async (id) => (await timeTrackApi.get(`/vacation/${id}/history`)).data
 export const editVacationApplication = async (id, data) => (await timeTrackApi.put(`/vacation/${id}/application`, data)).data
 export const withdrawVacation = async (id) => (await timeTrackApi.put(`/vacation/${id}/withdraw`)).data
+
+export const getVacationBalances = async (year) => {
+  try {
+    const response = await timeTrackApi.get(`/vacation/balance/${year}`)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении баланса отпусков:', error)
+    throw error
+  }
+}

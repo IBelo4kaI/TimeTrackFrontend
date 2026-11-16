@@ -19,6 +19,7 @@ import VacationApplicationPage from '@/pages/document/VacationApplication.vue'
 import VacationFileViewerPage from '@/pages/document/VacationFileViewer.vue'
 import ChatPage from '@/pages/chat/Index.vue'
 import PrintPage from '@/pages/print/Print.vue'
+import ProfilePage from '@/pages/profile/Index.vue'
 
 export const routesNavigation = {
   dashboard: {
@@ -146,6 +147,13 @@ router.addRoute(routesNavigation.sickLeave)
 router.addRoute(routesNavigation.docs)
 router.addRoute(routesNavigation.chats)
 router.addRoute(routesNavigation.settings)
+
+router.addRoute({
+  path: '/profile',
+  name: 'profile',
+  component: ProfilePage,
+  meta: { title: 'Личный кабинет' },
+})
 
 router.addRoute({
   path: '/vacation/create',

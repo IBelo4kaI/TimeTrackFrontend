@@ -2,7 +2,8 @@
   <div class="container">
     <VacationStats v-if="submenuStore.activeTab === 'receipt'" />
     <div class="container-row">
-      <VacationList />
+      <VacationBalance v-if="submenuStore.activeTab === 'balance' && canReadBalance" />
+      <VacationList v-else-if="submenuStore.activeTab !== 'balance'" />
     </div>
   </div>
 </template>
@@ -12,6 +13,7 @@ import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useSubmenuStore } from '@/stores/submenu'
 import { useVacationStore } from '@/stores/vacation'
 import { computed, watch } from 'vue'
+import VacationBalance from '@/components/Vacation/VacationBalance.vue'
 import VacationList from '@/components/Vacation/VacationList.vue'
 import VacationStats from '@/components/Vacation/VacationStats.vue'
 import { useUserStore } from '@/stores/user'
@@ -20,10 +22,11 @@ const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Отпуска', 'Управление отпусками')
 
 const userStore = useUserStore()
+const canReadBalance = computed(() => userStore.hasPermission('vacation.all', 'read'))
 const submenuItems = computed(() => [
   { id: 'receipt', label: 'Заявки' },
-  ...(userStore.hasPermission('vacation.all', 'read')
-    ? [{ id: 'all_receipt', label: 'Все заявки' }]
+  ...(canReadBalance.value
+    ? [{ id: 'all_receipt', label: 'Все заявки' }, { id: 'balance', label: 'Баланс отпусков' }]
     : []),
 ])
 
@@ -34,11 +37,19 @@ const submenuStore = useSubmenuStore()
 submenuStore.setItems(submenuItems.value)
 submenuStore.setActiveTab('receipt')
 
+watch(submenuItems, (items) => {
+  submenuStore.setItems(items)
+  if (!items.some((item) => item.id === submenuStore.activeTab)) {
+    submenuStore.setActiveTab('receipt')
+  }
+}, { flush: 'sync' })
+
 const vacationStore = useVacationStore()
 
 watch(
   () => submenuStore.activeTab,
   (tab) => {
+    if (tab === 'balance') return
     const target = tab === 'all_receipt' ? 'all' : 'my'
     if (vacationStore.target !== target) vacationStore.target = target
     else vacationStore.fetchVacations()

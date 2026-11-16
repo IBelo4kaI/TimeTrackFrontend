@@ -57,6 +57,10 @@ export default defineConfig(({ mode }) => {
           // API-запросы: сперва сеть, кеш — только как запасной вариант при офлайне.
           runtimeCaching: [
             {
+              urlPattern: ({ url }) => /^\/apitime\/vacation\/balance(?:\/|$)/.test(url.pathname),
+              handler: 'NetworkOnly',
+            },
+            {
               urlPattern: /^\/api(time|ref)?\//,
               handler: 'NetworkFirst',
               options: {
