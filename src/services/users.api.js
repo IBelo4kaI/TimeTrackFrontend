@@ -27,7 +27,7 @@ export const getMePermissions = async () => {
 
 export const getAllUsers = async () => {
   try {
-    const response = await permissionsApi.get(`/users/all`)
+    const response = await permissionsApi.get(`/users/timetrack`)
 
     return response?.data
   } catch (error) {
