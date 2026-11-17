@@ -46,6 +46,10 @@
                   </select>
                 </dd>
               </div>
+              <div class="fact-card department-fact">
+                <dt>Согласование отдела</dt>
+                <dd><VacationDepartmentApproval :vacation="vacation" hide-label /></dd>
+              </div>
             </dl>
             <div v-if="vacation.decisionComment" class="fact-card decision-comment">
               <h3>Комментарий к решению</h3>
@@ -191,12 +195,14 @@ p { margin: .35rem 0; line-height: 1.5; }
 .employee-details p { margin: .2rem 0 0; }
 .avatar { display: flex; flex-shrink: 0; align-items: center; justify-content: center; height: 3rem; width: 3rem; border-radius: 50%; color: var(--on-accent); background: var(--accent); font-weight: 700; }
 .muted, dt { color: var(--muted-text); font-size: .85rem; }
-.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-primary); margin: 0; }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap-primary); margin: 0; }
 .fact-card { min-width: 0; padding: var(--padding-secondary); background: var(--muted-foreground); border: 1px solid var(--border-color); border-radius: var(--border-radius); }
 .fact-card dd { font-size: 1.15rem; font-weight: 700; }
+.department-fact dd { font-size: .85rem; font-weight: 400; overflow-wrap: anywhere; }
 .period-value { color: var(--accent); }
 .fact-card .type-select { margin: 0; font-weight: 600; height: auto; min-height: 2.25rem; padding: .35rem .5rem; font-size: .95rem; background: var(--foreground); }
 .fact-card .type-select:disabled { opacity: 1; }
+@container (max-width: 56rem) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (max-width: 36rem) { .facts { grid-template-columns: 1fr; } }
 @container (max-width: 28rem) { .summary-header { align-items: flex-start; flex-direction: column; } .summary-badges { max-width: 100%; justify-content: flex-start; } }
 dd { margin: .4rem 0 0; font-weight: 600; }

@@ -1,6 +1,8 @@
 <template>
   <div class="department-approval">
-    <h2 v-if="heading" class="department-heading">Согласование отдела <Badge :type="meta.type">{{ meta.text }}</Badge></h2>
+    <span v-if="compact" class="department-summary">Отдел: {{ meta.text.toLowerCase() }}</span>
+    <h2 v-else-if="heading" class="department-heading">Согласование отдела <Badge :type="meta.type">{{ meta.text }}</Badge></h2>
+    <Badge v-else-if="hideLabel" :type="meta.type">{{ meta.text }}</Badge>
     <span v-else>Согласование отдела: <Badge :type="meta.type">{{ meta.text }}</Badge></span>
     <small v-if="!compact && vacation.departmentActorId">{{ actorName }} · {{ decidedAt }}</small>
     <span v-if="!compact && vacation.departmentComment" class="department-comment">{{ vacation.departmentComment }}</span>
@@ -16,6 +18,7 @@ const props = defineProps({
   vacation: { type: Object, required: true },
   compact: { type: Boolean, default: false },
   heading: { type: Boolean, default: false },
+  hideLabel: { type: Boolean, default: false },
 })
 const userStore = useUserStore()
 const meta = computed(() => ({
@@ -38,6 +41,7 @@ const decidedAt = computed(() => {
 
 <style scoped>
 .department-approval { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; font-size: .85rem; }
+.department-summary { color: var(--muted-text); }
 .department-heading { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin: 0; font-size: 1.1rem; font-weight: 600; }
 .department-comment { white-space: pre-wrap; overflow-wrap: anywhere; }
 small { color: var(--muted-text); }

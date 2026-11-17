@@ -57,22 +57,20 @@
       <template #cell-status="{ row }">
         <div class="status-cell">
           <Badge :type="row.statusMeta.type">{{ row.statusMeta.text }}</Badge>
-          <VacationExcessBadge :days="row.excessDays" />
           <VacationDepartmentApproval :vacation="row" compact />
-          <Badge
-            v-if="row.vacationTypeName"
-            type="muted"
-            :style="typeBadgeStyle(row)"
-          >
-            {{ row.vacationTypeName }}
-          </Badge>
         </div>
       </template>
 
       <template #cell-period="{ row }">
         <div class="period-cell">
-          <span class="period-cell__dates">{{ row.periodText }}</span>
-          <Badge type="muted">{{ formatStats(row.totalDays) }}</Badge>
+          <div class="period-cell__summary">
+            <span class="period-cell__dates">{{ row.periodText }}</span>
+            <span class="period-cell__days">
+              <Badge type="muted">{{ formatStats(row.totalDays) }}</Badge>
+              <VacationExcessBadge :days="row.excessDays" />
+            </span>
+          </div>
+          <span v-if="row.vacationTypeName" class="period-cell__type">{{ row.vacationTypeName }}</span>
         </div>
       </template>
 
@@ -401,12 +399,6 @@ const rows = computed(() =>
   })
 )
 
-function typeBadgeStyle(row) {
-  const color = row.vacationTypeColor
-  if (!color) return {}
-  return { color, borderColor: color, background: 'transparent' }
-}
-
 function onOpen(row) {
   router.push({ name: 'vacation-application', params: { id: row.id } })
 }
@@ -568,9 +560,22 @@ async function onFileSelected(event) {
 
 .period-cell {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.period-cell__summary,
+.period-cell__days {
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.period-cell__type {
+  color: var(--muted-text);
+  font-size: 0.85rem;
 }
 
 .period-cell__dates {
