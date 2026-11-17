@@ -58,7 +58,7 @@
         <div class="status-cell">
           <Badge :type="row.statusMeta.type">{{ row.statusMeta.text }}</Badge>
           <VacationExcessBadge :days="row.excessDays" />
-          <VacationDepartmentApproval :vacation="row" @changed="vacationStore.fetchVacations" />
+          <VacationDepartmentApproval :vacation="row" compact />
           <Badge
             v-if="row.vacationTypeName"
             type="muted"

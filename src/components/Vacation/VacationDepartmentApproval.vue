@@ -1,9 +1,9 @@
 <template>
   <div class="department-approval">
     <span>Согласование отдела: <Badge :type="meta.type">{{ meta.text }}</Badge></span>
-    <small v-if="vacation.departmentActorId">{{ actorName }} · {{ decidedAt }}</small>
-    <span v-if="vacation.departmentComment" class="department-comment">{{ vacation.departmentComment }}</span>
-    <template v-if="vacation.canDepartmentApprove === true">
+    <small v-if="!compact && vacation.departmentActorId">{{ actorName }} · {{ decidedAt }}</small>
+    <span v-if="!compact && vacation.departmentComment" class="department-comment">{{ vacation.departmentComment }}</span>
+    <template v-if="!compact && vacation.canDepartmentApprove === true">
       <label>Комментарий руководителя (необязательно)
         <textarea v-model="comment" rows="2" maxlength="4000" :disabled="busy" />
       </label>
@@ -23,7 +23,10 @@ import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { decideVacationDepartment } from '@/services/vacation.api'
 
-const props = defineProps({ vacation: { type: Object, required: true } })
+const props = defineProps({
+  vacation: { type: Object, required: true },
+  compact: { type: Boolean, default: false },
+})
 const emit = defineEmits(['changed'])
 const userStore = useUserStore()
 const notifications = useNotificationStore()
@@ -46,7 +49,7 @@ const decidedAt = computed(() => {
   return raw ? new Date(raw).toLocaleString('ru-RU') : 'Время не сохранено'
 })
 async function decide(decision) {
-  if (busy.value || props.vacation.canDepartmentApprove !== true) return
+  if (props.compact || busy.value || props.vacation.canDepartmentApprove !== true) return
   busy.value = true
   try {
     await decideVacationDepartment(props.vacation.id, decision, comment.value.trim())
