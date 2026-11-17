@@ -4,6 +4,7 @@
       <VacationSettings />
       <VacationTypeSettings />
     </template>
+    <DepartmentManagerSettings v-else-if="submenuStore.activeTab === 'department-managers'" />
     <StandardSettings v-else-if="submenuStore.activeTab === 'standards'" />
     <template v-else-if="submenuStore.activeTab === 'notifications'">
       <NotificationSettings />
@@ -23,6 +24,7 @@
 
 <script setup>
 import CalendarEventsList from '@/components/Settings/CalendarEvents/CalendarEventsList.vue'
+import DepartmentManagerSettings from '@/components/Settings/DepartmentManagerSettings.vue'
 import DayTypeSettings from '@/components/Settings/DayTypeSettings.vue'
 import ManualNotificationSender from '@/components/Settings/ManualNotificationSender.vue'
 import NewsSettings from '@/components/Settings/NewsSettings.vue'
@@ -47,6 +49,7 @@ titleStore.setTitle('Настройки', 'Конфигурация систем
 const submenuStore = useSubmenuStore()
 submenuStore.setItems([
   { id: 'vacation', label: 'Отпуска' },
+  { id: 'department-managers', label: 'Руководители отделов' },
   { id: 'standards', label: 'Нормативы' },
   { id: 'notifications', label: 'Уведомления' },
   { id: 'calendar', label: 'Календарь' },
