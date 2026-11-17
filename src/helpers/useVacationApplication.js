@@ -4,7 +4,7 @@ import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { getInternalEmployees } from '@/services/reference.api'
 import { getActiveVacationTypes } from '@/services/vacationTypes.api'
-import { getVacationById, getVacationHistory, updateVacationStatus, updateVacationType, editVacationApplication, withdrawVacation, calculateVacationDays, getVacationStats } from '@/services/vacation.api'
+import { getVacationById, getVacationHistory, updateVacationStatus, decideVacationDepartment, updateVacationType, editVacationApplication, withdrawVacation, calculateVacationDays, getVacationStats } from '@/services/vacation.api'
 import { getVacationStatusMeta } from '@/utils/vacation.utils'
 import { parseLocalDate } from '@/components/Vacation/VacationOther/VacationTable/vacationUtils'
 
@@ -89,7 +89,11 @@ export function useVacationApplication() {
     } finally { busy.value = false }
   }
   function decide(nextStatus) {
-    return mutate(() => updateVacationStatus(vacation.value.id, nextStatus, comment.value.trim()))
+    if (isManager.value) {
+      return mutate(() => updateVacationStatus(vacation.value.id, nextStatus, comment.value.trim()))
+    }
+    if (vacation.value?.canDepartmentApprove !== true || !['approved', 'rejected'].includes(nextStatus)) return
+    return mutate(() => decideVacationDepartment(vacation.value.id, nextStatus, comment.value.trim()))
   }
   function startEdit() {
     Object.assign(draft, { startDate: dateOnly(vacation.value.startDate), endDate: dateOnly(vacation.value.endDate), vacationTypeId: vacation.value.vacationTypeId?.String ?? '', description: vacation.value.description ?? '' })

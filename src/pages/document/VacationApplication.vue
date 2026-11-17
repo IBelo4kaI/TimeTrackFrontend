@@ -64,19 +64,16 @@
             </section>
           </section>
 
-          <section class="panel" aria-label="Предварительное согласование">
-            <VacationDepartmentApproval :vacation="vacation" @changed="load" />
-          </section>
           <VacationApplicationBalance :vacation="vacation" />
 
           <section class="decision-panel" aria-label="Решение по заявке">
-            <template v-if="pending && isManager">
+            <VacationDepartmentApproval v-if="!isManager" :vacation="vacation" />
+            <template v-if="pending && (isManager || vacation.canDepartmentApprove === true)">
               <div class="decision-comment decision-comment-input">
-                <label for="decision-comment">Комментарий к решению <span class="muted">(необязательно)</span></label>
+                <label for="decision-comment">{{ isManager ? 'Комментарий к решению' : 'Комментарий руководителя отдела' }} <span class="muted">(необязательно)</span></label>
                 <textarea id="decision-comment" v-model="comment" class="field" rows="2" maxlength="4000" :disabled="busy || editing"></textarea>
               </div>
-              <p v-if="['pending', 'rejected'].includes(vacation.departmentStatus)" class="warning-text">Окончательное утверждение без согласования отдела будет записано в историю как обход этапа.</p>
-              <div class="actions"><ButtonUI type="success" :disabled="busy || editing" @click="decide('approved')">Утвердить</ButtonUI><ButtonUI type="destructive" :disabled="busy || editing" @click="decide('rejected')">Отклонить</ButtonUI></div>
+              <div class="actions"><ButtonUI type="success" :disabled="busy || editing" @click="decide('approved')">{{ isManager ? 'Утвердить' : 'Согласовать' }}</ButtonUI><ButtonUI type="destructive" :disabled="busy || editing" @click="decide('rejected')">Отклонить</ButtonUI></div>
             </template>
             <template v-else-if="pending">
               <strong>Ожидает окончательного решения администратора</strong>

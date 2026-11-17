@@ -473,12 +473,6 @@ function openMenu(event, row) {
 function onMenuAction(action, row) {
   switch (action) {
     case 'approve':
-      if (['pending', 'rejected'].includes(row.departmentStatus)) {
-        return confirmModalStore.open(
-          () => runAction(() => approvedVacationStatus(row.id), 'Не удалось утвердить'),
-          'Утвердить заявку без согласования руководителя отдела? Обход будет записан в историю.'
-        )
-      }
       return runAction(
         () => approvedVacationStatus(row.id),
         'Не удалось утвердить'
