@@ -2,10 +2,9 @@
   <div class="department-approval">
     <span v-if="compact" class="department-summary">Отдел: {{ meta.text.toLowerCase() }}</span>
     <h2 v-else-if="heading" class="department-heading">Согласование отдела <Badge :type="meta.type">{{ meta.text }}</Badge></h2>
-    <Badge v-else-if="hideLabel" :type="meta.type">{{ meta.text }}</Badge>
     <span v-else>Согласование отдела: <Badge :type="meta.type">{{ meta.text }}</Badge></span>
     <small v-if="!compact && vacation.departmentActorId">{{ actorName }} · {{ decidedAt }}</small>
-    <span v-if="!compact && vacation.departmentComment" class="department-comment">{{ vacation.departmentComment }}</span>
+    <span v-if="!compact && vacation.departmentComment" class="department-comment">Комментарий руководителя: {{ vacation.departmentComment }}</span>
   </div>
 </template>
 
@@ -18,7 +17,6 @@ const props = defineProps({
   vacation: { type: Object, required: true },
   compact: { type: Boolean, default: false },
   heading: { type: Boolean, default: false },
-  hideLabel: { type: Boolean, default: false },
 })
 const userStore = useUserStore()
 const meta = computed(() => ({
