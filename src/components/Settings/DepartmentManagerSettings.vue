@@ -1,5 +1,20 @@
 <template>
   <div class="manager-settings">
+    <section class="role-settings">
+      <h3>Роль руководителя отдела</h3>
+      <p class="hint">Укажите ID роли из сервиса авторизации с разрешением управления отделом.</p>
+      <form class="role-form" @submit.prevent="saveRoleSetting(roleDraft)">
+        <label>ID роли
+          <input v-model="roleDraft" maxlength="255" placeholder="ID роли в сервисе авторизации" :readonly="!canEdit" :disabled="busy || !roleLoaded" />
+        </label>
+        <div v-if="canEdit" class="actions">
+          <ButtonUI type="muted" :disabled="busy || !roleLoaded || !savedRoleId" @click.prevent="saveRoleSetting('')">Удалить ID роли</ButtonUI>
+          <ButtonUI type="accent" :disabled="busy || !roleLoaded || roleDraft.trim() === savedRoleId">Сохранить</ButtonUI>
+        </div>
+      </form>
+      <p v-if="roleError" class="directory-error" role="alert">{{ roleError }} <ButtonUI type="muted" :disabled="loading" @click="load">Повторить загрузку</ButtonUI></p>
+      <p class="hint">Изменения применяются к новым назначениям. Для существующих нажмите «Синхронизировать роль». Пустой ID отключает автоматическую выдачу роли новым руководителям.</p>
+    </section>
     <AppTable :headers="headers" :rows="items" :loading="loading" row-key="id" empty-text="Руководители пока не назначены">
       <template #toolbar>
         <div class="settings-title">Руководители отделов</div>
@@ -9,13 +24,14 @@
       <template #cell-userId="{ row }">{{ nameFor(row.userId) }}</template>
       <template #cell-roleSyncStatus="{ row }">
         <div class="role-status">
-          <Badge :type="roleMeta(row.roleSyncStatus).type">{{ roleMeta(row.roleSyncStatus).text }}</Badge>
-          <small v-if="row.roleSyncStatus === 'not_configured'">Выдайте роль с правом управления отделом в сервисе авторизации.</small>
+          <Badge :type="roleMeta(row).type">{{ roleMeta(row).text }}</Badge>
+          <small v-if="row.authRoleId">ID роли: {{ row.authRoleId }}</small>
+          <small v-if="row.roleSyncStatus === 'not_configured' && !savedRoleId">Укажите ID роли в настройке выше.</small>
         </div>
       </template>
       <template #actions="{ row }">
         <div class="actions" v-if="canEdit">
-          <ButtonUI v-if="row.roleSyncStatus === 'failed' || row.roleSyncStatus === 'pending'" :disabled="busy" @click="syncRole(row)">Повторить назначение роли</ButtonUI>
+          <ButtonUI v-if="needsRoleSync(row)" :disabled="busy" @click="syncRole(row)">Синхронизировать роль</ButtonUI>
           <ButtonUI type="destructive" :disabled="busy" @click="remove(row)">Удалить</ButtonUI>
         </div>
       </template>
@@ -46,7 +62,7 @@
         </form>
       </ModalLayout>
     </Teleport>
-    <p class="hint">Для согласования нужны назначение в справочнике и разрешение управления отделом. Автоматическое назначение роли пока не подключено. Удаление назначения закрывает доступ через справочник, но не удаляет роль из сервиса авторизации.</p>
+    <p class="hint">Для согласования нужны назначение в справочнике и разрешение управления отделом. При удалении назначения выданная роль снимается, если она больше не используется другими назначениями сотрудника.</p>
   </div>
 </template>
 
@@ -59,7 +75,7 @@ import ButtonUI from '@/components/ButtonUI.vue'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { useConfirmModal } from '@/stores/confirmModal'
-import { getDepartmentManagers, getDepartmentManagerCandidates, createDepartmentManager, deleteDepartmentManager, syncDepartmentManagerRole } from '@/services/departmentManagers.api'
+import { getDepartmentManagers, getDepartmentManagerCandidates, createDepartmentManager, deleteDepartmentManager, syncDepartmentManagerRole, getDepartmentManagerRoleId, updateDepartmentManagerRoleId } from '@/services/departmentManagers.api'
 
 const userStore = useUserStore()
 const notifications = useNotificationStore()
@@ -71,6 +87,10 @@ const loading = ref(false)
 const busy = ref(false)
 const showForm = ref(false)
 const directoryError = ref('')
+const roleDraft = ref('')
+const savedRoleId = ref('')
+const roleLoaded = ref(false)
+const roleError = ref('')
 const draft = reactive({ department: '', userId: '' })
 const headers = [
   { valueKey: 'department', title: 'Отдел' },
@@ -84,22 +104,41 @@ function nameFor(id) {
   const user = userStore.usersAll.find((item) => item.id === id) || (userStore.user?.id === id ? userStore.user : null)
   return user ? [user.surname, user.name, user.patronymic].filter(Boolean).join(' ') : id
 }
-function roleMeta(status) {
+function needsRoleSync(row) {
+  return roleLoaded.value && !!(savedRoleId.value || row.authRoleId) && (row.roleSyncStatus !== 'synced' || row.authRoleId !== savedRoleId.value)
+}
+function roleMeta(row) {
+  if (row.roleSyncStatus === 'synced' && roleLoaded.value && row.authRoleId !== savedRoleId.value) return { text: 'Требуется синхронизация', type: 'warn' }
   return {
     synced: { text: 'Назначена автоматически', type: 'success' },
-    failed: { text: 'Ошибка назначения', type: 'destruct' },
+    failed: { text: 'Ошибка синхронизации', type: 'destruct' },
     pending: { text: 'Ожидает назначения', type: 'warn' },
-    not_configured: { text: 'Автоматическое назначение не подключено', type: 'muted' },
-  }[status] || { text: 'Неизвестно', type: 'muted' }
+    not_configured: { text: 'Роль не настроена', type: 'muted' },
+  }[row.roleSyncStatus] || { text: 'Неизвестно', type: 'muted' }
 }
 async function load() {
   loading.value = true
-  const [list, directory] = await Promise.allSettled([getDepartmentManagers(), getDepartmentManagerCandidates()])
+  const [list, directory, role] = await Promise.allSettled([getDepartmentManagers(), getDepartmentManagerCandidates(), getDepartmentManagerRoleId()])
+  roleLoaded.value = role.status === 'fulfilled'
+  roleError.value = role.status === 'rejected' ? role.reason.message || 'Не удалось загрузить настройку роли' : ''
+  if (role.status === 'fulfilled') { savedRoleId.value = role.value; roleDraft.value = role.value }
   if (list.status === 'fulfilled') items.value = list.value ?? []
   else notifications.addNotification(list.reason.message || 'Не удалось загрузить руководителей', 'error')
   candidates.value = directory.status === 'fulfilled' ? directory.value ?? [] : []
   directoryError.value = directory.status === 'rejected' ? directory.reason.message || 'Кадровый справочник недоступен' : ''
   loading.value = false
+}
+async function saveRoleSetting(value) {
+  if (busy.value || !canEdit.value || !roleLoaded.value) return
+  const roleId = value.trim()
+  busy.value = true
+  try {
+    await updateDepartmentManagerRoleId(roleId)
+    savedRoleId.value = roleId
+    roleDraft.value = roleId
+    notifications.addNotification(roleId ? 'ID роли сохранён' : 'ID роли удалён из настроек', 'success')
+  } catch (error) { notifications.addNotification(error.message || 'Не удалось сохранить ID роли', 'error') }
+  finally { busy.value = false }
 }
 function openCreateModal() {
   if (!canEdit.value || busy.value) return
@@ -118,10 +157,10 @@ async function create() {
   }
   busy.value = true
   try {
-    await createDepartmentManager({ ...draft, company: employee.company })
+    const result = await createDepartmentManager({ ...draft, company: employee.company })
     showForm.value = false
     Object.assign(draft, { department: '', userId: '' })
-    notifications.addNotification('Руководитель назначен', 'success')
+    notifications.addNotification(result.roleSyncStatus === 'failed' ? 'Назначение сохранено, но выдать роль не удалось. Повторите синхронизацию.' : 'Руководитель назначен', result.roleSyncStatus === 'failed' ? 'error' : 'success')
     await load()
   } catch (error) { notifications.addNotification(error.message || 'Не удалось сохранить назначение', 'error') }
   finally { busy.value = false }
@@ -130,14 +169,18 @@ function remove(row) {
   confirm.open(async () => {
     busy.value = true
     try { await deleteDepartmentManager(row.id); await load() }
-    catch (error) { notifications.addNotification(error.message || 'Не удалось удалить назначение', 'error'); throw error }
+    catch (error) { notifications.addNotification(error.message || 'Не удалось удалить назначение', 'error'); await load(); throw error }
     finally { busy.value = false }
   }, `Удалить назначение руководителя ${nameFor(row.userId)}?`)
 }
 async function syncRole(row) {
   if (busy.value) return
   busy.value = true
-  try { await syncDepartmentManagerRole(row.id); await load() }
+  try {
+    const result = await syncDepartmentManagerRole(row.id)
+    notifications.addNotification(result.roleSyncStatus === 'failed' ? 'Не удалось синхронизировать роль с сервисом авторизации' : savedRoleId.value ? 'Роль синхронизирована' : 'Роль снята', result.roleSyncStatus === 'failed' ? 'error' : 'success')
+    await load()
+  }
   catch (error) { notifications.addNotification(error.message || 'Не удалось назначить роль', 'error') }
   finally { busy.value = false }
 }
@@ -146,6 +189,10 @@ onMounted(load)
 
 <style scoped>
 .manager-settings { display: flex; flex-direction: column; gap: .75rem; }
+.role-settings { display: flex; flex-direction: column; gap: .75rem; padding: var(--padding-secondary); background: var(--foreground); border: 1px solid var(--border-color); border-radius: var(--border-radius); }
+.role-settings h3 { margin: 0; font-size: 1.1rem; }
+.role-form { display: flex; align-items: flex-end; flex-wrap: wrap; gap: .75rem; }
+.role-form label { flex: 1; min-width: min(18rem, 100%); }
 .settings-title { font-weight: 600; }
 .spacer { flex: 1; }
 .assignment-form { display: flex; flex-direction: column; gap: 1rem; }
@@ -153,7 +200,7 @@ onMounted(load)
 .hint { margin: 0; }
 .fields { display: grid; grid-template-columns: 1fr; gap: .75rem; }
 label { min-width: 0; font-size: .85rem; }
-select { display: block; box-sizing: border-box; width: 100%; height: 3rem; margin-top: .35rem; padding: .5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--background); color: var(--text); font: inherit; }
+select, input { display: block; box-sizing: border-box; width: 100%; height: 3rem; margin-top: .35rem; padding: .5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--background); color: var(--text); font: inherit; }
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
 .role-status { display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; }
 .directory-error { color: var(--destructive); margin-top: .75rem; }
