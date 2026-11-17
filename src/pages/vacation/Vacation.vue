@@ -23,8 +23,12 @@ titleStore.setTitle('Отпуска', 'Управление отпусками')
 
 const userStore = useUserStore()
 const canReadBalance = computed(() => userStore.hasPermission('vacation.all', 'read'))
+const canReadOwn = computed(() => userStore.hasPermission('vacation', 'read'))
 const submenuItems = computed(() => [
-  { id: 'receipt', label: 'Заявки' },
+  ...(canReadOwn.value ? [{ id: 'receipt', label: 'Заявки' }] : []),
+  ...(userStore.hasPermission('department.manager', 'manage')
+    ? [{ id: 'department_receipt', label: 'Заявки отдела' }]
+    : []),
   ...(canReadBalance.value
     ? [{ id: 'all_receipt', label: 'Все заявки' }, { id: 'balance', label: 'Баланс отпусков' }]
     : []),
@@ -35,12 +39,12 @@ const submenuItems = computed(() => [
 // не нужно.
 const submenuStore = useSubmenuStore()
 submenuStore.setItems(submenuItems.value)
-submenuStore.setActiveTab('receipt')
+submenuStore.setActiveTab(canReadOwn.value ? 'receipt' : 'department_receipt')
 
 watch(submenuItems, (items) => {
   submenuStore.setItems(items)
   if (!items.some((item) => item.id === submenuStore.activeTab)) {
-    submenuStore.setActiveTab('receipt')
+    submenuStore.setActiveTab(canReadOwn.value ? 'receipt' : 'department_receipt')
   }
 }, { flush: 'sync' })
 
@@ -50,7 +54,7 @@ watch(
   () => submenuStore.activeTab,
   (tab) => {
     if (tab === 'balance') return
-    const target = tab === 'all_receipt' ? 'all' : 'my'
+    const target = tab === 'all_receipt' ? 'all' : tab === 'department_receipt' ? 'department' : 'my'
     if (vacationStore.target !== target) vacationStore.target = target
     else vacationStore.fetchVacations()
   },

@@ -178,3 +178,9 @@ export const getVacationBalances = async (year) => {
     throw error
   }
 }
+
+export const getDepartmentVacationsByYear = async (year) =>
+  (await timeTrackApi.get(`/vacation/department/${year}`)).data
+
+export const decideVacationDepartment = async (id, decision, comment = '') =>
+  (await timeTrackApi.put(`/vacation/${id}/department-decision`, { decision, comment })).data

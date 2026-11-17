@@ -23,7 +23,7 @@
 
       <Tabs :tabs="viewTabs" v-model="viewMode" />
       <Autocomplete
-        v-if="vacationStore.target === 'all' && !isMobile"
+        v-if="vacationStore.target !== 'my' && !isMobile"
         class="employee-filter"
         v-model="vacationStore.selectedEmployee"
         :options="employeeOptions"
@@ -58,6 +58,7 @@
         <div class="status-cell">
           <Badge :type="row.statusMeta.type">{{ row.statusMeta.text }}</Badge>
           <VacationExcessBadge :days="row.excessDays" />
+          <VacationDepartmentApproval :vacation="row" @changed="vacationStore.fetchVacations" />
           <Badge
             v-if="row.vacationTypeName"
             type="muted"
@@ -121,7 +122,7 @@
     попыток впихнуть все селекты в одну строку с табами. -->
     <MobileFilterDrawer v-model="filtersOpen">
       <Autocomplete
-        v-if="vacationStore.target === 'all'"
+        v-if="vacationStore.target !== 'my'"
         v-model="vacationStore.selectedEmployee"
         :options="employeeOptions"
         label="Сотрудник"
@@ -153,6 +154,7 @@
 </template>
 
 <script setup>
+import VacationDepartmentApproval from '@/components/Vacation/VacationDepartmentApproval.vue'
 import Autocomplete from '@/components/Autocomplete.vue'
 import VacationExcessBadge from '@/components/Vacation/VacationExcessBadge.vue'
 import VacationEmptyState from '@/components/Vacation/VacationEmptyState.vue'
@@ -363,7 +365,7 @@ const filters = [
 
 const headers = computed(() => {
   const cols = [{ valueKey: 'status', title: 'Статус' }]
-  if (vacationStore.target == 'all') {
+  if (vacationStore.target !== 'my') {
     cols.push({ valueKey: 'userName', title: 'Сотрудник' })
   }
   cols.push(
@@ -471,6 +473,12 @@ function openMenu(event, row) {
 function onMenuAction(action, row) {
   switch (action) {
     case 'approve':
+      if (['pending', 'rejected'].includes(row.departmentStatus)) {
+        return confirmModalStore.open(
+          () => runAction(() => approvedVacationStatus(row.id), 'Не удалось утвердить'),
+          'Утвердить заявку без согласования руководителя отдела? Обход будет записан в историю.'
+        )
+      }
       return runAction(
         () => approvedVacationStatus(row.id),
         'Не удалось утвердить'

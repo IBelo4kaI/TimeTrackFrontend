@@ -64,6 +64,9 @@
             </section>
           </section>
 
+          <section class="panel" aria-label="Предварительное согласование">
+            <VacationDepartmentApproval :vacation="vacation" @changed="load" />
+          </section>
           <VacationApplicationBalance :vacation="vacation" />
 
           <section class="decision-panel" aria-label="Решение по заявке">
@@ -72,10 +75,11 @@
                 <label for="decision-comment">Комментарий к решению <span class="muted">(необязательно)</span></label>
                 <textarea id="decision-comment" v-model="comment" class="field" rows="2" maxlength="4000" :disabled="busy || editing"></textarea>
               </div>
+              <p v-if="['pending', 'rejected'].includes(vacation.departmentStatus)" class="warning-text">Окончательное утверждение без согласования отдела будет записано в историю как обход этапа.</p>
               <div class="actions"><ButtonUI type="success" :disabled="busy || editing" @click="decide('approved')">Утвердить</ButtonUI><ButtonUI type="destructive" :disabled="busy || editing" @click="decide('rejected')">Отклонить</ButtonUI></div>
             </template>
             <template v-else-if="pending">
-              <strong>Ожидает решения руководителя</strong>
+              <strong>Ожидает окончательного решения администратора</strong>
               <div v-if="canEdit" class="actions"><ButtonUI type="accent" :disabled="busy || editing" @click="startEdit">Редактировать</ButtonUI><ButtonUI type="destructive" :disabled="busy" @click="confirmWithdrawal">Отозвать заявку</ButtonUI></div>
             </template>
             <template v-else>
@@ -106,6 +110,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import Badge from '@/components/Badge.vue'
+import VacationDepartmentApproval from '@/components/Vacation/VacationDepartmentApproval.vue'
 import VacationExcessBadge from '@/components/Vacation/VacationExcessBadge.vue'
 import VacationApplicationBalance from '@/components/Vacation/VacationApplicationBalance.vue'
 import ButtonUI from '@/components/ButtonUI.vue'

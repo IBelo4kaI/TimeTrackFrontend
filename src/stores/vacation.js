@@ -1,5 +1,6 @@
 import {
   getAllUserVacationsByYear,
+  getDepartmentVacationsByYear,
   getVacationsByYear,
   getVacationStats,
 } from '@/services/vacation.api'
@@ -35,7 +36,7 @@ export const useVacationStore = defineStore('vacation', () => {
 
   const filterVacations = computed(() => {
     return vacations.value.filter((i) => {
-      if (target.value === 'all' && selectedEmployee.value && String(i.userId) !== selectedEmployee.value) return false
+      if (target.value !== 'my' && selectedEmployee.value && String(i.userId) !== selectedEmployee.value) return false
       if (filter.value != 'all' && i.status != filter.value) return false
 
       // Отпуск — это диапазон [startDate, endDate], а не одна дата, поэтому
@@ -62,14 +63,17 @@ export const useVacationStore = defineStore('vacation', () => {
     isLoading.value = true
     try {
       const isAll = target.value == 'all'
+      const isDepartment = target.value === 'department'
       const nowYear = new Date().getFullYear()
       const userId = userStore.user.id
 
       const [list, stats, upcoming, files] = await Promise.all([
         isAll
           ? getAllUserVacationsByYear(selectedYear.value)
-          : getVacationsByYear(selectedYear.value, userId),
-        isAll
+          : isDepartment
+            ? getDepartmentVacationsByYear(selectedYear.value)
+            : getVacationsByYear(selectedYear.value, userId),
+        isAll || isDepartment
           ? Promise.resolve(null)
           : getVacationStats(selectedYear.value, userId),
         // Ближайший отпуск не зависит от выбранного в списке года
@@ -86,7 +90,7 @@ export const useVacationStore = defineStore('vacation', () => {
       if (seq !== fetchSeq) return
 
       vacations.value = list ?? []
-      if (!isAll) vacationStats.value = stats ?? createEmptyStats()
+      if (!isAll && !isDepartment) vacationStats.value = stats ?? createEmptyStats()
       upcomingVacations.value = (upcoming ?? []).flatMap((l) => l ?? [])
       vacationIdsWithFiles.value = new Set((files ?? []).map((f) => f.entityId))
     } catch (error) {
@@ -94,7 +98,7 @@ export const useVacationStore = defineStore('vacation', () => {
       console.error('Ошибка загрузки отпусков:', error)
       vacations.value = []
       useNotificationStore().addNotification(
-        'Не удалось загрузить отпуска',
+        error.message || 'Не удалось загрузить отпуска',
         'error'
       )
     } finally {

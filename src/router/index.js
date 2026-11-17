@@ -61,6 +61,7 @@ export const routesNavigation = {
     component: VacationPage,
     meta: {
       title: 'Отпуск',
+      departmentManagerAccess: true,
       icon: 'fa-light fa-tree-palm',
       entity: 'vacation',
       action: 'read',
@@ -166,7 +167,7 @@ router.addRoute({
   path: '/docs/vacation/:id',
   name: 'vacation-application',
   component: VacationApplicationPage,
-  meta: { title: 'Заявление на отпуск', entity: 'vacation', action: 'read' },
+  meta: { title: 'Заявление на отпуск', entity: 'vacation', action: 'read', departmentManagerAccess: true },
 })
 
 router.addRoute({
@@ -260,7 +261,7 @@ router.beforeEach(async (to) => {
 
   if (!userStore.isLogin) return true // неавторизованных отдельно гейтит App.vue
 
-  if (!userStore.hasPermission(entity, action)) {
+  if (!userStore.hasPermission(entity, action) && !(to.meta.departmentManagerAccess && userStore.hasPermission('department.manager', 'manage'))) {
     useNotificationStore().addNotification(
       'Недостаточно прав для доступа к этому разделу',
       'error'

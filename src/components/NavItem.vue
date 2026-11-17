@@ -1,6 +1,6 @@
 <template>
   <RouterLink
-    v-if="userStore.hasPermission(meta.entity, meta.action)"
+    v-if="userStore.hasPermission(meta.entity, meta.action) || (meta.departmentManagerAccess && userStore.hasPermission('department.manager', 'manage'))"
     class="link"
     :class="{ 'holiday-enabled': decorations.enabled }"
     activeClass="active"
