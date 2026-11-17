@@ -67,10 +67,14 @@
           <VacationApplicationBalance :vacation="vacation" />
 
           <section class="decision-panel" aria-label="Решение по заявке">
-            <VacationDepartmentApproval v-if="!isManager" :vacation="vacation" />
+            <div v-if="isManager" class="decision-heading">
+              <h2>Окончательное решение</h2>
+              <Badge :type="status?.type">{{ status?.text }}</Badge>
+            </div>
+            <VacationDepartmentApproval v-else :vacation="vacation" heading />
             <template v-if="pending && (isManager || vacation.canDepartmentApprove === true)">
               <div class="decision-comment decision-comment-input">
-                <label for="decision-comment">{{ isManager ? 'Комментарий к решению' : 'Комментарий руководителя отдела' }} <span class="muted">(необязательно)</span></label>
+                <label for="decision-comment">Комментарий <span class="muted">(необязательно)</span></label>
                 <textarea id="decision-comment" v-model="comment" class="field" rows="2" maxlength="4000" :disabled="busy || editing"></textarea>
               </div>
               <div class="actions"><ButtonUI type="success" :disabled="busy || editing" @click="decide('approved')">{{ isManager ? 'Утвердить' : 'Согласовать' }}</ButtonUI><ButtonUI type="destructive" :disabled="busy || editing" @click="decide('rejected')">Отклонить</ButtonUI></div>
@@ -80,8 +84,10 @@
               <div v-if="canEdit" class="actions"><ButtonUI type="accent" :disabled="busy || editing" @click="startEdit">Редактировать</ButtonUI><ButtonUI type="destructive" :disabled="busy" @click="confirmWithdrawal">Отозвать заявку</ButtonUI></div>
             </template>
             <template v-else>
-              <Badge :type="status?.type">{{ status?.text }}</Badge>
-              <ButtonUI v-if="isManager" type="accent" :disabled="busy" @click="decide('pending')">Вернуть на рассмотрение</ButtonUI>
+              <div class="actions">
+                <Badge v-if="!isManager" :type="status?.type">{{ status?.text }}</Badge>
+                <ButtonUI v-if="isManager" type="accent" :disabled="busy" @click="decide('pending')">Вернуть на рассмотрение</ButtonUI>
+              </div>
             </template>
           </section>
         </main>
@@ -209,9 +215,12 @@ textarea { resize: vertical; }
 .history p { font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .history small { color: var(--muted-text); font-size: .75rem; }
 .history-dot { position: absolute; left: -.3rem; top: .3rem; width: .55rem; height: .55rem; background: var(--accent); border-radius: 50%; }
-.decision-panel { position: sticky; bottom: 1rem; z-index: 5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: var(--padding-secondary); background: var(--foreground); border: 1px solid var(--border-color); border-radius: var(--border-radius); box-shadow: 0 4px 24px #0002; }
+.decision-panel { position: sticky; bottom: 1rem; z-index: 5; display: flex; flex-direction: column; align-items: stretch; gap: 1rem; padding: var(--padding-secondary); background: var(--foreground); border: 1px solid var(--border-color); border-radius: var(--border-radius); box-shadow: 0 4px 24px #0002; }
 .decision-comment { margin-top: var(--padding-secondary); }
-.decision-comment-input { flex: 1; min-width: min(18rem, 100%); margin-top: 0; }
+.decision-comment-input { width: 100%; min-width: 0; margin-top: 0; }
+.decision-heading { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.decision-heading h2 { margin: 0; }
+.decision-panel > .actions { justify-content: flex-end; align-items: center; }
 .decision-comment > label, .decision-comment > h3 { color: var(--muted-text); font-size: .85rem; font-weight: 600; }
 .decision-comment .field { background: var(--foreground); }
 .decision-comment .decision-result { margin: .5rem 0 0; }
