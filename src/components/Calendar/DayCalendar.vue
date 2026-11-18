@@ -51,8 +51,8 @@
         {{ day.hours }}
       </div>
     </div>
+    <DayTimeHistoryButton :date="day.date" />
     <div class="day-footer">
-      <DayTimeHistoryButton :date="day.date" />
       <div
         class="day-usertype day-flex-row"
         :class="{ 'day-dot-only': day.calendarEventTypeId }"
