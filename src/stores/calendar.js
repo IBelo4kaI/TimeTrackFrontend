@@ -1,3 +1,5 @@
+import { getTimesheets, getTimesheetMonth, getTimeEntryHistory, editTimesheetEntries } from '@/services/timesheets.api'
+import { historyDayKey, historyId } from '@/utils/timeEntryHistory.utils'
 // stores/calendar.store.js
 import { getCalendarDays } from '@/services/calendar.api'
 import {
@@ -46,9 +48,32 @@ export const useCalendarStore = defineStore('calendar', () => {
   const currentDate = shallowRef(new Date())
   const isLoading = shallowRef(false)
   const hoveredBirthday = ref(null)
+  const timeHistory = ref([])
+  const historyReady = ref(false)
+  const historyError = ref('')
+  const monthState = ref(null)
+  const scopeRow = ref(null)
+  const mutationPending = ref(false)
+  let loadedContext = ''
+  const contextKey = () => `${selectedUserId.value}:${currentDate.value.getFullYear()}-${currentDate.value.getMonth() + 1}`
 
   const userStore = useUserStore()
   const dayTypesStore = useDayTypesStore()
+
+  const foreignCalendar = computed(() => selectedUserId.value && selectedUserId.value !== userStore.user?.id)
+  const managerOperation = (action) => foreignCalendar.value
+    && userStore.hasPermission('department.manager', 'manage')
+    && !userStore.hasPermission('calendar.all', action)
+  const isManagerCalendar = computed(() => managerOperation('edit'))
+  const historyForDay = (date) => timeHistory.value.filter((event) => historyDayKey(event.entryDate) === historyDayKey(date))
+  const managerChangedDay = (date) => historyForDay(date).some((event) => event.actorType === 'manager')
+  const managerDayError = (day) => {
+    if (loadedContext !== contextKey() || isLoading.value || mutationPending.value || !historyReady.value || scopeRow.value?.canEdit !== true) return 'Не подтверждены права или не загружена история. Обновите календарь.'
+    if (day.userTimeId && day.userTimeTypeId !== dayTypesStore.getDayTypeIdByName('work')) return 'Руководитель может изменять только рабочие записи.'
+    if (day.userTimeId && historyForDay(day.date).some((event) => historyId(event.entryId) === day.userTimeId
+      && (event.actorType === 'system' || ['vacation', 'sick_leave'].includes(event.source)))) return 'Этой записью управляет кадровый или системный процесс.'
+    return ''
+  }
 
   // Init
   const init = async () => {
@@ -91,9 +116,21 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   const initialFetch = async () => {
     const seq = ++fetchSeq
+    const context = contextKey()
+    loadedContext = ''
     // Выделение относится к старым дням — при перезагрузке сбрасываем
     useSelectingStore().clearSelection()
     isLoading.value = true
+    data.value = []
+    statsData.value = null
+    individualStandards.value = []
+    prevMonthDays.value = []
+    nextMonthDays.value = []
+    timeHistory.value = []
+    historyReady.value = false
+    historyError.value = ''
+    monthState.value = null
+    scopeRow.value = null
 
     const userId = selectedUserId.value
     if (!userId) {
@@ -112,21 +149,32 @@ export const useCalendarStore = defineStore('calendar', () => {
     const last = lastDateOfMonth.value
 
     try {
-      const [result, stats, standards] = await Promise.all([
+      const [result, stats, standards, history, state, scope] = await Promise.all([
         getCalendarDays(month, year, userId),
         // Статистика вторична — её сбой не должен прятать сам календарь
         fetchStatistics(userId, month, year).catch(() => null),
         fetchIndividualStandards(userId, year),
+        getTimeEntryHistory(userId, year, month).then((rows) => ({ rows })).catch(() => null),
+        getTimesheetMonth(userId, year, month).catch(() => null),
+        foreignCalendar.value && userStore.hasPermission('department.manager', 'manage')
+          ? getTimesheets(year, month, { timeout: 10000 }).catch(() => []) : Promise.resolve([]),
       ])
-      if (seq !== fetchSeq) return
+      if (seq !== fetchSeq || context !== contextKey()) return
 
-      data.value = result.days ?? []
+      if (!Array.isArray(result?.days)) throw new Error('Некорректный ответ календаря')
+      data.value = result.days
       prevMonthDays.value = generatePrevMonthDays(first)
       nextMonthDays.value = generateNextMonthDays(last)
       statsData.value = stats
       individualStandards.value = standards
+      historyReady.value = Array.isArray(history?.rows)
+      timeHistory.value = historyReady.value ? history.rows : []
+      historyError.value = historyReady.value ? '' : 'Не удалось загрузить историю изменений. Пометки могут быть недоступны.'
+      monthState.value = state
+      scopeRow.value = Array.isArray(scope) ? scope.find((row) => row?.userId === userId) ?? null : null
+      loadedContext = context
     } catch (error) {
-      if (seq !== fetchSeq) return
+      if (seq !== fetchSeq || context !== contextKey()) return
       console.error('Ошибка загрузки календаря:', error)
       data.value = []
       statsData.value = null
@@ -160,21 +208,59 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   // Actions - Навигация
 
-  const updateDay = async (daysUpdate, daysCreate) => {
-    if (daysUpdate.entities.length > 0) {
-      await updateUserTimeEntry(daysUpdate)
+  const managerWrite = async (userId, operation, entities, comment) => {
+    const reason = (comment ?? '').trim()
+    if (!reason || [...reason].length > 4000) throw new Error('Укажите причину изменения: от 1 до 4000 символов.')
+    if (loadedContext !== contextKey() || mutationPending.value || isLoading.value || userId !== selectedUserId.value || !historyReady.value || scopeRow.value?.canEdit !== true) throw new Error('Обновите календарь перед изменением.')
+    const month = currentMonth.value, year = currentYear.value
+    const workId = dayTypesStore.getDayTypeIdByName('work')
+    for (const entity of entities) {
+      const day = data.value.find((item) => historyDayKey(item.date) === historyDayKey(entity.entryDate))
+      if (!day || managerDayError(day)) throw new Error(day ? managerDayError(day) : 'Дата не принадлежит загруженному месяцу.')
+      if (operation !== 'delete' && entity.dayTypeId !== workId) throw new Error('Руководитель может записывать только тип work.')
     }
-    if (daysCreate.entities.length > 0) {
-      await createUserTimeEntry(daysCreate)
+    mutationPending.value = true
+    try {
+      await editTimesheetEntries(userId, year, month, operation, entities, reason)
+    } catch (error) {
+      useNotificationStore().addNotification(error.message || 'Не удалось изменить время', 'error')
+      throw error
+    } finally {
+      try {
+        if (userId === selectedUserId.value && month === currentMonth.value && year === currentYear.value) await initialFetch()
+      } finally {
+        mutationPending.value = false
+      }
     }
-    if (daysUpdate.entities.length > 0 || daysCreate.entities.length > 0)
-      await initialFetch()
   }
 
-  const deleteDay = async (daysDelete) => {
-    if (daysDelete.entryDate.length > 0) {
+  const updateDay = async (daysUpdate, daysCreate, comment) => {
+    if ((managerOperation('edit') && daysUpdate.entities.length) || (managerOperation('create') && daysCreate.entities.length)) {
+      if (daysUpdate.entities.length && daysCreate.entities.length) throw new Error('Выберите отдельно новые дни или существующие записи.')
+      const updating = daysUpdate.entities.length > 0
+      const batch = updating ? daysUpdate : daysCreate
+      return managerWrite(batch.userId, updating ? 'update' : 'create', batch.entities, comment)
+    }
+    if (!daysUpdate.entities.length && !daysCreate.entities.length) return
+    const context = contextKey()
+    try {
+      if (daysUpdate.entities.length > 0) await updateUserTimeEntry(daysUpdate)
+      if (daysCreate.entities.length > 0) await createUserTimeEntry(daysCreate)
+    } finally {
+      if (context === contextKey()) await initialFetch()
+    }
+  }
+
+  const deleteDay = async (daysDelete, comment) => {
+    if (managerOperation('delete') && daysDelete.entryDate.length) {
+      return managerWrite(daysDelete.userId, 'delete', daysDelete.entryDate.map((entryDate) => ({ entryDate })), comment)
+    }
+    if (!daysDelete.entryDate.length) return
+    const context = contextKey()
+    try {
       await deleteUserTimeEntry(daysDelete)
-      await initialFetch()
+    } finally {
+      if (context === contextKey()) await initialFetch()
     }
   }
 
@@ -284,6 +370,8 @@ export const useCalendarStore = defineStore('calendar', () => {
     selectedUserId,
     selectedUser,
     hoveredBirthday,
+    timeHistory, historyReady, historyError, monthState, isManagerCalendar, mutationPending,
+    managerOperation, managerDayError, historyForDay, managerChangedDay,
 
     // Computed
     currentMonth,

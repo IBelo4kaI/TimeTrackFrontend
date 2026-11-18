@@ -17,10 +17,12 @@
       {{ day.hours }}
     </span>
     <i v-if="locationIcon" class="day-location" :class="locationIcon.icon"></i>
+    <DayTimeHistoryButton :date="day.date" />
   </div>
 </template>
 
 <script setup>
+import DayTimeHistoryButton from './DayTimeHistoryButton.vue'
 import { WORK_LOCATIONS } from '@/constants/workLocation.constants'
 import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useDayTypesStore } from '@/stores/dayTypes'

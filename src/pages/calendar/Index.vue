@@ -52,7 +52,7 @@ import { useCalendarStore } from '@/stores/calendar'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
 import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const isMobile = computed(() => window.innerWidth <= 768)
@@ -67,27 +67,20 @@ const route = useRoute()
 
 const tabActive = ref('calendar')
 
-onMounted(async () => {
-  const id = route.query.id
-  const month = route.query.month
-  const year = route.query.year
-
-  if (id && month && year) {
-    const user = userStore.usersAll.find((u) => u.id == id)
-
-    if (user) {
-      calendarStore.selectedUserId = id
-      calendarStore.selectedUser = user
-    }
-
-    if (Number(month) > 0 && Number(month) < 13)
+watch(() => [route.query.id, route.query.month, route.query.year], async ([id, month, year]) => {
+  if (typeof id === 'string' && id) {
+    calendarStore.selectedUserId = id
+    calendarStore.selectedUser = userStore.usersAll.find((user) => user.id === id) ?? { id }
+    if (Number.isInteger(Number(month)) && Number(month) >= 1 && Number(month) <= 12
+      && Number.isInteger(Number(year)) && Number(year) >= 1 && Number(year) <= 9999) {
       calendarStore.currentDate = new Date(Number(year), Number(month) - 1, 1)
-
+    }
     await calendarStore.initialFetch()
   } else {
     await calendarStore.init()
   }
-})
+}, { immediate: true })
+
 </script>
 
 <style scoped>

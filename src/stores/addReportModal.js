@@ -5,7 +5,7 @@ import {
 import { getDateNamed } from '@/utils/calendar.utils'
 import { parseDate } from '@/utils/date.utils'
 import { defineStore, storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useCalendarStore } from './calendar'
 import { useNotificationStore } from './notification'
 import { useDayTypesStore } from './dayTypes'
@@ -45,26 +45,7 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
   const dayTypesStore = useDayTypesStore()
   const daysData = ref(createInitialDayData())
   const title = ref('')
-  const { selectedItems, selectionStart } = storeToRefs(selectingStore)
-
-  // Computed свойство для определения возможности удаления
-  const isDelete = computed(() => {
-    if (selectedItems.value.size > 1) {
-      // Для множественного выбора проверяем, есть ли хотя бы один день с userTimeId
-      return Array.from(selectedItems.value).some(
-        (day) => day.userTimeId && day.userTimeId !== ''
-      )
-    } else if (selectedItems.value.size === 1) {
-      // Для одиночного выбора проверяем selectionStart
-      return (
-        selectionStart.value?.userTimeId &&
-        selectionStart.value.userTimeId !== ''
-      )
-    } else {
-      // Для прямого открытия дня проверяем daysData
-      return daysData.value?.userTimeId && daysData.value.userTimeId !== ''
-    }
-  })
+  const { selectedItems } = storeToRefs(selectingStore)
 
   const open = (day) => {
     dayTypesStore.getUserEditTypes()
@@ -84,10 +65,8 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       title.value =
         'Выбранные числа: ' + days.map((d) => d.date.getDate()).join(', ')
     } else if (selectedItems.value.size == 1) {
-      daysData.value = {
-        ...selectionStart.value,
-        date: parseDate(selectionStart.value.date),
-      }
+      const selectedDay = Array.from(selectedItems.value)[0]
+      daysData.value = { ...selectedDay, date: parseDate(selectedDay.date) }
       title.value =
         getDateNamed(daysData.value.date) +
         ' ' +
@@ -122,6 +101,25 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       new Set(editedDays.map((d) => d.workLocation).filter(Boolean)).size > 1
 
     const workTypeId = dayTypesStore.getDayTypeIdByName('work')
+    const managerSave = editedDays.some((item) => calendarStore.managerOperation(item.userTimeId ? 'edit' : 'create'))
+    const managerDelete = editedDays.some((item) => item.userTimeId && calendarStore.managerOperation(
+      item.userTimeTypeId === dayTypesStore.getDayTypeIdByName('vacation') ? 'edit' : 'delete'))
+    const owner = calendarStore.selectedUserId
+    const period = `${calendarStore.currentYear}-${calendarStore.currentMonth}`
+    const ensureContext = () => {
+      if (calendarStore.isLoading || owner !== calendarStore.selectedUserId
+        || period !== `${calendarStore.currentYear}-${calendarStore.currentMonth}`) throw new Error('Календарь изменился. Откройте форму заново.')
+    }
+    const commentError = (value) => !value?.trim() || [...value.trim()].length > 4000
+      ? 'Укажите причину изменения: от 1 до 4000 символов.' : null
+    if (managerSave) {
+      const error = editedDays.map(calendarStore.managerDayError).find(Boolean)
+      if (error) { notificationStore.addNotification(error, 'warning'); return }
+      if (editedDays.some((item) => item.userTimeId) && editedDays.some((item) => !item.userTimeId)) {
+        notificationStore.addNotification('Выберите отдельно новые дни или существующие записи.', 'warning'); return
+      }
+    }
+    const canDelete = editedDays.some((item) => item.userTimeId) && (!managerDelete || editedDays.every((item) => !calendarStore.managerDayError(item)))
 
     const fields = [
       {
@@ -133,11 +131,11 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
         name: 'userTimeTypeId',
         type: 'select',
         label: 'Тип дня',
-        value:
+        value: managerSave ? workTypeId :
           daysData.value.userTimeTypeId !== ''
             ? daysData.value.userTimeTypeId
             : null,
-        options: dayTypesStore.getUserEditTypes().map((dayType) => {
+        options: (managerSave ? [dayTypesStore.getDayTypeById(workTypeId)].filter(Boolean) : dayTypesStore.getUserEditTypes()).map((dayType) => {
           return {
             value: dayType.id,
             label: dayType.name,
@@ -172,6 +170,11 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       },
     ]
 
+    if (managerSave || (managerDelete && canDelete)) fields.push({
+      name: 'comment', type: 'textarea', label: 'Причина изменения руководителем',
+      value: '', required: managerSave, validators: managerSave ? [commentError] : [], rows: 3,
+    })
+
     fields.push({
       name: 'date',
       type: 'hidden',
@@ -186,7 +189,7 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
           ? 'Редактировать запись'
           : 'Добавить запись',
       fields: fields,
-      showDeleteButton: isDelete.value,
+      showDeleteButton: canDelete,
       submitButtonText: isMultiEdit
         ? 'Записать'
         : isUpdate
@@ -197,6 +200,7 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       deletingText: 'Удаление...',
 
       onValidate: (data) => {
+        if (managerSave && commentError(data.comment)) return commentError(data.comment)
         if (data.hours < 0 || data.hours > 24) {
           return 'Количество часов должно быть от 0 до 24'
         }
@@ -204,14 +208,10 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
       },
 
       onSubmit: async (data) => {
-        const selectedItems = selectingStore.selectedItems
-
         try {
           // Определяем дни для обработки
-          const daysToProcess =
-            selectedItems.size > 1
-              ? Array.from(selectedItems)
-              : [daysData.value]
+          ensureContext()
+          const daysToProcess = editedDays
 
           const updates = createUpdatesObjects(
             daysToProcess,
@@ -222,31 +222,36 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
             calendarStore.selectedUserId
           )
 
-          await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
+          await calendarStore.updateDay(updates.toUpdate, updates.toCreate, data.comment)
 
           selectingStore.clearSelection()
         } catch (error) {
           console.error('Ошибка при сохранении:', error)
+          universalModal.formError = error.message || 'Не удалось сохранить запись'
           throw error
         }
       },
 
-      onDelete: async () => {
-        const selectedItems = selectingStore.selectedItems
-
+      onDelete: async (data) => {
         try {
-          const daysToProcess =
-            selectedItems.size > 1
-              ? Array.from(selectedItems)
-              : [daysData.value]
-
-          await clearDays(daysToProcess, calendarStore, dayTypesStore)
+          ensureContext()
+          const daysToProcess = editedDays
+          if (managerDelete) {
+            const error = commentError(data.comment) || daysToProcess.map(calendarStore.managerDayError).find(Boolean)
+            if (error) throw new Error(error)
+            await calendarStore.deleteDay({ userId: owner,
+              entryDate: daysToProcess.filter((item) => item.userTimeId).map((item) => parseDate(item.date)),
+            }, data.comment)
+          } else {
+            await clearDays(daysToProcess, calendarStore, dayTypesStore)
+          }
 
           selectingStore.clearSelection()
         } catch (error) {
           console.error('Ошибка при удалении:', error)
+          universalModal.formError = error.message || 'Не удалось удалить запись'
           notificationStore.addNotification(
-            'Не удалось удалить запись. Попробуйте ещё раз',
+            error.message || 'Не удалось удалить запись. Попробуйте ещё раз',
             'error'
           )
           throw error

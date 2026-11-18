@@ -39,6 +39,7 @@ export const routesNavigation = {
     component: CalendarPage,
     meta: {
       title: 'Календарь',
+      departmentManagerAccess: true,
       icon: 'fa-light fa-calendar',
       entity: 'calendar',
       action: 'read',
@@ -50,6 +51,7 @@ export const routesNavigation = {
     component: ReportPage,
     meta: {
       title: 'Табель',
+      departmentManagerAccess: true,
       icon: 'fa-light fa-clock',
       entity: 'calendar.all',
       action: 'read',

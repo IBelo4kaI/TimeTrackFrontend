@@ -80,10 +80,12 @@
         </span>
       </div>
     </div>
+    <DayTimeHistoryButton :date="day.date" />
   </div>
 </template>
 
 <script setup>
+import DayTimeHistoryButton from './DayTimeHistoryButton.vue'
 import { WORK_LOCATIONS } from '@/constants/workLocation.constants'
 import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useCalendarStore } from '@/stores/calendar'

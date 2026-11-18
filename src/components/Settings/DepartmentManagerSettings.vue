@@ -40,25 +40,30 @@
     <Teleport to="body">
       <ModalLayout v-if="showForm && canEdit" title="Назначить руководителя" width="36rem" @close="closeCreateModal">
         <form class="assignment-form" @submit.prevent="create">
-          <p class="hint">Отдел сотрудника проверяется по кадровому справочнику. В одном отделе можно назначить нескольких руководителей.</p>
+          <p class="hint">Выберите отдел, которым будет управлять руководитель. Руководителем можно назначить любого сотрудника из справочника, независимо от места его работы.</p>
           <div v-if="directoryError" class="directory-error" role="alert">
             {{ directoryError }} <ButtonUI type="muted" :disabled="loading" @click.prevent="load">Повторить загрузку</ButtonUI>
           </div>
           <div class="fields">
-            <label>Отдел
+            <label>Целевой отдел
               <select v-model="draft.department" required :disabled="busy || loading || !!directoryError">
                 <option value="" disabled>Выберите отдел</option>
                 <option v-for="department in departments" :key="department" :value="department">{{ department }}</option>
               </select>
             </label>
-            <label>Сотрудник
-              <select v-model="draft.userId" required :disabled="busy || !draft.department">
-                <option value="" disabled>Выберите руководителя</option>
-                <option v-for="employee in employees" :key="employee.userId" :value="employee.userId">{{ nameFor(employee.userId) }}</option>
-              </select>
-            </label>
+            <Autocomplete v-model="draft.userId" :options="employees" value-key="userId" label-key="fullName"
+              label="Руководитель" placeholder="Найдите сотрудника по ФИО" empty-text="Сотрудники не найдены"
+              required :is-show-button="false" :disabled="busy || loading || !!directoryError || !draft.department"
+              @select="employeeChosen = true" @input="employeeChosen = false" @clear="employeeChosen = false">
+              <template #option="{ option }">
+                <div class="employee-option"><span>{{ option.fullName }}</span><small>{{ option.company }} · {{ option.department }}</small></div>
+              </template>
+            </Autocomplete>
+            <p v-if="selectedEmployee" class="hint employee-scope">
+              Место работы сотрудника: {{ selectedEmployee.company }} · {{ selectedEmployee.department }}
+            </p>
           </div>
-          <div class="actions"><ButtonUI type="muted" :disabled="busy" @click.prevent="closeCreateModal">Отмена</ButtonUI><ButtonUI type="accent" :disabled="busy || loading || !!directoryError || !draft.userId">{{ busy ? 'Сохранение…' : 'Назначить' }}</ButtonUI></div>
+          <div class="actions"><ButtonUI type="muted" :disabled="busy" @click.prevent="closeCreateModal">Отмена</ButtonUI><ButtonUI type="accent" :disabled="busy || loading || !!directoryError || !draft.department || !draft.userId || !employeeChosen">{{ busy ? 'Сохранение…' : 'Назначить' }}</ButtonUI></div>
         </form>
       </ModalLayout>
     </Teleport>
@@ -68,6 +73,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import Autocomplete from '@/components/Autocomplete.vue'
 import AppTable from '@/components/AppTable.vue'
 import ModalLayout from '@/layouts/ModalLayout.vue'
 import Badge from '@/components/Badge.vue'
@@ -92,15 +98,20 @@ const savedRoleId = ref('')
 const roleLoaded = ref(false)
 const roleError = ref('')
 const draft = reactive({ department: '', userId: '' })
+const employeeChosen = ref(false)
 const headers = [
   { valueKey: 'department', title: 'Отдел' },
   { valueKey: 'userId', title: 'Руководитель' },
   { valueKey: 'roleSyncStatus', title: 'Роль в сервисе авторизации' },
 ]
 const departments = computed(() => [...new Set(candidates.value.map((item) => item.department))].sort((a, b) => a.localeCompare(b, 'ru')))
-const employees = computed(() => candidates.value.filter((item) => item.department === draft.department).sort((a, b) => nameFor(a.userId).localeCompare(nameFor(b.userId), 'ru')))
-watch(() => draft.department, () => { draft.userId = '' })
+const employees = computed(() => candidates.value.map((item) => ({ ...item, fullName: nameFor(item.userId) }))
+  .sort((a, b) => a.fullName.localeCompare(b.fullName, 'ru')))
+const selectedEmployee = computed(() => employeeChosen.value ? candidates.value.find((item) => item.userId === draft.userId) : null)
+watch(() => draft.department, () => { draft.userId = ''; employeeChosen.value = false })
 function nameFor(id) {
+  const candidate = candidates.value.find((item) => item.userId === id)
+  if (candidate?.fullName) return candidate.fullName
   const user = userStore.usersAll.find((item) => item.id === id) || (userStore.user?.id === id ? userStore.user : null)
   return user ? [user.surname, user.name, user.patronymic].filter(Boolean).join(' ') : id
 }
@@ -143,23 +154,25 @@ async function saveRoleSetting(value) {
 function openCreateModal() {
   if (!canEdit.value || busy.value) return
   Object.assign(draft, { department: '', userId: '' })
+  employeeChosen.value = false
   showForm.value = true
 }
 function closeCreateModal() {
   if (!busy.value) showForm.value = false
 }
 async function create() {
-  if (busy.value || !draft.userId) return
+  if (busy.value || loading.value || !canEdit.value || directoryError.value || !draft.department || !draft.userId || !employeeChosen.value) return
   const employee = employees.value.find((item) => item.userId === draft.userId)
-  if (!employee) {
+  if (!employee || !departments.value.includes(draft.department)) {
     notifications.addNotification('Выберите сотрудника из актуального справочника', 'error')
     return
   }
   busy.value = true
   try {
-    const result = await createDepartmentManager({ ...draft, company: employee.company })
+    const result = await createDepartmentManager({ ...draft })
     showForm.value = false
     Object.assign(draft, { department: '', userId: '' })
+    employeeChosen.value = false
     notifications.addNotification(result.roleSyncStatus === 'failed' ? 'Назначение сохранено, но выдать роль не удалось. Повторите синхронизацию.' : 'Руководитель назначен', result.roleSyncStatus === 'failed' ? 'error' : 'success')
     await load()
   } catch (error) { notifications.addNotification(error.message || 'Не удалось сохранить назначение', 'error') }
@@ -171,7 +184,7 @@ function remove(row) {
     try { await deleteDepartmentManager(row.id); await load() }
     catch (error) { notifications.addNotification(error.message || 'Не удалось удалить назначение', 'error'); await load(); throw error }
     finally { busy.value = false }
-  }, `Удалить назначение руководителя ${nameFor(row.userId)}?`)
+  }, `Удалить назначение руководителя ${nameFor(row.userId)} для отдела ${row.department}?`)
 }
 async function syncRole(row) {
   if (busy.value) return
@@ -203,5 +216,7 @@ label { min-width: 0; font-size: .85rem; }
 select, input { display: block; box-sizing: border-box; width: 100%; height: 3rem; margin-top: .35rem; padding: .5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--background); color: var(--text); font: inherit; }
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
 .role-status { display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; }
+.employee-option { display: flex; flex-direction: column; min-width: 0; gap: .25rem; }
+.employee-scope { overflow-wrap: anywhere; }
 .directory-error { color: var(--destructive); margin-top: .75rem; }
 </style>

@@ -11,6 +11,7 @@
         <span
           class="calendar-action-item"
           v-for="value in menuItems"
+          :title="value.label"
           @click="handleContextAction(value.action)"
         >
           <i :class="value.icon"></i>
@@ -49,6 +50,8 @@
 <script setup>
 import HeaderCalendar from '@/components/Calendar/HeaderCalendar.vue'
 import { SelectingHelper } from '@/helpers/selecting.helpers'
+import { useAddReportModalStore } from '@/stores/addReportModal'
+import { computed } from 'vue'
 import { applyDayAction } from '@/helpers/usertimeentry.helpers'
 import { useCalendarStore } from '@/stores/calendar'
 import { useDayTypesStore } from '@/stores/dayTypes'
@@ -70,7 +73,7 @@ const { calendarDays, prevMonthDays, nextMonthDays } =
 const dayTypesStore = useDayTypesStore()
 
 // Определяем пункты меню
-const menuItems = [
+const legacyMenuItems = [
   // { action: 'medical', label: 'Больничный', icon: 'fa-regular fa-house-medical' },
   // { action: 'decree', label: 'Декрет', icon: 'decree' },
   { action: 'time-off', label: 'Отгул', icon: 'fa-regular fa-user-clock' },
@@ -88,9 +91,21 @@ const menuItems = [
   },
 ]
 
+const menuItems = computed(() => calendarStore.isManagerCalendar ? [
+  { action: 'edit', label: 'Изменить рабочее время', icon: 'fa-regular fa-pen' },
+  { action: 'clear', label: 'Удалить рабочую запись', icon: 'fa-regular fa-trash', danger: true },
+] : legacyMenuItems)
+
 // Обработчик действий меню
 const handleContextAction = async (action) => {
   try {
+    const days = Array.from(selectingStore.selectedItems)
+    const managerAction = action === 'clear' ? calendarStore.managerOperation('delete')
+      : days.some((day) => calendarStore.managerOperation(day.userTimeId ? 'edit' : 'create'))
+    if (action === 'edit' || managerAction) {
+      useAddReportModalStore().open()
+      return
+    }
     await applyDayAction(
       action,
       Array.from(selectingStore.selectedItems),

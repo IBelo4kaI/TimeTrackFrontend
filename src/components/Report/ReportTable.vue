@@ -9,10 +9,17 @@
         @click="print"
       ></ButtonUI>
       <SelectUI
+        v-if="departments.length"
         :model-value="modelValue"
         :options="departmentOptions"
         placeholder="Все отделы"
         @update:model-value="$emit('update:modelValue', $event)"
+      />
+      <SelectUI
+        :model-value="status"
+        :options="statusOptions"
+        placeholder="Все статусы"
+        @update:model-value="$emit('update:status', $event)"
       />
     </div>
 
@@ -31,6 +38,8 @@
             <th class="th align-center">Отгулы</th>
             <th class="th align-center">Отпуск</th>
             <th class="th align-center">Декрет</th>
+            <th class="th align-left">Согласование</th>
+            <th class="th align-left">Последнее подтверждение</th>
             <th class="th align-center"></th>
           </tr>
         </thead>
@@ -52,15 +61,17 @@
               <tr v-for="row in section.rows" :key="row.id" class="tr">
                 <td class="td align-left td-name">
                   <RouterLink
+                    v-if="reportStore.canReadAll"
                     class="name-link"
                     :to="{ name: 'worker', params: { id: row.id } }"
                   >
                     {{ row.name }}
                   </RouterLink>
+                  <span v-else>{{ row.name }}</span>
                 </td>
                 <template v-if="row.unavailable">
                   <td
-                    v-for="n in colCount - 2"
+                    v-for="n in statColCount"
                     :key="n"
                     class="td align-center td-muted"
                     title="Не указан пол — норму рассчитать нельзя"
@@ -99,14 +110,38 @@
                   </td>
                   <td class="td align-center">{{ row.decreeDays }}</td>
                 </template>
+                <td class="td td-approval">
+                  <Badge :type="TIMESHEET_STATUSES[row.status]?.type || 'muted'">
+                    {{ TIMESHEET_STATUSES[row.status]?.label || 'Неизвестный статус' }}
+                  </Badge>
+                </td>
+                <td class="td td-confirmation">
+                  <template v-if="row.approvedBy">
+                    <span>{{ row.approvedByName }}</span>
+                    <small>{{ formatApprovedAt(row.approvedAt) }}</small>
+                  </template>
+                  <span v-else class="td-muted">—</span>
+                </td>
                 <td class="td align-center">
-                  <RouterLink
-                    class="calendar-link"
-                    v-tooltip="'Перейти к календарю'"
-                    :to="calendarLinkFor(row)"
-                  >
-                    <i class="fa-regular fa-calendar"></i>
-                  </RouterLink>
+                  <div class="row-actions">
+                    <RouterLink
+                      class="calendar-link"
+                      v-tooltip="'Перейти к календарю'"
+                      :to="calendarLinkFor(row)"
+                    >
+                      <i class="fa-regular fa-calendar"></i>
+                    </RouterLink>
+                    <ButtonUI
+                      v-if="row.canApprove && TIMESHEET_STATUSES[row.status]"
+                      class="approval-action"
+                      :type="row.status === 'approved' ? 'muted' : 'success'"
+                      :disabled="reportStore.isDeciding(row.id) || isLoading || !Number.isSafeInteger(row.revision)"
+                      :aria-label="`${row.status === 'approved' ? 'Снять подтверждение' : 'Подтвердить'}: ${row.name}`"
+                      @click="reportStore.setApproval(row.id, row.status !== 'approved')"
+                    >
+                      {{ reportStore.isDeciding(row.id) ? 'Сохранение…' : row.status === 'approved' ? 'Снять подтверждение' : 'Подтвердить' }}
+                    </ButtonUI>
+                  </div>
                 </td>
               </tr>
             </template>
@@ -122,6 +157,8 @@
 </template>
 
 <script setup>
+import Badge from '@/components/Badge.vue'
+import { TIMESHEET_STATUSES } from '@/constants/timesheet.constants'
 import ButtonUI from '@/components/ButtonUI.vue'
 import LoaderTitle from '@/components/Loader/LoaderTitle.vue'
 import SelectUI from '@/components/SelectUI.vue'
@@ -134,6 +171,7 @@ const props = defineProps({
   isLoading: { type: Boolean, default: false },
   departments: { type: Array, default: () => [] },
   modelValue: { type: String, default: 'all' },
+  status: { type: String, default: 'all' },
 })
 
 const reportStore = useReportStore()
@@ -152,13 +190,23 @@ function calendarLinkFor(row) {
   }
 }
 
-defineEmits(['update:modelValue'])
+defineEmits(['update:modelValue', 'update:status'])
+const statusOptions = [
+  { label: 'Все статусы', value: 'all' },
+  ...Object.entries(TIMESHEET_STATUSES).map(([value, meta]) => ({ label: meta.label, value })),
+]
+const formatApprovedAt = (value) => {
+  if (!value) return 'Дата не сохранена'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'Дата не сохранена' : date.toLocaleString('ru-RU')
+}
 
 // Офис/удалёнка показываются, только если кто-то работал удалённо
 const showLocations = computed(() =>
   props.rows.some((row) => row.remoteDays > 0)
 )
-const colCount = computed(() => (showLocations.value ? 10 : 8))
+const statColCount = computed(() => (showLocations.value ? 8 : 6))
+const colCount = computed(() => statColCount.value + 4)
 
 const departmentOptions = computed(() => [
   { label: 'Все отделы', value: 'all' },
@@ -167,7 +215,7 @@ const departmentOptions = computed(() => [
 
 // "Все отделы" — с заголовками отделов, один отдел — плоский список
 const sections = computed(() => {
-  if (props.modelValue !== 'all') {
+  if (props.modelValue !== 'all' || !props.departments.length) {
     return [{ key: 'all', department: null, rows: props.rows }]
   }
 
@@ -213,6 +261,7 @@ function print() {
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--gap-primary);
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
@@ -350,6 +399,21 @@ function print() {
 .accent {
   color: var(--accent);
   font-weight: 600;
+}
+.td-approval { white-space: nowrap; }
+.td-confirmation { min-width: 13rem; max-width: 20rem; overflow-wrap: anywhere; }
+.td-confirmation span, .td-confirmation small { display: block; }
+.td-confirmation small { margin-top: .3rem; color: var(--muted-text); font-size: .85rem; }
+.row-actions { display: flex; align-items: center; justify-content: center; gap: .5rem; }
+.approval-action { white-space: nowrap; font-size: .9rem; }
+.approval-action:disabled { cursor: wait; opacity: .6; }
+@media print {
+  .approval-action { display: none !important; }
+  .table, .th, .td { font-size: 8pt; }
+  .th, .td { padding: .3rem; white-space: normal; }
+  .td-confirmation { min-width: 0; max-width: 10rem; }
+  .td-confirmation small { font-size: 7pt; }
+  .td-approval :deep(.badge) { font-size: 7pt; white-space: normal; text-wrap: wrap; }
 }
 </style>
 <style>

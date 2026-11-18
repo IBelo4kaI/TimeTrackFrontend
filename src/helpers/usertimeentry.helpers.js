@@ -40,6 +40,8 @@ export const createUpdatesObjects = (daysToProcess, config, userId) => {
 
 // Очистка дней: обычные записи удаляем, у отпуска только обнуляем часы
 export const clearDays = async (days, calendarStore, dayTypesStore) => {
+  const owner = calendarStore.selectedUserId
+  const period = `${calendarStore.currentYear}-${calendarStore.currentMonth}`
   const vacationTypeId = dayTypesStore.getDayTypeIdByName('vacation')
   const entries = days.filter(hasEntry)
 
@@ -49,7 +51,7 @@ export const clearDays = async (days, calendarStore, dayTypesStore) => {
 
   if (dates.length > 0) {
     await calendarStore.deleteDay({
-      userId: calendarStore.selectedUserId,
+      userId: owner,
       entryDate: dates,
     })
   }
@@ -59,10 +61,13 @@ export const clearDays = async (days, calendarStore, dayTypesStore) => {
   )
 
   if (vacationDays.length > 0) {
+    if (owner !== calendarStore.selectedUserId || period !== `${calendarStore.currentYear}-${calendarStore.currentMonth}`) {
+      throw new Error('Календарь изменился. Откройте исходный месяц для проверки выполненных изменений.')
+    }
     const updates = createUpdatesObjects(
       vacationDays,
       { userTimeTypeId: vacationTypeId, hours: 0 },
-      calendarStore.selectedUserId
+      owner
     )
     await calendarStore.updateDay(updates.toUpdate, updates.toCreate)
   }
