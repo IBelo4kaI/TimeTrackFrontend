@@ -1,5 +1,5 @@
 <template>
-  <div class="container" :class="{ 'sidebar-open': isSidebarOpen, 'report-layout': route.name === 'report' }">
+  <div class="container" :class="{ 'sidebar-open': isSidebarOpen, 'report-layout': route.name === 'report', 'calendar-layout': route.name === 'calendar' }">
     <Sidebar
       :is-sidebar-open="isSidebarOpen"
       @update:is-sidebar-open="isSidebarOpen = $event"
@@ -107,6 +107,17 @@ watch(isSidebarOpen, (val) => {
   .main {
     flex: 1;
   }
+}
+
+@media screen and (min-width: 769px) {
+  .calendar-layout {
+    height: 100dvh;
+    min-height: 0;
+    flex: none;
+    grid-template-rows: var(--header-height) auto minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+  .calendar-layout > .main { min-height: 0; min-width: 0; }
 }
 
 /* ─── Print ─── */

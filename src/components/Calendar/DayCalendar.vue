@@ -370,4 +370,9 @@ const dayStyle = computed(() => {
 .day-holiday {
   color: var(--calendartype, #343434);
 }
+@media screen and (min-width: 769px) {
+  .day { min-width: 0; }
+  .day-header, .day-footer, .day :deep(.history-button) { flex-shrink: 0; }
+  .day-main { min-height: 2.8rem; }
+}
 </style>

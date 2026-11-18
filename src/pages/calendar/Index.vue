@@ -51,11 +51,13 @@ import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useCalendarStore } from '@/stores/calendar'
 import { useHeaderTitleStore } from '@/stores/headerTitle'
 import { useUserStore } from '@/stores/user'
+import { useThemeStore } from '@/stores/themes'
 import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-const isMobile = computed(() => window.innerWidth <= 768)
+const themeStore = useThemeStore()
+const isMobile = computed(() => themeStore.isMobile)
 const decorations = useHolidayDecorationsStore()
 
 const titleStore = useHeaderTitleStore()
@@ -116,5 +118,18 @@ watch(() => [route.query.id, route.query.month, route.query.year], async ([id, m
 .tab__item.active {
   color: var(--text);
   font-weight: 600;
+}
+@media screen and (min-width: 769px) {
+  .container { min-height: 0; min-width: 0; }
+  .container > :not(.container-row) { flex-shrink: 0; }
+  .container-row {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .container-column { min-height: 0; overflow-y: auto; }
+  .container-column > * { flex-shrink: 0; }
 }
 </style>

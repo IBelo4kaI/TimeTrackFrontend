@@ -6,6 +6,7 @@
     v-else
     :key="`${calendarStore.currentYear}-${calendarStore.currentMonth}`"
     class="calendar"
+    :style="{ '--calendar-weeks': weekCount }"
     @mousedown="selectingHelper.onMouseDown"
     @mouseup="selectingHelper.onMouseUp"
     @mouseleave="selectingHelper.onMouseLeave"
@@ -59,6 +60,9 @@ const { selectedItems } = storeToRefs(selectingStore)
 const calendarStore = useCalendarStore()
 const { calendarDays, prevMonthDays, nextMonthDays } =
   storeToRefs(calendarStore)
+
+const weekCount = computed(() => calendarStore.isLoading ? 5
+  : Math.max(1, Math.ceil((prevMonthDays.value.length + calendarDays.value.length + nextMonthDays.value.length) / 7)))
 
 const dayTypesStore = useDayTypesStore()
 
@@ -196,5 +200,17 @@ onUnmounted(() => {
   text-align: center;
   font-size: 2.5rem;
   font-weight: 700;
+}
+@media screen and (min-width: 769px) {
+  .calendar {
+    min-height: 0;
+    min-width: 0;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: 3rem repeat(var(--calendar-weeks), minmax(min-content, 1fr));
+    overflow: auto;
+    overscroll-behavior-y: contain;
+  }
+  .calendar :deep(.day) { min-width: 0; }
+  .calendar :deep(.calendar-header) { position: sticky; top: 0; z-index: 2; }
 }
 </style>
