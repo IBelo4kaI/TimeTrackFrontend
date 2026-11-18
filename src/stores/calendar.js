@@ -65,6 +65,13 @@ export const useCalendarStore = defineStore('calendar', () => {
     && userStore.hasPermission('department.manager', 'manage')
     && !userStore.hasPermission('calendar.all', action)
   const isManagerCalendar = computed(() => managerOperation('edit'))
+  const canViewTimeHistory = computed(() => {
+    if (!selectedUserId.value || isLoading.value || !historyReady.value || historyError.value
+      || loadedContext !== contextKey()) return false
+    if (userStore.hasPermission('calendar.all', 'read')) return true
+    return !!foreignCalendar.value && userStore.hasPermission('department.manager', 'manage')
+      && scopeRow.value?.userId === selectedUserId.value
+  })
   const historyForDay = (date) => timeHistory.value.filter((event) => historyDayKey(event.entryDate) === historyDayKey(date))
   const managerChangedDay = (date) => historyForDay(date).some((event) => event.actorType === 'manager')
   const managerDayError = (day) => {
@@ -371,7 +378,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     selectedUser,
     hoveredBirthday,
     timeHistory, historyReady, historyError, monthState, isManagerCalendar, mutationPending,
-    managerOperation, managerDayError, historyForDay, managerChangedDay,
+    managerOperation, managerDayError, historyForDay, managerChangedDay, canViewTimeHistory,
 
     // Computed
     currentMonth,
