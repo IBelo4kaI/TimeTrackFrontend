@@ -1,5 +1,5 @@
 <template>
-  <div class="container" :class="{ 'sidebar-open': isSidebarOpen }">
+  <div class="container" :class="{ 'sidebar-open': isSidebarOpen, 'report-layout': route.name === 'report' }">
     <Sidebar
       :is-sidebar-open="isSidebarOpen"
       @update:is-sidebar-open="isSidebarOpen = $event"
@@ -56,6 +56,10 @@ watch(isSidebarOpen, (val) => {
   grid-template-rows: var(--header-height) auto 1fr;
   grid-template-columns: var(--sidebar-width) 1fr;
 }
+
+/* The report table must not set the grid track's minimum width. */
+.report-layout { min-width: 0; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); }
+.report-layout > .main { min-width: 0; }
 
 /* ─── Submenu ─── */
 .submenu {

@@ -16,9 +16,9 @@ const changed = computed(() => calendar.managerChangedDay(props.date))
 const label = computed(() => !changed.value ? 'История изменений'
   : events.value.at(-1)?.actorType === 'manager' ? 'Изменено руководителем' : 'Есть изменения руководителя')
 const openHistory = () => useUniversalModalStore().open({
-  title: `История за ${new Date(props.date).toLocaleDateString('ru-RU', { timeZone: 'UTC' })}`,
-  width: '42rem', showSubmitButton: false, cancelButtonText: 'Закрыть',
-  fields: [{ name: 'history', type: 'component', component: DayTimeHistory, props: { events: events.value } }],
+  title: 'История изменений',
+  width: '38rem', showSubmitButton: false, cancelButtonText: 'Закрыть',
+  fields: [{ name: 'history', type: 'component', component: DayTimeHistory, props: { events: events.value, date: props.date } }],
 })
 </script>
 <style scoped>

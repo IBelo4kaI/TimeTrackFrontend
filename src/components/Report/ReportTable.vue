@@ -251,6 +251,8 @@ function print() {
 <style scoped>
 .table-wrapper {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   background: var(--foreground);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
@@ -266,6 +268,9 @@ function print() {
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
+.table-toolbar > * { min-width: 0; max-width: 100%; }
+.table-toolbar :deep(.select-value) { min-width: 0; }
+
 .table-title {
   font-size: 1rem;
   font-weight: 600;
@@ -275,6 +280,8 @@ function print() {
 
 .table-scroll {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
