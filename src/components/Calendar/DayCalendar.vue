@@ -24,7 +24,7 @@
           {{ birthday.initials }}
         </span>
       </div> -->
-         <div class="day-birthdays" v-if="birthdays.length > 0">
+      <div class="day-birthdays" v-if="birthdays.length > 0">
         <span
           class="day-birthday"
           v-for="(birthday, i) in birthdays"
@@ -52,6 +52,7 @@
       </div>
     </div>
     <div class="day-footer">
+      <DayTimeHistoryButton :date="day.date" />
       <div
         class="day-usertype day-flex-row"
         :class="{ 'day-dot-only': day.calendarEventTypeId }"
@@ -80,7 +81,6 @@
         </span>
       </div>
     </div>
-    <DayTimeHistoryButton :date="day.date" />
   </div>
 </template>
 
