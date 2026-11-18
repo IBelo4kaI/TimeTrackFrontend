@@ -48,7 +48,11 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
   const title = ref('')
   const { selectedItems } = storeToRefs(selectingStore)
 
-  const open = (day) => {
+  const open = (day, legacy = false) => {
+    if (!legacy && !day && selectedItems.value.size > 1) {
+      void useDayEditorStore().openGroup(Array.from(selectedItems.value))
+      return
+    }
     dayTypesStore.getUserEditTypes()
 
     if (day) {
@@ -92,7 +96,7 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
         daysData.value.date.getFullYear()
     }
     const isMultiEdit = selectedItems.value.size > 1
-    if (!isMultiEdit) {
+    if (!isMultiEdit && !legacy) {
       void useDayEditorStore().open(daysData.value)
       return
     }
@@ -274,6 +278,7 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
 
   return {
     open,
+    openLegacy: (day) => open(day, true),
     close,
   }
 })

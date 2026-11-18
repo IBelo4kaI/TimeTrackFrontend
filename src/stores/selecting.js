@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 
 export const useSelectingStore = defineStore('selecting', () => {
   const isSelecting = ref(false)
+  const isGroupEditing = ref(false)
   const selectedItems = ref(new Set()) // Set для уникальных элементов
   const selectionStart = ref(null) // Начальная точка выделения
   const lastSelected = ref(null) // Последний выбранный элемент для Shift
@@ -166,6 +167,7 @@ export const useSelectingStore = defineStore('selecting', () => {
 
   // Очистка выделения
   const clearSelection = () => {
+    if (isGroupEditing.value) return
     selectedItems.value.clear()
     selectionStart.value = null
     lastSelected.value = null
@@ -200,6 +202,7 @@ export const useSelectingStore = defineStore('selecting', () => {
     // State
     selectedItems,
     isSelecting,
+    isGroupEditing,
     isDragging,
     selectionStart,
     lastSelected,

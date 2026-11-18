@@ -43,9 +43,10 @@ const emit = defineEmits(['day-mouse-down', 'day-mouse-enter', 'day-click'])
 
 const calendar = useCalendarStore()
 const dayEditor = useDayEditorStore()
-const isEditing = computed(() => !!dayEditor.active && dayEditor.active.owner === calendar.selectedUserId
+const isEditing = computed(() => dayEditor.isEditedDay(day.date))
+const isAnchorDay = computed(() => !!dayEditor.active && dayEditor.active.owner === calendar.selectedUserId
   && historyDayKey(dayEditor.active.day.date) === historyDayKey(day.date))
-watch([isEditing, dayElement], ([editing, element]) => {
+watch([isAnchorDay, dayElement], ([editing, element]) => {
   if (editing && element) dayEditor.setAnchorElement(element)
 }, { flush: 'post' })
 onBeforeUnmount(() => {

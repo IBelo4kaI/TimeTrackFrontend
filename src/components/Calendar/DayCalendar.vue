@@ -112,9 +112,10 @@ const userStore = useUserStore()
 const calendarStore = useCalendarStore()
 const selecting = useSelectingStore()
 const dayEditor = useDayEditorStore()
-const isEditing = computed(() => !!dayEditor.active && dayEditor.active.owner === calendarStore.selectedUserId
+const isEditing = computed(() => dayEditor.isEditedDay(day.date))
+const isAnchorDay = computed(() => !!dayEditor.active && dayEditor.active.owner === calendarStore.selectedUserId
   && historyDayKey(dayEditor.active.day.date) === historyDayKey(day.date))
-watch([isEditing, dayElement], ([editing, element]) => {
+watch([isAnchorDay, dayElement], ([editing, element]) => {
   if (editing && element) dayEditor.setAnchorElement(element)
 }, { flush: 'post' })
 onBeforeUnmount(() => {

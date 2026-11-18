@@ -70,6 +70,7 @@ const selectingHelper = new SelectingHelper(selectingStore)
 
 // Определяем пункты меню
 const legacyMenuItems = [
+  { action: 'edit', label: 'Редактировать выбранные дни', icon: 'work' },
   { action: 'medical', label: 'Больничный', icon: 'medical' },
   { action: 'decree', label: 'Декрет', icon: 'decree' },
   { action: 'time-off', label: 'Отгул', icon: 'time-off' },
@@ -110,7 +111,7 @@ const handleContextAction = async (action) => {
 const openCalendarMenu = (event, day) => {
   // Проверка перед открытием
   const beforeOpen = (data) => {
-    if (!selectedItems.value.has(data.day)) {
+    if (!selectingStore.isItemSelected(data.day)) {
       selectingStore.clearSelection()
       selectingStore.startSelection(data.day)
       selectingStore.endSelection()

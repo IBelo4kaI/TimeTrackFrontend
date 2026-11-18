@@ -26,7 +26,7 @@
         icon="fa-light fa-plus"
         @click="modalStore.open()"
       >
-        Добавить запись
+        {{ selectingStore.selectedCount > 1 ? `Редактировать выбранные (${selectingStore.selectedCount})` : 'Добавить запись' }}
       </ButtonUI>
     </div>
   </div>
@@ -37,6 +37,7 @@ import ButtonUI from '@/components/ButtonUI.vue'
 import CalendarTimesheetStatus from '@/components/Calendar/CalendarTimesheetStatus.vue'
 import MonthControl from '@/components/Calendar/MonthControl.vue'
 import { useAddReportModalStore } from '@/stores/addReportModal'
+import { useSelectingStore } from '@/stores/selecting'
 import { useUserStore } from '@/stores/user'
 import { computed, onMounted } from 'vue'
 import Autocomplete from './Autocomplete.vue'
@@ -50,6 +51,7 @@ const { page, store } = defineProps({
 const isCalendarControl = computed(() => page === 'calendar' || page === 'calendar-mobile')
 
 const modalStore = useAddReportModalStore()
+const selectingStore = useSelectingStore()
 
 const userStore = useUserStore()
 

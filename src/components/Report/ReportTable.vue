@@ -289,7 +289,7 @@ function print() {
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 1rem;
+  font-size: 0.875rem;
   color: var(--text);
 }
 
@@ -298,7 +298,7 @@ function print() {
   background: var(--muted-foreground);
   border-bottom: 1px solid var(--border-color);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.8rem;
   color: var(--muted-text);
   white-space: nowrap;
   letter-spacing: 0.02em;
@@ -410,7 +410,7 @@ function print() {
 .td-approval { white-space: nowrap; }
 .td-confirmation { min-width: 13rem; max-width: 20rem; overflow-wrap: anywhere; }
 .td-confirmation span, .td-confirmation small { display: block; }
-.td-confirmation small { margin-top: .3rem; color: var(--muted-text); font-size: .85rem; }
+.td-confirmation small { margin-top: .3rem; color: var(--muted-text); font-size: .8rem; }
 .row-actions { display: flex; align-items: center; justify-content: center; gap: .5rem; }
 .approval-action { white-space: nowrap; font-size: .9rem; }
 .approval-action:disabled { cursor: wait; opacity: .6; }

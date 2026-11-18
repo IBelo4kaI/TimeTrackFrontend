@@ -7,6 +7,9 @@
       <ButtonUI type="muted" @click="changeModeSelecting">
         {{ selectingStore.isSelecting ? 'Отменить' : 'Выбрать' }}
       </ButtonUI>
+      <ButtonUI v-if="selectingStore.selectedCount" type="muted" @click="editSelected">
+        Редактировать ({{ selectingStore.selectedCount }})
+      </ButtonUI>
       <template v-if="selectingStore.isSelecting">
         <span
           class="calendar-action-item"
@@ -71,6 +74,7 @@ const { calendarDays, prevMonthDays, nextMonthDays } =
   storeToRefs(calendarStore)
 
 const dayTypesStore = useDayTypesStore()
+const editSelected = () => useAddReportModalStore().open()
 
 // Определяем пункты меню
 const legacyMenuItems = [
@@ -197,6 +201,7 @@ onUnmounted(() => {
 }
 
 .calendar-action-selected {
+  flex-wrap: wrap;
   grid-column: 1/8;
   display: flex;
   gap: calc(var(--padding-secondary) / 2);

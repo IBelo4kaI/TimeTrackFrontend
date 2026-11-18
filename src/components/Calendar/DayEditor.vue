@@ -16,7 +16,7 @@
         v-if="editor.active"
         ref="panel"
         class="day-editor"
-        :class="side"
+        :class="[side, { 'mixed-hours': editor.isGroup && editor.mixed.hours }]"
         :style="[position, { visibility: ready ? 'visible' : 'hidden' }]"
         role="dialog"
         aria-label="Быстрое редактирование дня"
@@ -26,14 +26,21 @@
       >
         <span ref="arrowElement" class="editor-arrow" :style="arrowStyle" aria-hidden="true"></span>
         <div class="editor-content">
+          <p v-if="editor.isGroup" class="group-summary">
+            Выбрано дней: {{ editor.selectedCount }}
+            <span v-if="editor.mixed.userTimeTypeId"> · Разные типы</span>
+            <span v-if="editor.mixed.workLocation"> · Разное место работы</span>
+          </p>
           <div class="hours-row">
             <label for="day-editor-hours">Количество часов</label>
-            <div class="hours-control">
+            <div class="hours-control" :class="{ 'without-steps': !showHourSteps }">
               <ButtonUI
                 type="muted"
                 icon="fa-light fa-angle-left"
                 aria-label="Уменьшить часы"
-                :disabled="editor.deleting || Number(editor.draft.hours) <= 0"
+                :aria-hidden="!showHourSteps"
+                :tabindex="showHourSteps ? undefined : -1"
+                :disabled="editor.deleting || editor.groupBlockedCount > 0 || !showHourSteps || Number(editor.draft.hours) <= 0"
                 @click="step(-0.5)"
               />
               <input
@@ -45,14 +52,16 @@
                 aria-valuemin="0"
                 aria-valuemax="24"
                 :aria-valuenow="
-                  Number.isFinite(Number(editor.draft.hours))
+                  editor.draft.hours != null && editor.draft.hours !== '' && Number.isFinite(Number(editor.draft.hours))
                     ? Number(editor.draft.hours)
                     : undefined
                 "
                 @keydown.up.prevent="step(0.5)"
                 @keydown.down.prevent="step(-0.5)"
                 :value="editor.draft.hours"
-                :disabled="editor.deleting"
+                :placeholder="editor.mixed.hours ? 'Разные значения' : ''"
+                :title="editor.mixed.hours ? 'Введите общее количество часов перед использованием стрелок' : ''"
+                :disabled="editor.deleting || editor.groupBlockedCount > 0"
                 @input="
                   editor.change(
                     'hours',
@@ -64,8 +73,10 @@
                 type="muted"
                 icon="fa-light fa-angle-right"
                 aria-label="Увеличить часы"
+                :aria-hidden="!showHourSteps"
+                :tabindex="showHourSteps ? undefined : -1"
                 :disabled="
-                  editor.deleting || Number(editor.draft.hours) >= 24
+                  editor.deleting || editor.groupBlockedCount > 0 || !showHourSteps || Number(editor.draft.hours) >= 24
                 "
                 @click="step(0.5)"
               />
@@ -86,8 +97,7 @@
               :class="{ selected: editor.draft.userTimeTypeId === type.id }"
               :aria-pressed="editor.draft.userTimeTypeId === type.id"
               :disabled="
-                !canSwitchType ||
-                !editor.editableTypes.some((item) => item.id === type.id)
+                !editor.canApplyType(type.id)
               "
               @click="editor.change('userTimeTypeId', type.id)"
             >
@@ -101,22 +111,25 @@
               type="muted"
               :class="{
                 selected:
-                  editor.draft.userTimeTypeId === editor.workId &&
+                  editor.canChangeLocation &&
                   editor.draft.workLocation === location.value,
               }"
               :aria-pressed="
-                editor.draft.userTimeTypeId === editor.workId &&
+                editor.canChangeLocation &&
                 editor.draft.workLocation === location.value
               "
               :disabled="
-                editor.deleting ||
-                editor.draft.userTimeTypeId !== editor.workId
+                editor.deleting || !editor.canChangeLocation
               "
               @click="editor.change('workLocation', location.value)"
             >
               {{ location.label }}
             </ButtonUI>
           </div>
+          <p v-if="editor.isGroup && !editor.groupBlockedCount && (editor.fixedTypeCount || editor.locationSkippedCount)" class="group-hint">
+            <span v-if="editor.fixedTypeCount">Тип нельзя менять у {{ editor.fixedTypeCount }} дат. </span>
+            <span v-if="editor.locationSkippedCount">Место работы не применяется к {{ editor.locationSkippedCount }} нерабочим или пустым датам.</span>
+          </p>
           <textarea
             v-if="editor.needsReason"
             rows="1"
@@ -152,19 +165,21 @@
               Повторить
             </button>
             <button
-              v-if="editor.active.day.userTimeId"
+              v-if="editor.hasRecords"
               type="button"
               class="text-action delete-action"
               :disabled="editor.saving || editor.deleting"
               @click="editor.remove"
             >
-              {{ editor.vacation ? 'Обнулить часы' : 'Удалить' }}
+              {{ editor.isGroup ? 'Очистить выбранные' : editor.vacation ? 'Обнулить часы' : 'Удалить' }}
             </button>
           </div>
+          <button v-if="editor.isGroup && editor.dirty && !editor.saving" type="button" class="text-action"
+            title="Отменить только оставшиеся правки. Уже подтверждённые изменения сохранятся." @click="editor.discardGroupChanges">Отменить оставшиеся правки</button>
           <p
             v-if="
               !editor.saving &&
-              (editor.error || (editor.dirty && editor.validation))
+              (editor.error || editor.groupBlockedCount || (editor.dirty && editor.validation))
             "
             class="field-error"
             role="alert"
@@ -192,6 +207,10 @@ let calendarSurface = null, previousFocus, focusedSession
 const arrowElement = ref(null)
 const hoursInput = ref(null)
 const typeRow = ref(null)
+const showHourSteps = computed(() => !(editor.isGroup && editor.mixed.hours)
+  && /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(String(editor.draft.hours))
+  && Number.isFinite(Number(editor.draft.hours))
+  && Number(editor.draft.hours) >= 0 && Number(editor.draft.hours) <= 24)
 const locations = [
   { value: 'office', label: 'Офис' },
   { value: 'remote', label: 'Удалённо' },
@@ -248,14 +267,10 @@ const navigateTypes = (event) => {
   buttons[index].focus({ preventScroll: true })
   revealType(buttons[index])
 }
-const canSwitchType = computed(
-  () => !editor.deleting && !editor.managerSave && editor.active?.day.isEditType
-)
-const step = (amount) =>
-  editor.change(
-    'hours',
-    Math.min(24, Math.max(0, Number(editor.draft.hours) + amount))
-  )
+const step = (amount) => {
+  if (!showHourSteps.value || editor.groupBlockedCount) return
+  editor.change('hours', Math.min(24, Math.max(0, Number(editor.draft.hours) + amount)))
+}
 const updateCalendarSurface = (cell) => {
   calendarSurface = cell?.closest('.calendar') || null
 }
@@ -414,6 +429,9 @@ onBeforeUnmount(() => {
 .editor-content > * {
   flex-shrink: 0;
 }
+.group-summary { margin: 0; font-size: .8rem; color: var(--muted-text); }
+.group-hint { margin: 0; font-size: .75rem; line-height: 1.35; color: var(--muted-text); }
+.mixed-hours .hours-control input { font-size: .85rem; }
 .hours-row {
   min-height: 2.25rem;
   display: flex;
@@ -421,22 +439,42 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 0.6rem;
 }
+.hours-row label { min-width: 0; }
 .hours-control {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) 2.2rem;
+  flex: 0 1 9rem;
+  width: 9rem;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
+  transition: grid-template-columns 200ms ease;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   overflow: hidden;
 }
 .hours-control button {
+  width: 100%;
+  min-width: 0;
   height: 2.25rem;
-  padding: 0.35rem 0.65rem;
+  padding: 0;
+  justify-content: center;
+  overflow: hidden;
+  transform: scale(1);
+  transition: opacity 200ms ease, transform 200ms ease;
   border: 0;
   border-radius: 0;
   font: inherit;
 }
+.hours-control.without-steps { grid-template-columns: 0 minmax(0, 1fr) 0; }
+.hours-control.without-steps button {
+  opacity: 0;
+  transform: scale(.9);
+  pointer-events: none;
+}
 .hours-control input {
-  width: 4.5rem;
+  width: 100%;
+  min-width: 0;
   padding: 0.3rem;
   border: 0;
   border-inline: 1px solid var(--border-color);
@@ -446,6 +484,9 @@ onBeforeUnmount(() => {
   background: var(--foreground);
   appearance: textfield;
   outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hours-control, .hours-control button { transition: none; }
 }
 .hours-control input::-webkit-inner-spin-button,
 .hours-control input::-webkit-outer-spin-button {
