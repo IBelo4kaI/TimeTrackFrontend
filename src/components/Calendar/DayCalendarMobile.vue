@@ -4,11 +4,12 @@
     :class="[
       'day',
       { 'day-selected': isSelected },
+      { 'day-editor-active': isEditing },
       { 'day-weekend': day.isWeekend },
     ]"
     @touchstart="handleMouseDown"
     @touchmove="handleMouseEnter"
-    @click="selectingStore.isSelecting ? selectDay(day) : open(day)"
+    @click="selectingStore.isSelecting ? selectDay(day) : openEditor($event)"
   >
     <span class="day-number">
       {{ dayDate.getDate() }}
@@ -22,14 +23,16 @@
 </template>
 
 <script setup>
+import { historyDayKey } from '@/utils/timeEntryHistory.utils'
+import { useCalendarStore } from '@/stores/calendar'
+import { useDayEditorStore } from '@/stores/dayEditor'
 import DayTimeHistoryButton from './DayTimeHistoryButton.vue'
 import { WORK_LOCATIONS } from '@/constants/workLocation.constants'
-import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useDayTypesStore } from '@/stores/dayTypes'
 import { useSelectingStore } from '@/stores/selecting'
 import { getContrastColor } from '@/utils/color.utils'
 import { parseDate } from '@/utils/date.utils'
-import { computed, onMounted, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 
 const { day, isSelected } = defineProps({
   day: Object,
@@ -38,8 +41,20 @@ const { day, isSelected } = defineProps({
 const dayElement = useTemplateRef('dayElement')
 const emit = defineEmits(['day-mouse-down', 'day-mouse-enter', 'day-click'])
 
-const addReportStore = useAddReportModalStore()
-const { open } = addReportStore
+const calendar = useCalendarStore()
+const dayEditor = useDayEditorStore()
+const isEditing = computed(() => !!dayEditor.active && dayEditor.active.owner === calendar.selectedUserId
+  && historyDayKey(dayEditor.active.day.date) === historyDayKey(day.date))
+watch([isEditing, dayElement], ([editing, element]) => {
+  if (editing && element) dayEditor.setAnchorElement(element)
+}, { flush: 'post' })
+onBeforeUnmount(() => {
+  if (dayEditor.anchorElement === dayElement.value) dayEditor.setAnchorElement(null)
+})
+const openEditor = (event) => {
+  if (event.target.closest('button, a, input, select, textarea, [role="button"]')) return
+  void dayEditor.open(day, event.currentTarget)
+}
 
 const dayTypesStore = useDayTypesStore()
 
@@ -103,6 +118,14 @@ onMounted(() => {
   border: 0.07rem solid var(--border-color);
   border-radius: var(--border-radius);
   transition: all 0.3s ease;
+}
+
+/* Above the editor backdrop (10001), below its popover (10003). */
+.day-editor-active {
+  position: relative;
+  z-index: 10002;
+  pointer-events: none;
+  border-color: var(--accent);
 }
 
 .day-number {

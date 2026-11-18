@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <DayEditor />
     <template v-if="!isMobile">
       <ControlsCalendar :store="calendarStore" />
       <LegendCalendar />
@@ -40,6 +41,8 @@
 </template>
 
 <script setup>
+import DayEditor from '@/components/Calendar/DayEditor.vue'
+import { useDayEditorStore } from '@/stores/dayEditor'
 import Birthdays from '@/components/Calendar/Birthdays.vue'
 import SantaSnowball from '@/components/Calendar/SantaSnowball.vue'
 import DayListCalendar from '@/components/Calendar/DayListCalendar.vue'
@@ -54,7 +57,7 @@ import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/themes'
 import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 
 const themeStore = useThemeStore()
 const isMobile = computed(() => themeStore.isMobile)
@@ -66,6 +69,10 @@ titleStore.setTitle('Календарь', 'Учёт рабочих дней')
 const calendarStore = useCalendarStore()
 const userStore = useUserStore()
 const route = useRoute()
+
+const dayEditor = useDayEditorStore()
+onBeforeRouteLeave(() => dayEditor.close())
+onBeforeRouteUpdate(() => dayEditor.close())
 
 const tabActive = ref('calendar')
 

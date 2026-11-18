@@ -1,8 +1,10 @@
 <template>
   <div
+    ref="dayElement"
     :class="[
       'day',
       { 'day-selected': isSelected },
+      { 'day-editor-active': isEditing },
       { 'day-weekend': day.isWeekend },
       { 'day-birthday-hovered': isBirthdayHovered },
     ]"
@@ -10,7 +12,7 @@
     @mousedown="handleMouseDown"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
-    @dblclick="open(day)"
+    @dblclick="openEditor"
   >
     <div class="day-header">
       <span class="day-number">
@@ -85,30 +87,46 @@
 </template>
 
 <script setup>
+import { historyDayKey } from '@/utils/timeEntryHistory.utils'
+import { useDayEditorStore } from '@/stores/dayEditor'
+import { useSelectingStore } from '@/stores/selecting'
 import DayTimeHistoryButton from './DayTimeHistoryButton.vue'
 import { WORK_LOCATIONS } from '@/constants/workLocation.constants'
-import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useCalendarStore } from '@/stores/calendar'
 import { useDayTypesStore } from '@/stores/dayTypes'
 import { useThemeStore } from '@/stores/themes'
 import { useUserStore } from '@/stores/user'
 import { themedBackground } from '@/utils/color.utils'
 import { parseDate } from '@/utils/date.utils'
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 
 const { day, isSelected } = defineProps({
   day: Object,
   isSelected: Boolean,
 })
+const dayElement = useTemplateRef('dayElement')
 const emit = defineEmits(['day-mouse-down', 'day-mouse-enter', 'day-click'])
 
 const userStore = useUserStore()
 
-const addReportStore = useAddReportModalStore()
-const { open } = addReportStore
+const calendarStore = useCalendarStore()
+const selecting = useSelectingStore()
+const dayEditor = useDayEditorStore()
+const isEditing = computed(() => !!dayEditor.active && dayEditor.active.owner === calendarStore.selectedUserId
+  && historyDayKey(dayEditor.active.day.date) === historyDayKey(day.date))
+watch([isEditing, dayElement], ([editing, element]) => {
+  if (editing && element) dayEditor.setAnchorElement(element)
+}, { flush: 'post' })
+onBeforeUnmount(() => {
+  if (dayEditor.anchorElement === dayElement.value) dayEditor.setAnchorElement(null)
+})
+const openEditor = (event) => {
+  if (event.shiftKey || event.ctrlKey || event.metaKey || selecting.selectedCount > 1) return
+  if (event.target.closest('button, a, input, select, textarea, [role="button"]')) return
+  void dayEditor.open(day, event.currentTarget)
+}
 
 const dayTypesStore = useDayTypesStore()
-const calendarStore = useCalendarStore()
 const themeStore = useThemeStore()
 
 const dayDate = computed(() => parseDate(day.date))
@@ -179,6 +197,17 @@ const dayStyle = computed(() => {
   transition: all 0.3s ease;
 }
 
+/* Above the editor backdrop (10001), below its popover (10003). */
+.day-editor-active {
+  position: relative;
+  z-index: 10002;
+  pointer-events: none;
+  border-color: var(--accent);
+  transform: none;
+  box-shadow: none;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
 .day:hover {
   --border-color: var(--accent);
 }
@@ -191,7 +220,7 @@ const dayStyle = computed(() => {
   --border-color: var(--accent);
 }
 
-.day-birthday-hovered {
+.day-birthday-hovered:not(.day-editor-active) {
   --border-color: var(--accent);
   transform: translateY(-0.3rem);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);

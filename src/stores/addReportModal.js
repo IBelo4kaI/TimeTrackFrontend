@@ -11,6 +11,7 @@ import { useNotificationStore } from './notification'
 import { useDayTypesStore } from './dayTypes'
 import { useUniversalModalStore } from './modal'
 import { useSelectingStore } from './selecting'
+import { useDayEditorStore } from './dayEditor'
 
 /**
  * Создать начальное состояние дня
@@ -91,6 +92,10 @@ export const useAddReportModalStore = defineStore('add-report-modal', () => {
         daysData.value.date.getFullYear()
     }
     const isMultiEdit = selectedItems.value.size > 1
+    if (!isMultiEdit) {
+      void useDayEditorStore().open(daysData.value)
+      return
+    }
     const editedDays = isMultiEdit
       ? Array.from(selectedItems.value)
       : [daysData.value]
