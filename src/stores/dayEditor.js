@@ -1,4 +1,4 @@
-import { computed, reactive, ref, shallowRef } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { createUpdatesObjects } from '@/helpers/usertimeentry.helpers'
 import { historyDayKey } from '@/utils/timeEntryHistory.utils'
@@ -12,8 +12,6 @@ export const useDayEditorStore = defineStore('day-editor', () => {
   const calendar = useCalendarStore()
   const types = useDayTypesStore()
   const active = ref(null)
-  const anchorElement = shallowRef(null)
-  const setAnchorElement = (element) => { anchorElement.value = element }
   const draft = reactive({ hours: 0, userTimeTypeId: '', workLocation: 'office', comment: '' })
   const saving = ref(false)
   const error = ref('')
@@ -41,8 +39,6 @@ export const useDayEditorStore = defineStore('day-editor', () => {
   }
   const same = (day, value, fields) => mismatches(day, value, fields).length === 0
   const hasRecords = computed(() => days.value.some((day) => day.userTimeId))
-  const isEditedDay = (date) => active.value?.owner === calendar.selectedUserId
-    && days.value.some((day) => historyDayKey(day.date) === historyDayKey(date))
   let timer, inFlight = null, opening = 0
   let pendingGroup = []
   let debounceUntil = 0, forceFlush = false, wakeDebounce = null
@@ -389,7 +385,6 @@ export const useDayEditorStore = defineStore('day-editor', () => {
     const group = isGroup.value
     if (group) selecting.selectedItems = new Set(days.value)
     selecting.isGroupEditing = false
-    anchorElement.value = null
     active.value = null
     debounceUntil = 0
     pendingGroup = []
@@ -397,7 +392,7 @@ export const useDayEditorStore = defineStore('day-editor', () => {
     if (!group) selecting.clearSelection()
     return true
   }
-  const open = async (day, element) => {
+  const open = async (day) => {
     const request = ++opening
     const owner = calendar.selectedUserId, year = calendar.currentYear, month = calendar.currentMonth
     if (active.value && active.value.owner === calendar.selectedUserId
@@ -411,10 +406,8 @@ export const useDayEditorStore = defineStore('day-editor', () => {
       const restriction = calendar.managerDayError(day)
       if (restriction) { useNotificationStore().addNotification(restriction, 'warning'); return }
     }
-    anchorElement.value = element?.isConnected ? element : null
-    const rect = element?.getBoundingClientRect()
     active.value = { owner: calendar.selectedUserId, year: calendar.currentYear, month: calendar.currentMonth,
-      day: { ...day }, anchor: rect ? { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom } : null }
+      day: { ...day } }
     Object.assign(draft, { hours: Number(day.hours) || 0, userTimeTypeId: day.userTimeTypeId || workId.value || '',
       workLocation: day.workLocation || 'office', comment: '' })
     baseline.value = values()
@@ -427,10 +420,10 @@ export const useDayEditorStore = defineStore('day-editor', () => {
     const selecting = useSelectingStore()
     if (selecting.selectedCount <= 1) selecting.clearSelection()
   }
-  const openGroup = async (selection, element) => {
+  const openGroup = async (selection) => {
     if (!selection?.length) return
     const requested = [...new Set(selection.map((day) => historyDayKey(day.date)))].sort()
-    if (requested.length < 2) return open(selection[0], element)
+    if (requested.length < 2) return open(selection[0])
     const request = ++opening
     const owner = calendar.selectedUserId, year = calendar.currentYear, month = calendar.currentMonth
     const lastSelected = historyDayKey(useSelectingStore().lastSelected?.date)
@@ -442,8 +435,7 @@ export const useDayEditorStore = defineStore('day-editor', () => {
     if (missing) { useNotificationStore().addNotification(`Недоступны ${missing} выбранных дат. Обновите календарь.`, 'warning'); return }
     const selected = requested.map((date) => ({ ...available.get(date) }))
     const day = selected.find((item) => historyDayKey(item.date) === anchorDate) || selected[0]
-    active.value = { owner, year, month, day, days: selected, anchor: null }
-    anchorElement.value = element?.isConnected ? element : null
+    active.value = { owner, year, month, day, days: selected }
     editedFields.clear()
     pendingGroup = []
     deleting.value = false
@@ -473,6 +465,6 @@ export const useDayEditorStore = defineStore('day-editor', () => {
       void flush()
     }
   }
-  return { active, isGroup, selectedCount, mixed, hasRecords, isEditedDay, canApplyType, canChangeLocation, groupBlockedCount, fixedTypeCount, locationSkippedCount, discardGroupChanges, openGroup, anchorElement, setAnchorElement, draft, saving, error, saved, dirty, deleting, uncertain, validation,
+  return { active, isGroup, selectedCount, mixed, hasRecords, canApplyType, canChangeLocation, groupBlockedCount, fixedTypeCount, locationSkippedCount, discardGroupChanges, openGroup, draft, saving, error, saved, dirty, deleting, uncertain, validation,
     editableTypes, workId, managerSave, needsReason, vacation, change, flush, close, open, remove }
 })

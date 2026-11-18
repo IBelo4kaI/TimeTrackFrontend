@@ -4,7 +4,6 @@
     :class="[
       'day',
       { 'day-selected': isSelected },
-      { 'day-editor-active': isEditing },
       { 'day-weekend': day.isWeekend },
     ]"
     @touchstart="handleMouseDown"
@@ -23,7 +22,6 @@
 </template>
 
 <script setup>
-import { historyDayKey } from '@/utils/timeEntryHistory.utils'
 import { useCalendarStore } from '@/stores/calendar'
 import { useDayEditorStore } from '@/stores/dayEditor'
 import DayTimeHistoryButton from './DayTimeHistoryButton.vue'
@@ -32,7 +30,7 @@ import { useDayTypesStore } from '@/stores/dayTypes'
 import { useSelectingStore } from '@/stores/selecting'
 import { getContrastColor } from '@/utils/color.utils'
 import { parseDate } from '@/utils/date.utils'
-import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { computed, onMounted, useTemplateRef } from 'vue'
 
 const { day, isSelected } = defineProps({
   day: Object,
@@ -43,18 +41,9 @@ const emit = defineEmits(['day-mouse-down', 'day-mouse-enter', 'day-click'])
 
 const calendar = useCalendarStore()
 const dayEditor = useDayEditorStore()
-const isEditing = computed(() => dayEditor.isEditedDay(day.date))
-const isAnchorDay = computed(() => !!dayEditor.active && dayEditor.active.owner === calendar.selectedUserId
-  && historyDayKey(dayEditor.active.day.date) === historyDayKey(day.date))
-watch([isAnchorDay, dayElement], ([editing, element]) => {
-  if (editing && element) dayEditor.setAnchorElement(element)
-}, { flush: 'post' })
-onBeforeUnmount(() => {
-  if (dayEditor.anchorElement === dayElement.value) dayEditor.setAnchorElement(null)
-})
 const openEditor = (event) => {
   if (event.target.closest('button, a, input, select, textarea, [role="button"]')) return
-  void dayEditor.open(day, event.currentTarget)
+  void dayEditor.open(day)
 }
 
 const dayTypesStore = useDayTypesStore()
@@ -121,13 +110,6 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
-/* Above the editor backdrop (10001), below its popover (10003). */
-.day-editor-active {
-  position: relative;
-  z-index: 10002;
-  pointer-events: none;
-  border-color: var(--accent);
-}
 
 .day-number {
   display: inline-flex;

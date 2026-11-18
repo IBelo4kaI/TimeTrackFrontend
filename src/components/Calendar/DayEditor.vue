@@ -1,30 +1,16 @@
 <template>
   <Teleport to="body">
     <Transition name="day-editor-fade">
-      <div
+      <ModalLayout
         v-if="editor.active"
-        ref="overlay"
-        class="day-editor-overlay"
-        aria-hidden="true"
-        @click.stop="editor.close"
-        @contextmenu.prevent
-        @wheel="scrollCalendar"
-      ></div>
-    </Transition>
-    <Transition name="day-editor-fade">
-      <section
-        v-if="editor.active"
-        ref="panel"
-        class="day-editor"
-        :class="[side, { 'mixed-hours': editor.isGroup && editor.mixed.hours }]"
-        :style="[position, { visibility: ready ? 'visible' : 'hidden' }]"
-        role="dialog"
-        aria-label="Быстрое редактирование дня"
-        tabindex="-1"
-        @mousedown.stop
-        @touchstart.stop
+        class="day-editor-modal"
+        :class="{ 'mixed-hours': editor.isGroup && editor.mixed.hours }"
+        :style="viewportStyle"
+        width="360px"
+        :autofocus="false"
+        title="Быстрое редактирование дня"
+        @close="requestClose"
       >
-        <span ref="arrowElement" class="editor-arrow" :style="arrowStyle" aria-hidden="true"></span>
         <div class="editor-content">
           <p v-if="editor.isGroup" class="group-summary">
             Выбрано дней: {{ editor.selectedCount }}
@@ -187,24 +173,22 @@
             {{ editor.error || editor.validation }}
           </p>
         </div>
-      </section>
+      </ModalLayout>
     </Transition>
   </Teleport>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import ButtonUI from '@/components/ButtonUI.vue'
 import { useDayEditorStore } from '@/stores/dayEditor'
 import { useDayTypesStore } from '@/stores/dayTypes'
-import { useDayEditorPosition } from '@/composables/useDayEditorPosition'
+import ModalLayout from '@/layouts/ModalLayout.vue'
 
 const editor = useDayEditorStore()
 const types = useDayTypesStore()
-const panel = ref(null)
-const overlay = ref(null)
-let calendarSurface = null, previousFocus, focusedSession
-const arrowElement = ref(null)
+const viewportStyle = ref({})
+let closing = null, previousOverflow = null
 const hoursInput = ref(null)
 const typeRow = ref(null)
 const showHourSteps = computed(() => !(editor.isGroup && editor.mixed.hours)
@@ -271,153 +255,85 @@ const step = (amount) => {
   if (!showHourSteps.value || editor.groupBlockedCount) return
   editor.change('hours', Math.min(24, Math.max(0, Number(editor.draft.hours) + amount)))
 }
-const updateCalendarSurface = (cell) => {
-  calendarSurface = cell?.closest('.calendar') || null
+const requestClose = () => {
+  if (!closing) closing = editor.close().finally(() => { closing = null })
+  return closing
 }
-const { position, arrowStyle, side, ready } = useDayEditorPosition({
-  editor, panel, arrowElement, onAnchorUpdate: updateCalendarSurface,
-  onPositioned(session) {
-    if (focusedSession === session || editor.active !== session) return
-    focusedSession = session
-    revealType(typeRow.value?.querySelector('[aria-pressed="true"]'), true)
-    if (window.innerWidth > 768) {
-      hoursInput.value?.focus({ preventScroll: true })
-      hoursInput.value?.select()
-    } else panel.value?.focus({ preventScroll: true })
-  },
-})
-// Forward wheel input to the covered calendar; leave page scrolling available at its edges.
-const scrollCalendar = (event) => {
-  const surface = calendarSurface
-  if (!surface) return
-  const scale =
-    event.deltaMode === 1
-      ? 16
-      : event.deltaMode === 2
-        ? surface.clientHeight
-        : 1
-  const dy = event.deltaY * scale,
-    dx = event.deltaX * scale
-  const canScrollY =
-    dy < 0
-      ? surface.scrollTop > 0
-      : surface.scrollTop + surface.clientHeight < surface.scrollHeight
-  const canScrollX =
-    dx < 0
-      ? surface.scrollLeft > 0
-      : surface.scrollLeft + surface.clientWidth < surface.scrollWidth
-  if ((dy && canScrollY) || (dx && canScrollX)) {
-    event.preventDefault()
-    surface.scrollBy({ top: dy, left: dx })
-  }
+const updateViewport = () => {
+  const viewport = window.visualViewport
+  viewportStyle.value = viewport ? {
+    left: `${viewport.offsetLeft}px`, top: `${viewport.offsetTop}px`,
+    width: `${viewport.width}px`, height: `${viewport.height}px`,
+    right: 'auto', bottom: 'auto',
+    '--editor-viewport-height': `${viewport.height}px`,
+  } : {}
 }
-watch(() => editor.active, (active, previous) => {
+const stopViewport = () => {
+  window.visualViewport?.removeEventListener('resize', updateViewport)
+  window.visualViewport?.removeEventListener('scroll', updateViewport)
+  window.removeEventListener('resize', updateViewport)
+  if (previousOverflow !== null) document.body.style.overflow = previousOverflow
+  previousOverflow = null
+}
+watch(() => editor.active, async (active, previous) => {
   if (active === previous) return
-  focusedSession = null
-  if (active) previousFocus = document.activeElement
-  else previousFocus?.focus?.()
-}, { flush: 'post' })
-// Wait for persistence before an outside action can change the calendar context.
-const outside = (event) => {
-  if (!editor.active || panel.value?.contains(event.target)) return
-  // A swipe on the backdrop may scroll; only the resulting tap closes it.
-  if (
-    event.type === 'pointerdown' &&
-    overlay.value?.contains(event.target)
-  )
-    return
-  event.preventDefault()
-  event.stopImmediatePropagation()
-  void editor.close()
-}
-const keydown = (event) => {
-  if (!editor.active) return
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    void editor.close()
-  } else if (!panel.value?.contains(event.target)) {
-    outside(event)
+  stopViewport()
+  if (!active) return
+  previousOverflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  updateViewport()
+  window.visualViewport?.addEventListener('resize', updateViewport)
+  window.visualViewport?.addEventListener('scroll', updateViewport)
+  window.addEventListener('resize', updateViewport)
+  await nextTick()
+  if (editor.active !== active) return
+  revealType(typeRow.value?.querySelector('[aria-pressed="true"]'), true)
+  if (window.innerWidth > 768) {
+    hoursInput.value?.focus({ preventScroll: true })
+    hoursInput.value?.select()
   }
-}
+}, { flush: 'post', immediate: true })
 const preventExit = (event) => {
   if (editor.dirty || editor.saving || editor.uncertain) {
     event.preventDefault()
     event.returnValue = ''
   }
 }
-document.addEventListener('pointerdown', outside, true)
-document.addEventListener('click', outside, true)
-document.addEventListener('keydown', keydown, true)
 window.addEventListener('beforeunload', preventExit)
 onBeforeUnmount(() => {
-  calendarSurface = null
-  document.removeEventListener('pointerdown', outside, true)
-  document.removeEventListener('click', outside, true)
-  document.removeEventListener('keydown', keydown, true)
+  stopViewport()
   window.removeEventListener('beforeunload', preventExit)
 })
 </script>
 
 <style scoped>
-/* Siblings in the root stacking context; the original day occupies layer 10002. */
-.day-editor-overlay {
-  position: fixed;
-  inset: 0;
+.day-editor-modal {
   z-index: 10001;
-  background: #9c9c9c50;
-  pointer-events: auto;
-  touch-action: pan-y;
+  padding: 12px;
+  animation: none;
 }
+.day-editor-modal :deep(.modal-container) {
+  min-width: 0;
+  max-height: calc(var(--editor-viewport-height, 100dvh) - 24px);
+  padding: .8rem;
+  gap: .55rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 .3rem 1.4rem #0002;
+}
+.day-editor-modal :deep(.modal-header) {
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+.day-editor-modal :deep(.header-info) { display: none; }
 .day-editor-fade-enter-active,
-.day-editor-fade-leave-active {
-  transition: opacity 140ms ease;
-}
+.day-editor-fade-leave-active { transition: opacity 140ms ease; }
 .day-editor-fade-enter-from,
-.day-editor-fade-leave-to {
-  opacity: 0;
-}
-.day-editor-overlay.day-editor-fade-leave-active,
-.day-editor.day-editor-fade-leave-active {
-  pointer-events: none;
-}
+.day-editor-fade-leave-to { opacity: 0; }
+.day-editor-fade-leave-active { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .day-editor-fade-enter-active,
-  .day-editor-fade-leave-active {
-    transition: none;
-  }
+  .day-editor-fade-leave-active { transition: none; }
 }
-.day-editor {
-  position: fixed;
-  z-index: 10003;
-  pointer-events: auto;
-  left: 12px;
-  top: 12px;
-  width: min(300px, var(--editor-width, calc(100vw - 24px)));
-  max-height: var(--editor-height, calc(100dvh - 24px));
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.8rem;
-  background: var(--foreground);
-  color: var(--text);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  box-shadow: 0 0.3rem 1.4rem #0002;
-  outline: none;
-}
-.editor-arrow {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: var(--foreground);
-  transform: rotate(45deg);
-  pointer-events: none;
-}
-.on-right .editor-arrow { border-left: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
-.on-left .editor-arrow { border-right: 1px solid var(--border-color); border-top: 1px solid var(--border-color); }
-.on-bottom .editor-arrow { border-left: 1px solid var(--border-color); border-top: 1px solid var(--border-color); }
-.on-top .editor-arrow { border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
 .editor-content {
   display: flex;
   flex-direction: column;
@@ -531,7 +447,7 @@ onBeforeUnmount(() => {
 .day-types button {
   flex: 0 0 auto;
 }
-.day-editor :is(button, textarea, .day-types):focus-visible {
+.editor-content :is(button, textarea, .day-types):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -591,10 +507,5 @@ textarea {
   font-size: 0.8rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
-}
-@media (max-width: 768px) {
-  .day-editor {
-    width: min(420px, var(--editor-width, calc(100vw - 24px)));
-  }
 }
 </style>

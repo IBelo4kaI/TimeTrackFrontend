@@ -32,10 +32,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 
-const { title, desc, width } = defineProps({
+const { title, desc, width, autofocus } = defineProps({
   title: String,
   desc: String,
   width: String,
+  autofocus: { type: Boolean, default: true },
 })
 const emit = defineEmits(['close'])
 
@@ -80,9 +81,9 @@ const onKeydown = (e) => {
 onMounted(() => {
   previousFocus = document.activeElement
   document.addEventListener('keydown', onKeydown)
-  const target = containerRef.value?.querySelector(
+  const target = autofocus ? containerRef.value?.querySelector(
     'input:not([disabled]):not([type="hidden"]), textarea:not([disabled])'
-  )
+  ) : null
   ;(target || containerRef.value)?.focus()
 })
 
