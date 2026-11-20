@@ -53,6 +53,9 @@ export const useCalendarStore = defineStore('calendar', () => {
   const historyError = ref('')
   const monthState = ref(null)
   const scopeRow = ref(null)
+  const employeeRows = ref([])
+  const employeesReady = ref(false)
+  const employeesError = ref('')
   const mutationPending = ref(false)
   const approvalPending = ref(false)
   let loadedContext = ''
@@ -60,6 +63,22 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   const userStore = useUserStore()
   const dayTypesStore = useDayTypesStore()
+
+  const canSelectEmployees = computed(() => userStore.hasPermission('calendar.all', 'read')
+    || (employeesReady.value && userStore.hasPermission('department.manager', 'manage')))
+  const employeeOptions = computed(() => {
+    if (userStore.hasPermission('calendar.all', 'read')) return userStore.usersAll
+    const own = userStore.user
+    const options = new Map(own?.id ? [[own.id, own]] : [])
+    if (employeesReady.value && userStore.hasPermission('department.manager', 'manage')) {
+      for (const row of employeeRows.value) {
+        if (!options.has(row.userId)) options.set(row.userId, {
+          id: row.userId, name: row.name, surname: row.surname, patronymic: row.patronymic,
+        })
+      }
+    }
+    return [...options.values()]
+  })
 
   const foreignCalendar = computed(() => selectedUserId.value && selectedUserId.value !== userStore.user?.id)
   const managerOperation = (action) => foreignCalendar.value
@@ -147,6 +166,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     historyError.value = ''
     monthState.value = null
     scopeRow.value = null
+    employeeRows.value = []
+    employeesReady.value = false
+    employeesError.value = ''
 
     const userId = selectedUserId.value
     if (!userId) {
@@ -172,9 +194,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         fetchIndividualStandards(userId, year),
         getTimeEntryHistory(userId, year, month).then((rows) => ({ rows })).catch(() => null),
         getTimesheetMonth(userId, year, month).catch(() => null),
-        ((foreignCalendar.value && userStore.hasPermission('department.manager', 'manage'))
-          || userStore.hasPermission('timesheet.all', 'approve'))
-          ? getTimesheets(year, month, { timeout: 10000 }).catch(() => []) : Promise.resolve([]),
+        (userStore.hasPermission('department.manager', 'manage') || userStore.hasPermission('timesheet.all', 'approve'))
+          ? getTimesheets(year, month, { timeout: 10000 }).then((rows) => ({ rows })).catch(() => ({ rows: null }))
+          : Promise.resolve({ rows: [] }),
       ])
       if (seq !== fetchSeq || context !== contextKey()) return
 
@@ -182,13 +204,18 @@ export const useCalendarStore = defineStore('calendar', () => {
       data.value = result.days
       prevMonthDays.value = generatePrevMonthDays(first)
       nextMonthDays.value = generateNextMonthDays(last)
-      statsData.value = stats
+      statsData.value = stats ?? (Array.isArray(scope?.rows) ? scope.rows.find((row) => row?.userId === userId)?.statistics : null) ?? null
       individualStandards.value = standards
       historyReady.value = Array.isArray(history?.rows)
       timeHistory.value = historyReady.value ? history.rows : []
       historyError.value = historyReady.value ? '' : 'Не удалось загрузить историю изменений. Пометки могут быть недоступны.'
       monthState.value = state
-      scopeRow.value = Array.isArray(scope) ? scope.find((row) => row?.userId === userId) ?? null : null
+      const validScope = Array.isArray(scope?.rows) && scope.rows.every((row) => typeof row?.userId === 'string' && row.userId)
+      employeeRows.value = validScope ? scope.rows : []
+      employeesReady.value = validScope
+      if (!validScope && userStore.hasPermission('department.manager', 'manage')
+        && !userStore.hasPermission('calendar.all', 'read')) employeesError.value = 'Не удалось загрузить доступных сотрудников. Обновите данные.'
+      scopeRow.value = employeeRows.value.find((row) => row.userId === userId) ?? null
       loadedContext = context
     } catch (error) {
       if (seq !== fetchSeq || context !== contextKey()) return
@@ -412,6 +439,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     individualStandards,
     selectedUserId,
     selectedUser,
+    canSelectEmployees, employeeOptions, employeesError,
     hoveredBirthday,
     timeHistory, historyReady, historyError, monthState, isManagerCalendar, mutationPending,
     canApprove, approvalPending, setApproval,

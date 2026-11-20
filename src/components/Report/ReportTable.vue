@@ -111,8 +111,8 @@
                   <td class="td align-center">{{ row.decreeDays }}</td>
                 </template>
                 <td class="td td-approval">
-                  <Badge :type="TIMESHEET_STATUSES[row.status]?.type || 'muted'">
-                    {{ TIMESHEET_STATUSES[row.status]?.label || 'Неизвестный статус' }}
+                  <Badge :type="row.requiresApproval === false ? 'muted' : TIMESHEET_STATUSES[row.status]?.type || 'muted'">
+                    {{ row.requiresApproval === false ? 'Подтверждение не требуется' : TIMESHEET_STATUSES[row.status]?.label || 'Неизвестный статус' }}
                   </Badge>
                 </td>
                 <td class="td td-confirmation">

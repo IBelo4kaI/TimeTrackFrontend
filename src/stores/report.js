@@ -84,6 +84,7 @@ export const useReportStore = defineStore('report', () => {
       department: departmentMap.value.get(row.userId) ?? '',
       unavailable: row.statisticsUnavailable || !data,
       status: row.status,
+      requiresApproval: row.requiresApproval !== false,
       revision: row.revision,
       approvedBy: row.approvedBy,
       approvedAt: row.approvedAt,

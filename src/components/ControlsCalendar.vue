@@ -4,21 +4,27 @@
     <div
       class="controls-users"
       v-if="
-        isShowSelectingUser && userStore.hasPermission('calendar.all', 'read')
+        isShowSelectingUser && (isCalendarControl ? store.canSelectEmployees : userStore.hasPermission('calendar.all', 'read'))
       "
     >
       <Autocomplete
         v-model="store.selectedUserId"
-        :options="userStore.usersAll"
+        :options="isCalendarControl ? store.employeeOptions : userStore.usersAll"
         value-key="id"
         :label-key="['name', 'surname']"
         label-separator=" "
         placeholder="Выберите пользователя"
         :is-show-button="false"
-        @select="changeUser"
+        @select="selectUser"
         @clear="clearUser"
       />
     </div>
+    <ButtonUI v-if="isCalendarControl && store.selectedUserId !== userStore.user?.id"
+      type="muted" icon="fa-regular fa-user" @click="openOwnCalendar">Мой календарь</ButtonUI>
+    <span v-if="isCalendarControl && store.employeesError" class="employees-error" role="status">
+      {{ store.employeesError }}
+      <button type="button" :disabled="store.isLoading" @click="changeUser">Повторить</button>
+    </span>
     <div class="controls-action">
       <ButtonUI
         v-if="page == 'calendar'"
@@ -57,7 +63,17 @@ const changeUser = async () => {
   await store.initialFetch()
 }
 
+const selectUser = async (option) => {
+  store.selectedUser = userStore.usersAll.find((user) => user.id === store.selectedUserId) || option
+  await changeUser()
+}
+const openOwnCalendar = async () => {
+  store.selectedUserId = userStore.user?.id
+  store.selectedUser = userStore.user
+  await changeUser()
+}
 const clearUser = async () => {
+  if (isCalendarControl.value && !userStore.hasPermission('calendar.all', 'read')) return openOwnCalendar()
   store.selectedUserId = null
   store.selectedUser = null
   await store.initialFetch()
@@ -76,6 +92,9 @@ onMounted(() => {
   border-radius: var(--border-radius);
   background: var(--foreground); */
 }
+
+.employees-error { color: var(--muted-text); font-size: .85rem; }
+.employees-error button { color: var(--accent); text-decoration: underline; cursor: pointer; }
 
 .calendar-controls {
   flex-wrap: wrap;

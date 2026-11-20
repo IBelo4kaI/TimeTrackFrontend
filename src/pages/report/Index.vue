@@ -14,8 +14,8 @@
         <span>{{ meta.label }}</span><strong>{{ statusCounts[status] }}</strong>
       </div>
       <div class="approval-progress">
-        <span>Подтверждено {{ statusCounts.approved }} из {{ departmentRows.length }}</span>
-        <progress :value="statusCounts.approved" :max="departmentRows.length || 1" aria-label="Доля подтверждённых табелей" />
+        <span>Подтверждено {{ statusCounts.approved }} из {{ requiredRows.length }} требующих подтверждения</span>
+        <progress :value="statusCounts.approved" :max="requiredRows.length || 1" aria-label="Доля подтверждённых табелей" />
       </div>
     </div>
 
@@ -46,12 +46,13 @@ const selectedStatus = ref('all')
 const departmentRows = computed(() => selectedDepartment.value === 'all'
   ? reportStore.allUsersStatistics
   : reportStore.allUsersStatistics.filter((row) => row.department === selectedDepartment.value))
+const requiredRows = computed(() => departmentRows.value.filter((row) => row.requiresApproval !== false))
 const filteredRows = computed(() => selectedStatus.value === 'all'
   ? departmentRows.value
-  : departmentRows.value.filter((row) => row.status === selectedStatus.value))
+  : requiredRows.value.filter((row) => row.status === selectedStatus.value))
 const statusCounts = computed(() => {
   const counts = { pending: 0, approved: 0, needs_review: 0 }
-  departmentRows.value.forEach((row) => { if (row.status in counts) counts[row.status]++ })
+  requiredRows.value.forEach((row) => { if (row.status in counts) counts[row.status]++ })
   return counts
 })
 

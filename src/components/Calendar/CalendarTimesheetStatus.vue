@@ -58,7 +58,9 @@ const staleState = computed(() => {
 })
 const loading = computed(() => props.calendar.isLoading || !!staleState.value)
 const meta = computed(() =>
-  loading.value ? null : TIMESHEET_STATUSES[props.calendar.monthState?.status]
+  loading.value ? null : props.calendar.monthState?.requiresApproval === false
+    ? { label: 'Подтверждение не требуется', type: 'muted' }
+    : TIMESHEET_STATUSES[props.calendar.monthState?.status]
 )
 </script>
 <style scoped>
