@@ -73,7 +73,6 @@ const openOwnCalendar = async () => {
   await changeUser()
 }
 const clearUser = async () => {
-  if (isCalendarControl.value && !userStore.hasPermission('calendar.all', 'read')) return openOwnCalendar()
   store.selectedUserId = null
   store.selectedUser = null
   await store.initialFetch()

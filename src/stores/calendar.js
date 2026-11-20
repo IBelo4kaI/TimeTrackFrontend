@@ -171,15 +171,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     employeesError.value = ''
 
     const userId = selectedUserId.value
-    if (!userId) {
-      data.value = []
-      prevMonthDays.value = []
-      nextMonthDays.value = []
-      statsData.value = null
-      individualStandards.value = []
-      isLoading.value = false
-      return
-    }
 
     const month = currentMonth.value
     const year = currentYear.value
@@ -188,12 +179,12 @@ export const useCalendarStore = defineStore('calendar', () => {
 
     try {
       const [result, stats, standards, history, state, scope] = await Promise.all([
-        getCalendarDays(month, year, userId),
+        userId ? getCalendarDays(month, year, userId) : Promise.resolve({ days: [] }),
         // Статистика вторична — её сбой не должен прятать сам календарь
-        fetchStatistics(userId, month, year).catch(() => null),
-        fetchIndividualStandards(userId, year),
-        getTimeEntryHistory(userId, year, month).then((rows) => ({ rows })).catch(() => null),
-        getTimesheetMonth(userId, year, month).catch(() => null),
+        userId ? fetchStatistics(userId, month, year).catch(() => null) : Promise.resolve(null),
+        userId ? fetchIndividualStandards(userId, year) : Promise.resolve([]),
+        userId ? getTimeEntryHistory(userId, year, month).then((rows) => ({ rows })).catch(() => null) : Promise.resolve({ rows: [] }),
+        userId ? getTimesheetMonth(userId, year, month).catch(() => null) : Promise.resolve(null),
         (userStore.hasPermission('department.manager', 'manage') || userStore.hasPermission('timesheet.all', 'approve'))
           ? getTimesheets(year, month, { timeout: 10000 }).then((rows) => ({ rows })).catch(() => ({ rows: null }))
           : Promise.resolve({ rows: [] }),
@@ -202,8 +193,8 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       if (!Array.isArray(result?.days)) throw new Error('Некорректный ответ календаря')
       data.value = result.days
-      prevMonthDays.value = generatePrevMonthDays(first)
-      nextMonthDays.value = generateNextMonthDays(last)
+      prevMonthDays.value = userId ? generatePrevMonthDays(first) : []
+      nextMonthDays.value = userId ? generateNextMonthDays(last) : []
       statsData.value = stats ?? (Array.isArray(scope?.rows) ? scope.rows.find((row) => row?.userId === userId)?.statistics : null) ?? null
       individualStandards.value = standards
       historyReady.value = Array.isArray(history?.rows)
