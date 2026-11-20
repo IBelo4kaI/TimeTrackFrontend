@@ -7,7 +7,7 @@
       {{ loading ? 'Загрузка…' : meta?.label || 'Статус недоступен' }}
     </span>
     <ButtonUI
-      v-if="meta && calendar.canApprove"
+      v-if="meta && calendar.monthState?.requiresApproval !== false && calendar.canApprove"
       class="approval-action"
       :type="calendar.monthState.status === 'approved' ? 'muted' : 'success'"
       :disabled="
