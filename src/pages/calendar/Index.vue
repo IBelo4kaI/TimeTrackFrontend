@@ -7,6 +7,7 @@
       <div class="container-row">
         <DayListCalendar />
         <div class="container-column">
+          <CalendarTimesheetStatus v-if="calendarStore.selectedUserId" :calendar="calendarStore" />
           <StatisticsCalendar />
           <TimeOffLink />
           <Birthdays />
@@ -15,6 +16,7 @@
       </div>
     </template>
     <template v-else>
+      <CalendarTimesheetStatus v-if="calendarStore.selectedUserId" :calendar="calendarStore" />
       <StatisticsCalendar />
       <TimeOffLink />
       <ControlsCalendar :store="calendarStore" page="calendar-mobile" />
@@ -49,6 +51,7 @@ import DayListCalendar from '@/components/Calendar/DayListCalendar.vue'
 import DayListCalendarMobile from '@/components/Calendar/DayListCalendarMobile.vue'
 import LegendCalendar from '@/components/Calendar/LegendCalendar.vue'
 import StatisticsCalendar from '@/components/Calendar/StatisticsCalendar.vue'
+import CalendarTimesheetStatus from '@/components/Calendar/CalendarTimesheetStatus.vue'
 import TimeOffLink from '@/components/Calendar/TimeOffLink.vue'
 import ControlsCalendar from '@/components/ControlsCalendar.vue'
 import { useCalendarStore } from '@/stores/calendar'

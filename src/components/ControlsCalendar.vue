@@ -1,7 +1,6 @@
 <template>
-  <div class="controls" :class="{ 'controls-with-status': isCalendarControl }">
+  <div class="controls" :class="{ 'calendar-controls': isCalendarControl }">
     <MonthControl v-model="store.currentDate" @change="changeUser" />
-    <CalendarTimesheetStatus v-if="isCalendarControl" :calendar="store" class="controls-status" />
     <div
       class="controls-users"
       v-if="
@@ -34,7 +33,6 @@
 
 <script setup>
 import ButtonUI from '@/components/ButtonUI.vue'
-import CalendarTimesheetStatus from '@/components/Calendar/CalendarTimesheetStatus.vue'
 import MonthControl from '@/components/Calendar/MonthControl.vue'
 import { useAddReportModalStore } from '@/stores/addReportModal'
 import { useSelectingStore } from '@/stores/selecting'
@@ -79,15 +77,12 @@ onMounted(() => {
   background: var(--foreground); */
 }
 
-.controls-with-status {
+.calendar-controls {
   flex-wrap: wrap;
   align-items: center;
 }
 
 @media (max-width: 768px) {
-  .controls-status {
-    grid-column: 1 / -1;
-  }
   .controls {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));

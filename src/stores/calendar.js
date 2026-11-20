@@ -1,4 +1,4 @@
-import { getTimesheets, getTimesheetMonth, getTimeEntryHistory, editTimesheetEntries } from '@/services/timesheets.api'
+import { getTimesheets, getTimesheetMonth, getTimeEntryHistory, editTimesheetEntries, setTimesheetApproval } from '@/services/timesheets.api'
 import { historyDayKey, historyId } from '@/utils/timeEntryHistory.utils'
 // stores/calendar.store.js
 import { getCalendarDays } from '@/services/calendar.api'
@@ -54,6 +54,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   const monthState = ref(null)
   const scopeRow = ref(null)
   const mutationPending = ref(false)
+  const approvalPending = ref(false)
   let loadedContext = ''
   const contextKey = () => `${selectedUserId.value}:${currentDate.value.getFullYear()}-${currentDate.value.getMonth() + 1}`
 
@@ -65,6 +66,14 @@ export const useCalendarStore = defineStore('calendar', () => {
     && userStore.hasPermission('department.manager', 'manage')
     && !userStore.hasPermission('calendar.all', action)
   const isManagerCalendar = computed(() => managerOperation('edit'))
+  const canApprove = computed(() => !isLoading.value && loadedContext === contextKey()
+    && scopeRow.value?.userId === selectedUserId.value && scopeRow.value?.canApprove === true
+    && scopeRow.value?.year === currentDate.value.getFullYear()
+    && scopeRow.value?.month === currentDate.value.getMonth() + 1
+    && monthState.value?.userId === selectedUserId.value
+    && monthState.value?.year === currentDate.value.getFullYear()
+    && monthState.value?.month === currentDate.value.getMonth() + 1
+    && Number.isSafeInteger(monthState.value?.revision) && monthState.value.revision >= 0)
   const canViewTimeHistory = computed(() => {
     if (!selectedUserId.value || isLoading.value || !historyReady.value || historyError.value
       || loadedContext !== contextKey()) return false
@@ -163,7 +172,8 @@ export const useCalendarStore = defineStore('calendar', () => {
         fetchIndividualStandards(userId, year),
         getTimeEntryHistory(userId, year, month).then((rows) => ({ rows })).catch(() => null),
         getTimesheetMonth(userId, year, month).catch(() => null),
-        foreignCalendar.value && userStore.hasPermission('department.manager', 'manage')
+        ((foreignCalendar.value && userStore.hasPermission('department.manager', 'manage'))
+          || userStore.hasPermission('timesheet.all', 'approve'))
           ? getTimesheets(year, month, { timeout: 10000 }).catch(() => []) : Promise.resolve([]),
       ])
       if (seq !== fetchSeq || context !== contextKey()) return
@@ -191,6 +201,32 @@ export const useCalendarStore = defineStore('calendar', () => {
       )
     } finally {
       if (seq === fetchSeq) isLoading.value = false
+    }
+  }
+
+  const setApproval = async (approve) => {
+    if (!canApprove.value || approvalPending.value || mutationPending.value) return
+    const context = contextKey()
+    const userId = selectedUserId.value
+    const year = currentDate.value.getFullYear(), month = currentDate.value.getMonth() + 1
+    const revision = monthState.value.revision
+    const notifications = useNotificationStore()
+    approvalPending.value = true
+    try {
+      await setTimesheetApproval(userId, year, month, revision, approve)
+      notifications.addNotification(approve ? 'Табель подтверждён' : 'Подтверждение табеля снято', 'success')
+    } catch (error) {
+      if (error.response?.status === 409) {
+        notifications.addNotification('Табель изменился. Проверьте актуальные данные перед повторным подтверждением.', 'warning')
+      } else {
+        notifications.addNotification(error.message || 'Не удалось сохранить подтверждение табеля', 'error')
+      }
+    } finally {
+      try {
+        if (context === contextKey()) await initialFetch()
+      } finally {
+        approvalPending.value = false
+      }
     }
   }
 
@@ -378,6 +414,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     selectedUser,
     hoveredBirthday,
     timeHistory, historyReady, historyError, monthState, isManagerCalendar, mutationPending,
+    canApprove, approvalPending, setApproval,
     managerOperation, managerDayError, historyForDay, managerChangedDay, canViewTimeHistory,
 
     // Computed
