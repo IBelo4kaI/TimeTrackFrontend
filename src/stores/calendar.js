@@ -97,8 +97,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     if (!selectedUserId.value || isLoading.value || !historyReady.value || historyError.value
       || loadedContext !== contextKey()) return false
     if (userStore.hasPermission('calendar.all', 'read')) return true
-    return !!foreignCalendar.value && userStore.hasPermission('department.manager', 'manage')
-      && scopeRow.value?.userId === selectedUserId.value
+    if (!userStore.hasPermission('department.manager', 'manage')) return false
+    return foreignCalendar.value
+      ? scopeRow.value?.userId === selectedUserId.value
+      : employeesReady.value
   })
   const historyForDay = (date) => timeHistory.value.filter((event) => historyDayKey(event.entryDate) === historyDayKey(date))
   const managerChangedDay = (date) => historyForDay(date).some((event) => event.actorType === 'manager')
