@@ -36,9 +36,6 @@ const closeSidebar = () => {
   isSidebarOpen.value = false
 }
 
-// Закрывать при смене роута
-watch(() => route.path, closeSidebar)
-
 // Блокировать скролл body когда сайдбар открыт
 watch(isSidebarOpen, (val) => {
   document.body.style.overflow = val ? 'hidden' : ''

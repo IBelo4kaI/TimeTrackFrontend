@@ -2,7 +2,12 @@
   <RouterLink
     v-if="userStore.hasPermission(meta.entity, meta.action) || (meta.departmentManagerAccess && userStore.hasPermission('department.manager', 'manage'))"
     class="link"
-    :class="{ 'holiday-enabled': decorations.enabled }"
+    :class="{
+      'holiday-enabled': decorations.enabled,
+      'sending-snow': sendingSnow,
+      'receiving-snow': receivingSnow,
+    }"
+    :data-nav-route="to"
     activeClass="active"
     :to="{ name: to }"
   >
@@ -32,12 +37,14 @@ import { useUserStore } from '@/stores/user'
 import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 import { RouterLink } from 'vue-router'
 
-const { icon, title, to, meta, badge } = defineProps({
+const { icon, title, to, meta, badge, sendingSnow, receivingSnow } = defineProps({
   icon: String,
   to: String,
   title: String,
   meta: Object,
   badge: { type: Number, default: 0 },
+  sendingSnow: Boolean,
+  receivingSnow: Boolean,
 })
 
 const userStore = useUserStore()
@@ -59,7 +66,7 @@ const snowflakes = [
   transition: all 0.3s ease;
 }
 
-.link:not(.active):hover {
+.link:not(.active, .sending-snow):hover {
   background: var(--background);
   color: var(--text);
 }
@@ -73,8 +80,8 @@ const snowflakes = [
 }
 
 .snowflakes { display: none; }
-.active.holiday-enabled .title { flex: 0 0 auto; }
-.active .snowflakes {
+:is(.active, .sending-snow).holiday-enabled .title { flex: 0 0 auto; }
+:is(.active, .sending-snow) .snowflakes {
   display: block;
   position: relative;
   flex: 1;
@@ -119,12 +126,12 @@ const snowflakes = [
   font-weight: 700;
 }
 
-.active .badge {
+:is(.active, .sending-snow) .badge {
   background: var(--on-accent);
   color: var(--accent);
 }
 
-.active {
+.active, .sending-snow {
   color: var(--on-accent);
   background: var(--accent);
   --tw-shadow:
@@ -132,6 +139,21 @@ const snowflakes = [
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
     var(--tw-shadow);
+}
+
+.active.receiving-snow {
+  color: var(--text);
+  background: var(--background);
+  box-shadow: none;
+}
+
+.active.receiving-snow .snowflakes {
+  visibility: hidden;
+}
+
+.active.receiving-snow .badge {
+  background: var(--destructive);
+  color: #fff;
 }
 
 @media (max-width: 768px) {

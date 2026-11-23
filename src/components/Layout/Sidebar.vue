@@ -1,7 +1,7 @@
 <template>
   <div class="sidebar">
     <SidebarTitle @close="closeSidebar" />
-    <div class="sidebar-nav">
+    <div ref="navigation" class="sidebar-nav">
       <NavItem
         v-for="item in routesNavigation"
         :key="item.name"
@@ -10,8 +10,18 @@
         :to="item.name"
         :meta="item.meta"
         :badge="item.name === 'chats' ? chatStore.totalUnread : 0"
-        @click="closeSidebar"
+        :sending-snow="snowTransfer?.from === item.name"
+        :receiving-snow="snowTransfer?.to === item.name"
+        @click="onNavClick(item.name)"
       />
+      <div
+        v-if="decorations.enabled"
+        ref="snowLayer"
+        class="sidebar-snow"
+        aria-hidden="true"
+      >
+        <i v-for="index in 16" :key="index" class="fa-regular fa-snowflake"></i>
+      </div>
     </div>
 
     <div v-if="decorations.enabled" class="sidebar-countdown">
@@ -30,21 +40,151 @@
 <script setup>
 import { routesNavigation } from '@/router'
 import { useChatStore } from '@/stores/chat'
-import Info from '../Info.vue'
-import NavItem from '../NavItem.vue'
-import ToggleTheme from '../ToggleTheme.vue'
-import SidebarTitle from './SidebarTitle.vue'
-import NewYearCountdown from './NewYearCountdown.vue'
-import ToggleHolidayDecorations from '../ToggleHolidayDecorations.vue'
 import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
+import gsap from 'gsap'
+import { onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import NavItem from '../NavItem.vue'
+import ToggleHolidayDecorations from '../ToggleHolidayDecorations.vue'
+import ToggleTheme from '../ToggleTheme.vue'
+import NewYearCountdown from './NewYearCountdown.vue'
+import SidebarTitle from './SidebarTitle.vue'
 
 const chatStore = useChatStore()
 const decorations = useHolidayDecorationsStore()
+const route = useRoute()
+const props = defineProps({ isSidebarOpen: Boolean })
 const emits = defineEmits(['update:isSidebarOpen'])
+const navigation = ref(null)
+const snowLayer = ref(null)
+const snowTransfer = ref(null)
+let snowFlight = null
 
 function closeSidebar() {
   emits('update:isSidebarOpen', false)
 }
+
+function canAnimateSnow() {
+  return (
+    decorations.enabled &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+function onNavClick(name) {
+  if (!canAnimateSnow() || name === route.name) closeSidebar()
+}
+
+function stopSnowFlight() {
+  if (snowFlight) {
+    snowFlight.revert()
+    snowFlight = null
+  }
+  snowTransfer.value = null
+}
+
+function animateSnow(from, to) {
+  const layer = snowLayer.value
+  const sourceFlakes = from?.querySelectorAll('.nav-snowflake')
+  if (!layer || !sourceFlakes?.length || !to || from === to) return false
+
+  const area = layer.getBoundingClientRect()
+  const destination = to.getBoundingClientRect()
+  const origins = Array.from(sourceFlakes, (flake) =>
+    flake.getBoundingClientRect()
+  )
+  if (!origins.some(({ width }) => width > 0)) return false
+
+  snowTransfer.value = { from: from.dataset.navRoute, to: to.dataset.navRoute }
+  snowFlight = gsap.timeline({ onComplete: closeSidebar })
+  const flakes = Array.from(layer.children)
+
+  flakes.forEach((flake, index) => {
+    const origin = origins[index % origins.length]
+    const startX = origin.left + origin.width / 2 - area.left
+    const startY = origin.top + origin.height / 2 - area.top
+    const endX =
+      destination.left -
+      area.left +
+      destination.width * gsap.utils.random(0.12, 0.91)
+    const endY =
+      destination.top -
+      area.top +
+      destination.height * gsap.utils.random(0.2, 0.8)
+    const delay = index * 0.014
+
+    snowFlight
+      .set(
+        flake,
+        {
+          x: startX,
+          y: startY,
+          scale: gsap.utils.random(0.55, 1),
+          opacity: 0.9,
+        },
+        delay
+      )
+      .to(
+        flake,
+        {
+          x: endX,
+          y: endY,
+          rotation: gsap.utils.random(-100, 100),
+          duration: 0.51,
+          ease: 'none',
+        },
+        delay
+      )
+  })
+
+  const landing = snowFlight.duration()
+  snowFlight
+    .call(
+      () => {
+        snowTransfer.value = null
+      },
+      [],
+      landing
+    )
+    .to(flakes, { opacity: 0, duration: 0.22 }, landing)
+  return true
+}
+
+watch(
+  () => route.path,
+  () => {
+    const links = Array.from(
+      navigation.value?.querySelectorAll('[data-nav-route]') ?? []
+    )
+    const from = links.find((link) => link.classList.contains('active'))
+    const to = links.find((link) => link.dataset.navRoute === route.name)
+
+    stopSnowFlight()
+    const sidebarVisible =
+      props.isSidebarOpen || !window.matchMedia('(max-width: 768px)').matches
+    if (sidebarVisible && canAnimateSnow() && animateSnow(from, to)) return
+    closeSidebar()
+  }
+)
+
+watch(
+  () => decorations.enabled,
+  (enabled) => {
+    if (!enabled && snowFlight) {
+      stopSnowFlight()
+      closeSidebar()
+    }
+  }
+)
+
+watch(
+  () => props.isSidebarOpen,
+  (open) => {
+    if (!open) stopSnowFlight()
+  }
+)
+
+onBeforeUnmount(stopSnowFlight)
 </script>
 
 <style scoped>
@@ -62,14 +202,38 @@ function closeSidebar() {
   overflow-y: auto;
 }
 
-.sidebar > * { flex-shrink: 0; }
-.sidebar-countdown { margin: auto 0.71rem 0.71rem; padding-top: 0.71rem; }
+.sidebar > * {
+  flex-shrink: 0;
+}
+.sidebar-countdown {
+  margin: auto 0.71rem 0.71rem;
+  padding-top: 0.71rem;
+}
 
 .sidebar-nav {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.36rem;
   padding: var(--padding-primary) 0.71rem;
+}
+
+.sidebar-snow {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  color: var(--accent);
+  pointer-events: none;
+}
+
+.sidebar-snow i {
+  position: absolute;
+  top: -0.5em;
+  left: -0.5em;
+  width: 1em;
+  font-size: 0.75rem;
+  text-align: center;
+  opacity: 0;
 }
 
 .sidebar-theme {
@@ -81,7 +245,9 @@ function closeSidebar() {
   gap: 0.36rem;
 }
 
-.sidebar-countdown + .sidebar-theme { margin-top: 0; }
+.sidebar-countdown + .sidebar-theme {
+  margin-top: 0;
+}
 
 @media (max-width: 768px) {
   .sidebar-close-btn {
