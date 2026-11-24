@@ -7,7 +7,11 @@
       {{ loading ? 'Загрузка…' : meta?.label || 'Статус недоступен' }}
     </span>
     <ButtonUI
-      v-if="meta && calendar.monthState?.requiresApproval !== false && calendar.canApprove"
+      v-if="
+        meta &&
+        calendar.monthState?.requiresApproval !== false &&
+        calendar.canApprove
+      "
       class="approval-action"
       :type="calendar.monthState.status === 'approved' ? 'muted' : 'success'"
       :disabled="
@@ -58,9 +62,11 @@ const staleState = computed(() => {
 })
 const loading = computed(() => props.calendar.isLoading || !!staleState.value)
 const meta = computed(() =>
-  loading.value ? null : props.calendar.monthState?.requiresApproval === false
-    ? { label: 'Подтверждение не требуется', type: 'muted' }
-    : TIMESHEET_STATUSES[props.calendar.monthState?.status]
+  loading.value
+    ? null
+    : props.calendar.monthState?.requiresApproval === false
+      ? { label: 'Подтверждение не требуется', type: 'muted' }
+      : TIMESHEET_STATUSES[props.calendar.monthState?.status]
 )
 </script>
 <style scoped>
@@ -78,7 +84,6 @@ const meta = computed(() =>
 .approval-action {
   justify-content: center;
   height: auto;
-  /*padding: 0.4rem 0.65rem;*/
   font-size: 0.9rem;
   font-weight: 500;
   border: none;

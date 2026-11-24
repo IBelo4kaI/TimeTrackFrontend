@@ -108,13 +108,14 @@ watch(isSidebarOpen, (val) => {
 
 @media screen and (min-width: 769px) {
   .calendar-layout {
-    height: 100dvh;
-    min-height: 0;
-    flex: none;
-    grid-template-rows: var(--header-height) auto minmax(0, 1fr);
+    min-height: 100dvh;
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
-  .calendar-layout > .main { min-height: 0; min-width: 0; }
+  .calendar-layout > .main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
 }
 
 /* ─── Print ─── */

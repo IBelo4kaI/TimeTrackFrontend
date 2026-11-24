@@ -111,8 +111,19 @@
                   <td class="td align-center">{{ row.decreeDays }}</td>
                 </template>
                 <td class="td td-approval">
-                  <Badge :type="row.requiresApproval === false ? 'muted' : TIMESHEET_STATUSES[row.status]?.type || 'muted'">
-                    {{ row.requiresApproval === false ? 'Подтверждение не требуется' : TIMESHEET_STATUSES[row.status]?.label || 'Неизвестный статус' }}
+                  <Badge
+                    :type="
+                      row.requiresApproval === false
+                        ? 'muted'
+                        : TIMESHEET_STATUSES[row.status]?.type || 'muted'
+                    "
+                  >
+                    {{
+                      row.requiresApproval === false
+                        ? 'Подтверждение не требуется'
+                        : TIMESHEET_STATUSES[row.status]?.label ||
+                          'Неизвестный статус'
+                    }}
                   </Badge>
                 </td>
                 <td class="td td-confirmation">
@@ -135,11 +146,26 @@
                       v-if="row.canApprove && TIMESHEET_STATUSES[row.status]"
                       class="approval-action"
                       :type="row.status === 'approved' ? 'muted' : 'success'"
-                      :disabled="reportStore.isDeciding(row.id) || isLoading || !Number.isSafeInteger(row.revision)"
+                      :disabled="
+                        reportStore.isDeciding(row.id) ||
+                        isLoading ||
+                        !Number.isSafeInteger(row.revision)
+                      "
                       :aria-label="`${row.status === 'approved' ? 'Снять подтверждение' : 'Подтвердить'}: ${row.name}`"
-                      @click="reportStore.setApproval(row.id, row.status !== 'approved')"
+                      @click="
+                        reportStore.setApproval(
+                          row.id,
+                          row.status !== 'approved'
+                        )
+                      "
                     >
-                      {{ reportStore.isDeciding(row.id) ? 'Сохранение…' : row.status === 'approved' ? 'Снять подтверждение' : 'Подтвердить' }}
+                      {{
+                        reportStore.isDeciding(row.id)
+                          ? 'Сохранение…'
+                          : row.status === 'approved'
+                            ? 'Снять подтверждение'
+                            : 'Подтвердить'
+                      }}
                     </ButtonUI>
                   </div>
                 </td>
@@ -193,12 +219,17 @@ function calendarLinkFor(row) {
 defineEmits(['update:modelValue', 'update:status'])
 const statusOptions = [
   { label: 'Все статусы', value: 'all' },
-  ...Object.entries(TIMESHEET_STATUSES).map(([value, meta]) => ({ label: meta.label, value })),
+  ...Object.entries(TIMESHEET_STATUSES).map(([value, meta]) => ({
+    label: meta.label,
+    value,
+  })),
 ]
 const formatApprovedAt = (value) => {
   if (!value) return 'Дата не сохранена'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? 'Дата не сохранена' : date.toLocaleString('ru-RU')
+  return Number.isNaN(date.getTime())
+    ? 'Дата не сохранена'
+    : date.toLocaleString('ru-RU')
 }
 
 // Офис/удалёнка показываются, только если кто-то работал удалённо
@@ -268,8 +299,13 @@ function print() {
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
-.table-toolbar > * { min-width: 0; max-width: 100%; }
-.table-toolbar :deep(.select-value) { min-width: 0; }
+.table-toolbar > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.table-toolbar :deep(.select-value) {
+  min-width: 0;
+}
 
 .table-title {
   font-size: 1rem;
@@ -391,36 +427,63 @@ function print() {
   color: var(--muted-text);
 }
 
-.success {
-  color: var(--success);
-  font-weight: 600;
+.td-approval {
+  white-space: nowrap;
 }
-.warn {
-  color: var(--warn);
-  font-weight: 600;
+.td-confirmation {
+  min-width: 13rem;
+  max-width: 20rem;
+  overflow-wrap: anywhere;
 }
-.destructive {
-  color: var(--destructive);
-  font-weight: 600;
+.td-confirmation span,
+.td-confirmation small {
+  display: block;
 }
-.accent {
-  color: var(--accent);
-  font-weight: 600;
+.td-confirmation small {
+  margin-top: 0.3rem;
+  color: var(--muted-text);
+  font-size: 0.8rem;
 }
-.td-approval { white-space: nowrap; }
-.td-confirmation { min-width: 13rem; max-width: 20rem; overflow-wrap: anywhere; }
-.td-confirmation span, .td-confirmation small { display: block; }
-.td-confirmation small { margin-top: .3rem; color: var(--muted-text); font-size: .8rem; }
-.row-actions { display: flex; align-items: center; justify-content: center; gap: .5rem; }
-.approval-action { white-space: nowrap; font-size: .9rem; }
-.approval-action:disabled { cursor: wait; opacity: .6; }
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.approval-action {
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+.approval-action:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
 @media print {
-  .approval-action { display: none !important; }
-  .table, .th, .td { font-size: 8pt; }
-  .th, .td { padding: .3rem; white-space: normal; }
-  .td-confirmation { min-width: 0; max-width: 10rem; }
-  .td-confirmation small { font-size: 7pt; }
-  .td-approval :deep(.badge) { font-size: 7pt; white-space: normal; text-wrap: wrap; }
+  .approval-action {
+    display: none !important;
+  }
+  .table,
+  .th,
+  .td {
+    font-size: 8pt;
+  }
+  .th,
+  .td {
+    padding: 0.3rem;
+    white-space: normal;
+  }
+  .td-confirmation {
+    min-width: 0;
+    max-width: 10rem;
+  }
+  .td-confirmation small {
+    font-size: 7pt;
+  }
+  .td-approval :deep(.badge) {
+    font-size: 7pt;
+    white-space: normal;
+    text-wrap: wrap;
+  }
 }
 </style>
 <style>

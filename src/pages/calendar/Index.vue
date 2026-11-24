@@ -130,16 +130,13 @@ watch(() => [route.query.id, route.query.month, route.query.year], async ([id, m
   font-weight: 600;
 }
 @media screen and (min-width: 769px) {
-  .container { min-height: 0; min-width: 0; }
+  .container { flex: 1; height: auto; min-width: 0; }
   .container > :not(.container-row) { flex-shrink: 0; }
   .container-row {
     flex: 1;
-    min-height: 0;
     min-width: 0;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: minmax(0, 1fr);
   }
-  .container-column { min-height: 0; overflow-y: auto; }
   .container-column > * { flex-shrink: 0; }
 }
 </style>

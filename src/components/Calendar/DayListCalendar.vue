@@ -216,7 +216,6 @@ onUnmounted(() => {
   /*border: 0.07rem solid var(--border-color);*/
   gap: calc(var(--padding-secondary) / 2);
   height: 100%;
-  /* overflow: auto; */
   border-radius: var(--border-radius);
 }
 
@@ -228,17 +227,16 @@ onUnmounted(() => {
 }
 @media screen and (min-width: 769px) {
   .calendar {
-    min-height: 0;
     min-width: 0;
+    height: auto;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: 3rem repeat(
         var(--calendar-weeks),
         minmax(min-content, 1fr)
       );
-    overflow: auto;
-    overscroll-behavior-y: contain;
   }
   .calendar :deep(.day) {
+    min-height: 6.5rem;
     min-width: 0;
   }
   .calendar :deep(.calendar-header) {

@@ -44,7 +44,8 @@ button {
 }
 
 .success {
-  color: var(--success);
+  background: var(--success);
+  color: white;
 }
 
 .destructive {
@@ -71,6 +72,7 @@ button {
 
   .success:hover {
     background: var(--muted-success);
+    color: var(--text);
   }
 
   .destructive:hover {
