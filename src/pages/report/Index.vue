@@ -1,21 +1,46 @@
 <template>
   <div class="container">
     <div class="report-controls">
-      <ControlsCalendar :store="reportStore" :is-show-selecting-user="false" page="report" />
+      <ControlsCalendar
+        :store="reportStore"
+        :is-show-selecting-user="false"
+        page="report"
+      />
     </div>
 
     <div v-if="reportStore.loadError" class="report-error" role="alert">
       <span>{{ reportStore.loadError }}</span>
-      <ButtonUI type="muted" @click="reportStore.fetchAllStatistics">Обновить</ButtonUI>
+      <ButtonUI type="muted" @click="reportStore.fetchAllStatistics">
+        Обновить
+      </ButtonUI>
     </div>
-    <div v-else-if="!reportStore.isLoadingAll" class="approval-summary" aria-label="Сводка подтверждения табелей">
-      <div class="summary-item"><span>Сотрудников</span><strong>{{ departmentRows.length }}</strong></div>
-      <div v-for="(meta, status) in TIMESHEET_STATUSES" :key="status" class="summary-item">
-        <span>{{ meta.label }}</span><strong>{{ statusCounts[status] }}</strong>
+    <div
+      v-else-if="!reportStore.isLoadingAll"
+      class="approval-summary"
+      aria-label="Сводка подтверждения табелей"
+    >
+      <div class="summary-item">
+        <span>Сотрудников</span>
+        <strong>{{ departmentRows.length }}</strong>
+      </div>
+      <div
+        v-for="(meta, status) in TIMESHEET_STATUSES"
+        :key="status"
+        class="summary-item"
+      >
+        <span>{{ meta.label }}</span>
+        <strong>{{ statusCounts[status] }}</strong>
       </div>
       <div class="approval-progress">
-        <span>Подтверждено {{ statusCounts.approved }} из {{ requiredRows.length }} требующих подтверждения</span>
-        <progress :value="statusCounts.approved" :max="requiredRows.length || 1" aria-label="Доля подтверждённых табелей" />
+        <span>
+          Подтверждено {{ statusCounts.approved }} из
+          {{ requiredRows.length }} требующих подтверждения
+        </span>
+        <progress
+          :value="statusCounts.approved"
+          :max="requiredRows.length || 1"
+          aria-label="Доля подтверждённых табелей"
+        />
       </div>
     </div>
 
@@ -43,24 +68,41 @@ const reportStore = useReportStore()
 const selectedDepartment = ref('all')
 const selectedStatus = ref('all')
 
-const departmentRows = computed(() => selectedDepartment.value === 'all'
-  ? reportStore.allUsersStatistics
-  : reportStore.allUsersStatistics.filter((row) => row.department === selectedDepartment.value))
-const requiredRows = computed(() => departmentRows.value.filter((row) => row.requiresApproval !== false))
-const filteredRows = computed(() => selectedStatus.value === 'all'
-  ? departmentRows.value
-  : requiredRows.value.filter((row) => row.status === selectedStatus.value))
+const departmentRows = computed(() =>
+  selectedDepartment.value === 'all'
+    ? reportStore.allUsersStatistics
+    : reportStore.allUsersStatistics.filter(
+        (row) => row.department === selectedDepartment.value
+      )
+)
+const requiredRows = computed(() =>
+  departmentRows.value.filter((row) => row.requiresApproval !== false)
+)
+const filteredRows = computed(() =>
+  selectedStatus.value === 'all'
+    ? departmentRows.value
+    : requiredRows.value.filter((row) => row.status === selectedStatus.value)
+)
 const statusCounts = computed(() => {
   const counts = { pending: 0, approved: 0, needs_review: 0 }
-  requiredRows.value.forEach((row) => { if (row.status in counts) counts[row.status]++ })
+  requiredRows.value.forEach((row) => {
+    if (row.status in counts) counts[row.status]++
+  })
   return counts
 })
 
-watch(() => reportStore.isLoadingAll, (loading) => {
-  if (!loading && selectedDepartment.value !== 'all' && !reportStore.departments.includes(selectedDepartment.value)) {
-    selectedDepartment.value = 'all'
+watch(
+  () => reportStore.isLoadingAll,
+  (loading) => {
+    if (
+      !loading &&
+      selectedDepartment.value !== 'all' &&
+      !reportStore.departments.includes(selectedDepartment.value)
+    ) {
+      selectedDepartment.value = 'all'
+    }
   }
-})
+)
 onMounted(() => reportStore.fetchAllStatistics())
 </script>
 
@@ -74,9 +116,17 @@ onMounted(() => reportStore.fetchAllStatistics())
   max-width: 100%;
   min-width: 0;
 }
-.report-controls { min-width: 0; }
-.report-controls :deep(.controls) { min-width: 0; flex-wrap: wrap; }
-.report-controls :deep(.controls-calendar) { min-width: 0; flex-wrap: wrap; }
+.report-controls {
+  min-width: 0;
+}
+.report-controls :deep(.controls) {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.report-controls :deep(.controls-calendar) {
+  min-width: 0;
+  flex-wrap: wrap;
+}
 .approval-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -86,19 +136,73 @@ onMounted(() => reportStore.fetchAllStatistics())
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
 }
-.summary-item { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: .5rem; }
-.summary-item span, .approval-progress { color: var(--muted-text); font-size: .9rem; }
-.summary-item strong { font-size: 1.5rem; color: var(--text); }
-.approval-progress { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--gap-primary); }
-progress { flex: 1; min-width: 0; height: .5rem; accent-color: var(--success); }
-.report-error { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: var(--padding-primary); color: var(--destructive); }
+.summary-item {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.summary-item span,
+.approval-progress {
+  color: var(--muted-text);
+  font-size: 0.9rem;
+}
+.summary-item strong {
+  font-size: 1.5rem;
+  color: var(--text);
+}
+.approval-progress {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-primary);
+}
+progress {
+  flex: 1;
+  min-width: 0;
+  height: 1rem;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--background);
+}
+progress::-webkit-progress-bar {
+  background: var(--background);
+}
+progress::-webkit-progress-value {
+  background: var(--success);
+}
+progress::-moz-progress-bar {
+  background: var(--success);
+}
+.report-error {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: var(--padding-primary);
+  color: var(--destructive);
+}
 @media (max-width: 768px) {
-  .report-controls :deep(.controls) { grid-template-columns: minmax(0, 1fr); }
-  .approval-progress { flex-wrap: wrap; }
-  .approval-progress progress { flex-basis: 100%; }
-  .approval-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-controls :deep(.controls) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .approval-progress {
+    flex-wrap: wrap;
+  }
+  .approval-progress progress {
+    flex-basis: 100%;
+  }
+  .approval-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media print {
-  .report-controls, .report-error { display: none !important; }
+  .report-controls,
+  .report-error {
+    display: none !important;
+  }
 }
 </style>
