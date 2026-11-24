@@ -61,8 +61,19 @@ const calendarStore = useCalendarStore()
 const { calendarDays, prevMonthDays, nextMonthDays } =
   storeToRefs(calendarStore)
 
-const weekCount = computed(() => calendarStore.isLoading ? 5
-  : Math.max(1, Math.ceil((prevMonthDays.value.length + calendarDays.value.length + nextMonthDays.value.length) / 7)))
+const weekCount = computed(() =>
+  calendarStore.isLoading
+    ? 5
+    : Math.max(
+        1,
+        Math.ceil(
+          (prevMonthDays.value.length +
+            calendarDays.value.length +
+            nextMonthDays.value.length) /
+            7
+        )
+      )
+)
 
 const dayTypesStore = useDayTypesStore()
 
@@ -79,17 +90,30 @@ const legacyMenuItems = [
   { action: 'clear', label: 'Очистить', icon: 'delete', danger: true },
 ]
 
-const menuItems = computed(() => calendarStore.isManagerCalendar ? [
-  { action: 'edit', label: 'Изменить рабочее время', icon: 'work' },
-  { action: 'clear', label: 'Удалить рабочую запись', icon: 'delete', danger: true },
-] : legacyMenuItems)
+const menuItems = computed(() =>
+  calendarStore.isManagerCalendar
+    ? [
+        { action: 'edit', label: 'Изменить рабочее время', icon: 'work' },
+        {
+          action: 'clear',
+          label: 'Удалить рабочую запись',
+          icon: 'delete',
+          danger: true,
+        },
+      ]
+    : legacyMenuItems
+)
 
 // Обработчик действий меню
 const handleContextAction = async (action) => {
   try {
     const days = Array.from(selectingStore.selectedItems)
-    const managerAction = action === 'clear' ? calendarStore.managerOperation('delete')
-      : days.some((day) => calendarStore.managerOperation(day.userTimeId ? 'edit' : 'create'))
+    const managerAction =
+      action === 'clear'
+        ? calendarStore.managerOperation('delete')
+        : days.some((day) =>
+            calendarStore.managerOperation(day.userTimeId ? 'edit' : 'create')
+          )
     if (action === 'edit' || managerAction) {
       useAddReportModalStore().open()
       return
@@ -207,11 +231,20 @@ onUnmounted(() => {
     min-height: 0;
     min-width: 0;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-template-rows: 3rem repeat(var(--calendar-weeks), minmax(min-content, 1fr));
+    grid-template-rows: 3rem repeat(
+        var(--calendar-weeks),
+        minmax(min-content, 1fr)
+      );
     overflow: auto;
     overscroll-behavior-y: contain;
   }
-  .calendar :deep(.day) { min-width: 0; }
-  .calendar :deep(.calendar-header) { position: sticky; top: 0; z-index: 2; }
+  .calendar :deep(.day) {
+    min-width: 0;
+  }
+  .calendar :deep(.calendar-header) {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
 }
 </style>

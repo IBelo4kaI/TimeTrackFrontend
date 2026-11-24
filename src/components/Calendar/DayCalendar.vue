@@ -109,8 +109,17 @@ const calendarStore = useCalendarStore()
 const selecting = useSelectingStore()
 const dayEditor = useDayEditorStore()
 const openEditor = (event) => {
-  if (event.shiftKey || event.ctrlKey || event.metaKey || selecting.selectedCount > 1) return
-  if (event.target.closest('button, a, input, select, textarea, [role="button"]')) return
+  if (
+    event.shiftKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    selecting.selectedCount > 1
+  )
+    return
+  if (
+    event.target.closest('button, a, input, select, textarea, [role="button"]')
+  )
+    return
   void dayEditor.open(day)
 }
 
@@ -185,7 +194,6 @@ const dayStyle = computed(() => {
   transition: all 0.3s ease;
 }
 
-
 .day:hover {
   --border-color: var(--accent);
 }
@@ -216,11 +224,8 @@ const dayStyle = computed(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.35rem;
-  border-radius: var(--border-radius);
-  background: var(--background);
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .day-dot {
@@ -378,8 +383,16 @@ const dayStyle = computed(() => {
   color: var(--calendartype, #343434);
 }
 @media screen and (min-width: 769px) {
-  .day { min-width: 0; }
-  .day-header, .day-footer, .day :deep(.history-button) { flex-shrink: 0; }
-  .day-main { min-height: 2.8rem; }
+  .day {
+    min-width: 0;
+  }
+  .day-header,
+  .day-footer,
+  .day :deep(.history-button) {
+    flex-shrink: 0;
+  }
+  .day-main {
+    min-height: 2.8rem;
+  }
 }
 </style>
