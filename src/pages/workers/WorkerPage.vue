@@ -20,12 +20,6 @@
       <WorkerHome v-if="submenuStore.activeTab === 'home'" :is-self="isSelf" />
       <WorkerReport v-else-if="submenuStore.activeTab === 'report'" />
       <WorkerVacation v-else-if="submenuStore.activeTab === 'vacation'" />
-
-      <!-- Больничные — следующим шагом, пока заглушка -->
-      <div v-else class="tab-placeholder">
-        <i class="fa-regular fa-hammer"></i>
-        <span>Раздел «{{ activeTabLabel }}» скоро появится</span>
-      </div>
     </template>
   </div>
 </template>
@@ -67,14 +61,10 @@ const TABS = [
   { id: 'home', label: 'Главная' },
   { id: 'report', label: 'Табель' },
   { id: 'vacation', label: 'Отпуска' },
-  { id: 'sick-leave', label: 'Больничные' },
 ]
 
 const submenuStore = useSubmenuStore()
 
-// Тот же компонент обслуживает /home и /workers/:id и переиспользуется при
-// переходе между ними, а router.beforeEach сбрасывает заголовок/сабменю
-// на каждой навигации — поэтому выставляем их заново при смене маршрута
 const isWorkerRoute = () => ['dashboard', 'worker'].includes(route.name)
 
 function initHeader() {
@@ -93,10 +83,6 @@ watch(
     if (isWorkerRoute()) initHeader()
   },
   { immediate: true }
-)
-
-const activeTabLabel = computed(
-  () => TABS.find((t) => t.id === submenuStore.activeTab)?.label ?? ''
 )
 
 const workerStore = useWorkerStore()
@@ -145,8 +131,7 @@ onMounted(load)
   color: var(--accent);
 }
 
-.not-found,
-.tab-placeholder {
+.not-found {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -155,9 +140,5 @@ onMounted(load)
   padding: 4rem 1rem;
   color: var(--muted-text);
   font-size: 1rem;
-}
-
-.tab-placeholder i {
-  font-size: 1.5rem;
 }
 </style>

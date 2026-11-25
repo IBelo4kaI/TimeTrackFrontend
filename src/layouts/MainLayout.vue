@@ -12,8 +12,6 @@
 
     <Header @toggle-sidebar="toggleSidebar" />
 
-    <Submenu />
-
     <div class="main"><slot></slot></div>
   </div>
 </template>
@@ -21,7 +19,6 @@
 <script setup>
 import Header from '@/components/Layout/Header.vue'
 import Sidebar from '@/components/Layout/Sidebar.vue'
-import Submenu from '@/components/Layout/Submenu.vue'
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -48,20 +45,14 @@ watch(isSidebarOpen, (val) => {
   display: grid;
   grid-template-areas:
     'sidebar header'
-    'sidebar submenu'
     'sidebar main';
-  grid-template-rows: var(--header-height) auto 1fr;
+  grid-template-rows: var(--header-height) 1fr;
   grid-template-columns: var(--sidebar-width) 1fr;
 }
 
 /* The report table must not set the grid track's minimum width. */
 .report-layout { min-width: 0; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); }
 .report-layout > .main { min-width: 0; }
-
-/* ─── Submenu ─── */
-.submenu {
-  grid-area: submenu;
-}
 
 /* ─── Main ─── */
 .main {

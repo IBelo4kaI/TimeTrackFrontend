@@ -1,19 +1,26 @@
 <template>
-  <RouterLink
-    v-if="userStore.hasPermission(meta.entity, meta.action) || (meta.departmentManagerAccess && userStore.hasPermission('department.manager', 'manage'))"
+  <component
+    :is="to ? RouterLink : 'button'"
+    v-if="!to || userStore.hasPermission(meta.entity, meta.action) || (meta.departmentManagerAccess && userStore.hasPermission('department.manager', 'manage'))"
     class="link"
     :class="{
-      'holiday-enabled': decorations.enabled,
+      active,
+      'holiday-enabled': to && decorations.enabled,
       'sending-snow': sendingSnow,
       'receiving-snow': receivingSnow,
     }"
     :data-nav-route="to"
-    activeClass="active"
-    :to="{ name: to }"
+    v-bind="to ? { activeClass: 'active', to: { name: to } } : { type: 'button' }"
+    :style="colors && {
+      '--nav-active-bg': colors.activeBackground,
+      '--nav-active-text': colors.activeText,
+      '--nav-text': colors.text,
+      '--nav-hover-bg': colors.hoverBackground,
+    }"
   >
-    <div class="icon"><i :class="icon"></i></div>
-    <div class="title">{{ title }}</div>
-    <span v-if="decorations.enabled" class="snowflakes" aria-hidden="true">
+    <span v-if="icon" class="icon" aria-hidden="true"><i :class="icon"></i></span>
+    <span class="title">{{ title }}</span>
+    <span v-if="to && decorations.enabled" class="snowflakes" aria-hidden="true">
       <svg width="72" height="28" viewBox="0 0 72 28" focusable="false">
         <g v-for="flake in snowflakes" :key="flake" :transform="flake">
           <path
@@ -29,7 +36,7 @@
       </svg>
     </span>
     <span v-if="badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
-  </RouterLink>
+  </component>
 </template>
 
 <script setup>
@@ -37,11 +44,13 @@ import { useUserStore } from '@/stores/user'
 import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
 import { RouterLink } from 'vue-router'
 
-const { icon, title, to, meta, badge, sendingSnow, receivingSnow } = defineProps({
+defineProps({
   icon: String,
   to: String,
   title: String,
   meta: Object,
+  active: Boolean,
+  colors: Object,
   badge: { type: Number, default: 0 },
   sendingSnow: Boolean,
   receivingSnow: Boolean,
@@ -62,12 +71,26 @@ const snowflakes = [
   gap: 0.5rem;
   padding: 0.71rem;
   border-radius: var(--border-radius);
-  color: var(--muted-text);
+  color: var(--nav-text, var(--muted-text));
   transition: all 0.3s ease;
 }
 
+.link:where(button) {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.link:focus-visible {
+  outline: 0.14rem solid var(--accent);
+  outline-offset: 0.14rem;
+}
+
 .link:not(.active, .sending-snow):hover {
-  background: var(--background);
+  background: var(--nav-hover-bg, var(--background));
   color: var(--text);
 }
 
@@ -132,8 +155,8 @@ const snowflakes = [
 }
 
 .active, .sending-snow {
-  color: var(--on-accent);
-  background: var(--accent);
+  color: var(--nav-active-text, var(--on-accent));
+  background: var(--nav-active-bg, var(--accent));
   --tw-shadow:
     0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   box-shadow:

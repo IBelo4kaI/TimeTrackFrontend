@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'Учет времени',
           short_name: 'Учет времени',
-          description: 'Учёт рабочего времени, отпусков и чеков',
+          description: 'Учёт рабочего времени и отпусков',
           start_url: '/',
           display: 'standalone',
           background_color: '#ffffff',

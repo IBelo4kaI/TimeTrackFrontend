@@ -1,9 +1,8 @@
 <template>
   <div class="settings-notifications">
-    <div class="settings-notifications__title">Уведомления о новых заявках</div>
+    <div class="settings-notifications__title">Уведомления о новых заявках на отпуск</div>
     <div class="settings-notifications__hint">
       Уведомление придёт в приложение и, если у сотрудника привязан VK, туда же.
-      Для отпусков и больничных получатели настраиваются отдельно.
     </div>
 
     <NotificationRecipientsPicker
@@ -11,12 +10,6 @@
       :model-value="vacationIds"
       :is-loading="isLoadingVacation"
       @update:model-value="onVacationChange"
-    />
-    <NotificationRecipientsPicker
-      title="Больничные"
-      :model-value="sickLeaveIds"
-      :is-loading="isLoadingSickLeave"
-      @update:model-value="onSickLeaveChange"
     />
   </div>
 
@@ -64,11 +57,9 @@
 import ButtonUI from '@/components/ButtonUI.vue'
 import InputUi from '@/components/InputUi.vue'
 import {
-  getSickLeaveNotificationAdminUserIds,
   getVacationApprovedNotificationEmail,
   getVacationApprovedNotificationUserIds,
   getVacationNotificationAdminUserIds,
-  updateSickLeaveNotificationAdminUserIds,
   updateVacationApprovedNotificationEmail,
   updateVacationApprovedNotificationUserIds,
   updateVacationNotificationAdminUserIds,
@@ -80,14 +71,10 @@ import NotificationRecipientsPicker from './NotificationRecipientsPicker.vue'
 const notificationStore = useNotificationStore()
 
 const vacationIds = ref([])
-const sickLeaveIds = ref([])
 const vacationApprovedIds = ref([])
 const isLoadingVacation = ref(true)
-const isLoadingSickLeave = ref(true)
 const isLoadingVacationApproved = ref(true)
 
-// Черновик до "Сохранить" — та же схема, что у категории чека в
-// ReceiptInfo.vue: сохраняем не на каждый ввод символа, а по клику.
 const vacationApprovedEmail = ref('')
 const vacationApprovedEmailDraft = ref('')
 const isLoadingVacationApprovedEmail = ref(true)
@@ -103,20 +90,6 @@ async function onVacationChange(ids) {
     await updateVacationNotificationAdminUserIds(ids)
   } catch {
     vacationIds.value = previous
-    notificationStore.addNotification(
-      'Не удалось сохранить получателей уведомлений',
-      'error'
-    )
-  }
-}
-
-async function onSickLeaveChange(ids) {
-  const previous = sickLeaveIds.value
-  sickLeaveIds.value = ids
-  try {
-    await updateSickLeaveNotificationAdminUserIds(ids)
-  } catch {
-    sickLeaveIds.value = previous
     notificationStore.addNotification(
       'Не удалось сохранить получателей уведомлений',
       'error'
@@ -160,14 +133,6 @@ onMounted(async () => {
     vacationIds.value = []
   } finally {
     isLoadingVacation.value = false
-  }
-
-  try {
-    sickLeaveIds.value = (await getSickLeaveNotificationAdminUserIds()) ?? []
-  } catch {
-    sickLeaveIds.value = []
-  } finally {
-    isLoadingSickLeave.value = false
   }
 
   try {

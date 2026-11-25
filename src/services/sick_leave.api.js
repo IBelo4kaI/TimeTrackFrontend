@@ -4,37 +4,3 @@ export const getSickLeavesByYear = async (year, userId) => {
   const response = await timeTrackApi.get(`/sick-leaves/${userId}/${year}`)
   return response.data
 }
-
-export const getAllUsersSickLeavesByYear = async (year) => {
-  const response = await timeTrackApi.get(`/sick-leaves/all/${year}`)
-  return response.data
-}
-
-export const getSickLeaveStats = async (year, userId) => {
-  const response = await timeTrackApi.get(`/sick-leaves/stats/${userId}/${year}`)
-  return response.data
-}
-
-export const createSickLeave = async (data) => {
-  const response = await timeTrackApi.post('/sick-leaves/create', data)
-  return response.data
-}
-
-export const updateSickLeaveStatus = async (id, status) => {
-  const response = await timeTrackApi.put(`/sick-leaves/${id}/status`, { status })
-  return response.data
-}
-
-export const deleteSickLeave = async (id) => {
-  const response = await timeTrackApi.delete(`/sick-leaves/${id}`)
-  return response.data
-}
-
-export const uploadSickLeaveFile = async (sickLeaveId, file) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  const response = await timeTrackApi.post(`/sick-leaves/${sickLeaveId}/file`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return response.data
-}

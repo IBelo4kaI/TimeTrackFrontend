@@ -34,9 +34,6 @@ const submenuItems = computed(() => [
     : []),
 ])
 
-// Сброс вкладок при уходе со страницы делает router.beforeEach (router/index.js)
-// централизованно, до монтирования следующей страницы — здесь его дублировать
-// не нужно.
 const submenuStore = useSubmenuStore()
 submenuStore.setItems(submenuItems.value)
 submenuStore.setActiveTab(canReadOwn.value ? 'receipt' : 'department_receipt')

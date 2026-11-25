@@ -18,7 +18,6 @@
       <CalendarEventsList />
     </template>
     <NewsSettings v-else-if="submenuStore.activeTab === 'news'" />
-    <ReceiptCategorySettings v-else-if="submenuStore.activeTab === 'receipt-categories'" />
   </div>
 </template>
 
@@ -30,7 +29,6 @@ import ManualNotificationSender from '@/components/Settings/ManualNotificationSe
 import NewsSettings from '@/components/Settings/NewsSettings.vue'
 import NotificationSettings from '@/components/Settings/NotificationSettings.vue'
 import NotificationTemplateSettings from '@/components/Settings/NotificationTemplateSettings.vue'
-import ReceiptCategorySettings from '@/components/Settings/ReceiptCategorySettings.vue'
 import SmtpSettings from '@/components/Settings/SmtpSettings.vue'
 import StandardSettings from '@/components/Settings/StandardSettings.vue'
 import TimesheetReminderCard from '@/components/Settings/TimesheetReminderCard.vue'
@@ -43,9 +41,6 @@ import { useSubmenuStore } from '@/stores/submenu'
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Настройки', 'Конфигурация системы')
 
-// Сброс вкладок при уходе со страницы делает router.beforeEach (router/index.js)
-// централизованно, до монтирования следующей страницы — здесь его дублировать
-// не нужно.
 const submenuStore = useSubmenuStore()
 submenuStore.setItems([
   { id: 'vacation', label: 'Отпуска' },
@@ -54,7 +49,6 @@ submenuStore.setItems([
   { id: 'notifications', label: 'Уведомления' },
   { id: 'calendar', label: 'Календарь' },
   { id: 'news', label: 'Новости' },
-  { id: 'receipt-categories', label: 'Категории чеков' },
 ])
 submenuStore.setActiveTab('vacation')
 

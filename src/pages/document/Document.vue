@@ -15,9 +15,7 @@ import VacationApplications from '@/components/Document/VacationList.vue'
 const titleStore = useHeaderTitleStore()
 titleStore.setTitle('Документы', 'Файлы и заявления сотрудников')
 
-// Заголовок и вкладки выставляем при каждой смене адреса: на /docs и
-// /docs?template=... один и тот же экземпляр страницы, а router.beforeEach
-// сбрасывает сабменю на каждой навигации
+// Один экземпляр страницы обслуживает /docs с параметром template и без него.
 const route = useRoute()
 const submenuStore = useSubmenuStore()
 

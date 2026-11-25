@@ -109,10 +109,6 @@ export const useNotificationCenterStore = defineStore('notification-center', () 
     }
   }
 
-  // Кликабельно только там, где есть куда вести: заявка на отпуск (у неё
-  // есть отдельная страница-карточка; у больничных её нет — только общий
-  // список) и чат (открываем тем же query-параметром, что и диплинк из VK,
-  // см. pages/chat/Index.vue).
   function linkFor(item) {
     const entityType = unwrapNullString(item.entityType)
     const entityId = unwrapNullString(item.entityId)

@@ -8,17 +8,11 @@ import CalendarPage from '@/pages/calendar/Index.vue'
 import ReportPage from '@/pages/report/Index.vue'
 import VacationPage from '@/pages/vacation/Vacation.vue'
 import VacationCreateStepsPage from '@/pages/vacation/VacationCreateStepsPage.vue'
-import ReceiptPage from '@/pages/receipt/Index.vue'
-import ReceiptAddPage from '@/pages/receipt/ReceiptAdd.vue'
-import BusinessCardPage from '@/pages/receipt/BusinessCard.vue'
-import ReceiptViewPage from '@/pages/receipt/Receipt.vue'
-import SickLeavePage from '@/pages/sick_leave/Index.vue'
 import DocumentPage from '@/pages/document/Document.vue'
 import SettingsPage from '@/pages/settings/Index.vue'
 import VacationApplicationPage from '@/pages/document/VacationApplication.vue'
 import VacationFileViewerPage from '@/pages/document/VacationFileViewer.vue'
 import ChatPage from '@/pages/chat/Index.vue'
-import PrintPage from '@/pages/print/Print.vue'
 import ProfilePage from '@/pages/profile/Index.vue'
 
 export const routesNavigation = {
@@ -69,28 +63,6 @@ export const routesNavigation = {
       action: 'read',
     },
   },
-  receipts: {
-    path: '/receipts',
-    name: 'receipts',
-    component: ReceiptPage,
-    meta: {
-      title: 'Чеки',
-      icon: 'fa-light fa-receipt',
-      entity: 'receipts',
-      action: 'read',
-    },
-  },
-  sickLeave: {
-    path: '/sick-leave',
-    name: 'sick-leave',
-    component: SickLeavePage,
-    meta: {
-      title: 'Больничные',
-      icon: 'fa-light fa-notes-medical',
-      entity: 'sick_leaves',
-      action: 'read',
-    },
-  },
   docs: {
     path: '/docs',
     name: 'docs',
@@ -131,7 +103,7 @@ export const routes = [
     path: '/',
     name: 'home',
     redirect: {
-      name: 'dashboard',
+      name: 'calendar',
     },
   },
 ]
@@ -145,8 +117,6 @@ router.addRoute(routesNavigation.dashboard)
 router.addRoute(routesNavigation.calendar)
 router.addRoute(routesNavigation.report)
 router.addRoute(routesNavigation.vacation)
-router.addRoute(routesNavigation.receipts)
-router.addRoute(routesNavigation.sickLeave)
 router.addRoute(routesNavigation.docs)
 router.addRoute(routesNavigation.chats)
 router.addRoute(routesNavigation.settings)
@@ -169,7 +139,12 @@ router.addRoute({
   path: '/docs/vacation/:id',
   name: 'vacation-application',
   component: VacationApplicationPage,
-  meta: { title: 'Заявление на отпуск', entity: 'vacation', action: 'read', departmentManagerAccess: true },
+  meta: {
+    title: 'Заявление на отпуск',
+    entity: 'vacation',
+    action: 'read',
+    departmentManagerAccess: true,
+  },
 })
 
 router.addRoute({
@@ -179,43 +154,6 @@ router.addRoute({
   meta: {
     title: 'Просмотр файла',
     entity: 'vacation',
-    action: 'read',
-    layout: 'full',
-  },
-})
-
-router.addRoute({
-  path: '/receipts/create',
-  name: 'receipt-create',
-  component: ReceiptAddPage,
-  meta: { title: 'Добавить чек', entity: 'receipts', action: 'create' },
-})
-
-router.addRoute({
-  path: '/receipts/cards/:id',
-  name: 'business-card',
-  component: BusinessCardPage,
-  meta: { title: 'Карта', entity: 'business_cards', action: 'read' },
-})
-
-router.addRoute({
-  path: '/receipts/:id',
-  name: 'receipt-view',
-  component: ReceiptViewPage,
-  meta: { title: 'Чек', entity: 'receipts', action: 'read' },
-})
-
-// Универсальная страница печати — сегодня только чеки (см. PRINT_REGISTRY
-// в Print.vue), :type задел под другие типы документов в будущем.
-router.addRoute({
-  path: '/print/:type',
-  name: 'print',
-  component: PrintPage,
-  meta: {
-    title: 'Печать',
-    // Печать пока доступна только админам (receipts.all), не всем
-    // сотрудникам — см. isAdmin в ReceiptList.vue/ReceiptInfo.vue
-    entity: 'receipts.all',
     action: 'read',
     layout: 'full',
   },
@@ -263,7 +201,13 @@ router.beforeEach(async (to) => {
 
   if (!userStore.isLogin) return true // неавторизованных отдельно гейтит App.vue
 
-  if (!userStore.hasPermission(entity, action) && !(to.meta.departmentManagerAccess && userStore.hasPermission('department.manager', 'manage'))) {
+  if (
+    !userStore.hasPermission(entity, action) &&
+    !(
+      to.meta.departmentManagerAccess &&
+      userStore.hasPermission('department.manager', 'manage')
+    )
+  ) {
     useNotificationStore().addNotification(
       'Недостаточно прав для доступа к этому разделу',
       'error'
@@ -286,8 +230,16 @@ router.beforeEach((to, from) => {
   }
 })
 
-router.beforeEach(() => {
-  useSubmenuStore().reset()
+router.afterEach((to, from, failure) => {
+  if (failure) return
+
+  // Переиспользуемая страница может регистрировать вкладки только при setup.
+  if (
+    to.matched.at(-1)?.components?.default !==
+    from.matched.at(-1)?.components?.default
+  ) {
+    useSubmenuStore().reset()
+  }
 })
 
 export default router

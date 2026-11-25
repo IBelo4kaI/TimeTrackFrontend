@@ -25,8 +25,7 @@ export const useFilePreviewStore = defineStore('file-preview', () => {
   }
 
   // f: { id, originalName, mimeType } — как отдаёт GetFileByID/ListFilesByEntity,
-  // тогда сами сходим за содержимым на бэк. Либо, если файла на бэке ещё нет
-  // (например, фото чека, который не удалось распознать, — см. ReceiptScan.vue),
+  // тогда сами сходим за содержимым на бэк. Либо, если файла на бэке ещё нет,
   // f: { url, originalName, mimeType } — готовый blob-url, сетевой запрос не
   // нужен; чистит его тогда сам вызывающий код, а не этот стор.
   async function open(f) {

@@ -27,10 +27,6 @@ export const updateSettingVacationDuration = async (value) => {
   }
 }
 
-// user_id сотрудников, кому слать уведомления (в приложении и в VK) о новых
-// заявках — отдельно для отпусков и больничных, см.
-// notification.Service.GetVacationAdminRecipients/GetSickLeaveAdminRecipients
-// на бэке. Значение — JSON-массив строк.
 async function getNotificationRecipients(settingKey) {
   try {
     const response = await timeTrackApi.get(`/system-settings/${settingKey}`)
@@ -58,11 +54,6 @@ export const getVacationNotificationAdminUserIds = () =>
   getNotificationRecipients('notification_vacation_admin_user_ids')
 export const updateVacationNotificationAdminUserIds = (userIds) =>
   updateNotificationRecipients('notification_vacation_admin_user_ids', userIds)
-
-export const getSickLeaveNotificationAdminUserIds = () =>
-  getNotificationRecipients('notification_sick_leave_admin_user_ids')
-export const updateSickLeaveNotificationAdminUserIds = (userIds) =>
-  updateNotificationRecipients('notification_sick_leave_admin_user_ids', userIds)
 
 // Отдельно от notification_vacation_admin_user_ids — тем шлют про новые
 // заявки, этим — про уже утверждённые (см. GetVacationApprovedRecipients).

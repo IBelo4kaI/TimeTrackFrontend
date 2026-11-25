@@ -1,27 +1,64 @@
 <template>
   <div class="sidebar">
     <SidebarTitle @close="closeSidebar" />
-    <div ref="navigation" class="sidebar-nav">
-      <NavItem
-        v-for="item in routesNavigation"
-        :key="item.name"
-        :icon="item.meta.icon"
-        :title="item.meta.title"
-        :to="item.name"
-        :meta="item.meta"
-        :badge="item.name === 'chats' ? chatStore.totalUnread : 0"
-        :sending-snow="snowTransfer?.from === item.name"
-        :receiving-snow="snowTransfer?.to === item.name"
-        @click="onNavClick(item.name)"
-      />
-      <div
-        v-if="decorations.enabled"
-        ref="snowLayer"
-        class="sidebar-snow"
-        aria-hidden="true"
-      >
-        <i v-for="index in 16" :key="index" class="fa-regular fa-snowflake"></i>
-      </div>
+    <div class="sidebar-nav-viewport">
+      <Transition name="main-nav">
+        <nav
+          v-show="!submenuVisible"
+          ref="navigation"
+          class="sidebar-nav"
+          aria-label="Основное меню"
+          :inert="submenuVisible"
+        >
+          <NavItem
+            v-for="item in routesNavigation"
+            :key="item.name"
+            :icon="item.meta.icon"
+            :title="item.meta.title"
+            :to="item.name"
+            :meta="item.meta"
+            :badge="item.name === 'chats' ? chatStore.totalUnread : 0"
+            :sending-snow="snowTransfer?.from === item.name"
+            :receiving-snow="snowTransfer?.to === item.name"
+            @click.capture="onNavClick($event, item.name)"
+          />
+          <NavItem
+            v-if="hasSubmenu && !hasCurrentNavItem"
+            :title="route.meta.title"
+            data-submenu-trigger
+            @click="openSubmenu"
+          />
+          <div
+            v-if="decorations.enabled"
+            ref="snowLayer"
+            class="sidebar-snow"
+            aria-hidden="true"
+          >
+            <i v-for="index in 16" :key="index" class="fa-regular fa-snowflake"></i>
+          </div>
+        </nav>
+      </Transition>
+      <Transition name="section-nav" @before-leave="(pane) => (pane.inert = true)">
+        <nav v-if="submenuVisible" class="sidebar-nav" :aria-label="route.meta.title">
+          <NavItem
+            title="Назад"
+            icon="fa-regular fa-arrow-left"
+            data-submenu-back
+            @click="showMainNavigation"
+          />
+          <h2 class="sidebar-section-title">{{ route.meta.title }}</h2>
+          <NavItem
+            v-for="item in submenuStore.items"
+            :key="item.id"
+            :title="item.label"
+            :icon="item.icon"
+            :colors="item.colors"
+            :active="submenuStore.activeTab === item.id"
+            :aria-pressed="submenuStore.activeTab === item.id"
+            @click="selectTab(item.id)"
+          />
+        </nav>
+      </Transition>
     </div>
 
     <div v-if="decorations.enabled" class="sidebar-countdown">
@@ -41,8 +78,9 @@
 import { routesNavigation } from '@/router'
 import { useChatStore } from '@/stores/chat'
 import { useHolidayDecorationsStore } from '@/stores/holidayDecorations'
+import { useSubmenuStore } from '@/stores/submenu'
 import gsap from 'gsap'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import NavItem from '../NavItem.vue'
 import ToggleHolidayDecorations from '../ToggleHolidayDecorations.vue'
@@ -52,12 +90,21 @@ import SidebarTitle from './SidebarTitle.vue'
 
 const chatStore = useChatStore()
 const decorations = useHolidayDecorationsStore()
+const submenuStore = useSubmenuStore()
 const route = useRoute()
 const props = defineProps({ isSidebarOpen: Boolean })
 const emits = defineEmits(['update:isSidebarOpen'])
 const navigation = ref(null)
 const snowLayer = ref(null)
 const snowTransfer = ref(null)
+const dismissedPath = ref(null)
+const hasSubmenu = computed(() => submenuStore.items.length > 1)
+const submenuVisible = computed(
+  () => hasSubmenu.value && dismissedPath.value !== route.path
+)
+const hasCurrentNavItem = computed(() =>
+  Object.values(routesNavigation).some((item) => item.name === route.name)
+)
 let snowFlight = null
 
 function closeSidebar() {
@@ -71,7 +118,35 @@ function canAnimateSnow() {
   )
 }
 
-function onNavClick(name) {
+async function showMainNavigation() {
+  dismissedPath.value = route.path
+  await nextTick()
+  navigation.value
+    ?.querySelector('[aria-current="page"], [data-submenu-trigger], .active')
+    ?.focus()
+}
+
+async function openSubmenu(event) {
+  dismissedPath.value = null
+  const viewport = event.currentTarget.closest('.sidebar-nav-viewport')
+  await nextTick()
+  viewport?.querySelector('[data-submenu-back]')?.focus()
+}
+
+function selectTab(id) {
+  submenuStore.setActiveTab(id)
+  closeSidebar()
+}
+
+function onNavClick(event, name) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+  if (name === route.name && hasSubmenu.value) {
+    event.preventDefault()
+    openSubmenu(event)
+    return
+  }
+
   if (!canAnimateSnow() || name === route.name) closeSidebar()
 }
 
@@ -153,6 +228,7 @@ function animateSnow(from, to) {
 watch(
   () => route.path,
   () => {
+    dismissedPath.value = null
     const links = Array.from(
       navigation.value?.querySelectorAll('[data-nav-route]') ?? []
     )
@@ -180,7 +256,8 @@ watch(
 watch(
   () => props.isSidebarOpen,
   (open) => {
-    if (!open) stopSnowFlight()
+    if (open) dismissedPath.value = null
+    else stopSnowFlight()
   }
 )
 
@@ -210,12 +287,63 @@ onBeforeUnmount(stopSnowFlight)
   padding-top: 0.71rem;
 }
 
-.sidebar-nav {
+.sidebar-nav-viewport {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 7rem;
+  overflow: clip;
+}
+
+.sidebar-nav {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   gap: 0.36rem;
   padding: var(--padding-primary) 0.71rem;
+  overflow-y: auto;
+}
+
+.sidebar-nav > :deep(.link) {
+  flex-shrink: 0;
+}
+
+.sidebar-section-title {
+  margin: 0.36rem 0.71rem 0;
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.main-nav-enter-active,
+.main-nav-leave-active,
+.section-nav-enter-active,
+.section-nav-leave-active {
+  transition: transform 240ms ease, opacity 240ms ease;
+}
+
+.main-nav-leave-active,
+.section-nav-leave-active {
+  pointer-events: none;
+}
+
+.main-nav-enter-from,
+.main-nav-leave-to {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.section-nav-enter-from,
+.section-nav-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar .sidebar-nav,
+  .sidebar.sidebar {
+    transition: none;
+  }
 }
 
 .sidebar-snow {
